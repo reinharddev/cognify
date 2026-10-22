@@ -1,0 +1,8 @@
+# Catatan rilis Cognify, dua bahasa (id: Indonesia, en: English), terbaru di atas.
+# Format dan aturan: docs/RELEASE_NOTES.md. Tiap versi wajib punya kedua bahasa.
+
+0.1.0
+id: Beta pertama untuk macOS dan Windows. Baru: kalender dengan acara beberapa hari, catatan melayang yang ditaut dengan panah, tautan antar dokumen dengan [[, papan yang tertanam di dokumen, gaya tampilan Neo dan Normal, bahasa Indonesia dan Inggris, simpan otomatis yang lebih andal.
+id: Windows belum ditandatangani, jadi SmartScreen bisa menampilkan peringatan: pilih Informasi lebih lanjut, lalu Tetap jalankan.
+en: First beta for macOS and Windows. New: calendar events spanning several days, floating notes linked with arrows, links between documents with [[, boards embedded in documents, Neo and Normal display styles, Indonesian and English, more reliable autosave.
+en: Windows is not code-signed, so SmartScreen may show a warning: choose More info, then Run anyway.

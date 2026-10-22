@@ -44,10 +44,37 @@
     ],
     "macOS": {
       "entitlements": "Entitlements.plist",
-      "signingIdentity": "-"
+      "signingIdentity": "-",
+      "dmg": {
+        "background": "installer/dmg-background.png",
+        "windowSize": {
+          "width": 660,
+          "height": 400
+        },
+        "appPosition": {
+          "x": 165,
+          "y": 205
+        },
+        "applicationFolderPosition": {
+          "x": 495,
+          "y": 205
+        }
+      }
     },
     "resources": {
       "../extension": "extension"
+    },
+    "windows": {
+      "nsis": {
+        "headerImage": "installer/header.bmp",
+        "sidebarImage": "installer/sidebar.bmp",
+        "installerIcon": "icons/icon.ico",
+        "languages": [
+          "English",
+          "Indonesian"
+        ],
+        "displayLanguageSelector": false
+      }
     }
   }
 }
