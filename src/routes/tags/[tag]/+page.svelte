@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tr } from "$lib/i18n.svelte";
   import { page } from "$app/state";
   import { Hash } from "@lucide/svelte";
   import { kindIcon } from "$lib/workspace/kinds";
@@ -24,14 +25,14 @@
 <div class="wrap">
   <h1><Hash size={22} />{tag}</h1>
   {#if items === null}
-    <p class="muted">Memuat…</p>
+    <p class="muted">{tr("Memuat…", "Loading…")}</p>
   {:else if !items.length}
-    <p class="muted">Tidak ada halaman dengan tag ini.</p>
+    <p class="muted">{tr("Tidak ada halaman dengan tag ini.", "No pages with this tag.")}</p>
   {:else}
     <ul>
       {#each items as n, i (n.id)}
         {@const Icon = icon(n.kind)}
-        <li style:--i={i}><a href="/p/{n.id}"><span class="k k-{n.kind}"><Icon size={16} /></span>{n.title || "Tanpa judul"}</a></li>
+        <li style:--i={i}><a href="/p/{n.id}"><span class="k k-{n.kind}"><Icon size={16} /></span>{n.title || tr("Tanpa judul", "Untitled")}</a></li>
       {/each}
     </ul>
   {/if}

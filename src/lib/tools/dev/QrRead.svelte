@@ -158,7 +158,7 @@
 	pre {
 		margin: 0;
 		padding: 12px 14px;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
 		font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;

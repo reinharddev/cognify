@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tr } from "$lib/i18n.svelte";
   import { dialog } from "$lib/stores/dialog.svelte";
   import { onMount } from "svelte";
   import { RotateCcw, Trash2 } from "@lucide/svelte";
@@ -14,7 +15,7 @@
     try {
       items = await workspace.trash.list();
     } catch (e) {
-      error = e instanceof Error ? e.message : "Sampah tidak bisa dimuat.";
+      error = e instanceof Error ? e.message : tr("Sampah tidak bisa dimuat.", "The trash could not be loaded.");
     }
   }
   onMount(load);
@@ -25,15 +26,15 @@
   }
 
   async function remove(item: TrashItem) {
-    const extra = item.descendants ? `Ada ${item.descendants} halaman di dalamnya yang ikut terhapus.` : undefined;
-    if (!(await dialog.confirm(`Hapus "${item.title || "Tanpa judul"}" selamanya?`, { detail: extra, danger: true, okLabel: "Hapus selamanya" }))) return;
+    const extra = item.descendants ? tr(`Ada ${item.descendants} halaman di dalamnya yang ikut terhapus.`, `${item.descendants} pages inside will be deleted too.`) : undefined;
+    if (!(await dialog.confirm(tr(`Hapus "${item.title || "Tanpa judul"}" selamanya?`, `Delete "${item.title || "Untitled"}" forever?`), { detail: extra, danger: true, okLabel: tr("Hapus selamanya", "Delete forever") }))) return;
     await workspace.pages.deleteForever(item.id);
     await load();
   }
 
   async function empty() {
     if (!items?.length) return;
-    if (!(await dialog.confirm("Kosongkan sampah?", { detail: "Semua halaman di dalamnya terhapus selamanya.", danger: true, okLabel: "Kosongkan" }))) return;
+    if (!(await dialog.confirm(tr("Kosongkan sampah?", "Empty the trash?"), { detail: tr("Semua halaman di dalamnya terhapus selamanya.", "Every page in it is deleted forever."), danger: true, okLabel: tr("Kosongkan", "Empty") }))) return;
     await workspace.trash.empty();
     await load();
   }
@@ -41,21 +42,21 @@
 
 <div class="trash">
   <header>
-    <h1>Sampah</h1>
-    {#if items?.length}<button onclick={empty}>Kosongkan sampah</button>{/if}
+    <h1>{tr("Sampah", "Trash")}</h1>
+    {#if items?.length}<button onclick={empty}>{tr("Kosongkan sampah", "Empty trash")}</button>{/if}
   </header>
   {#if error}<p class="err">{error}</p>{/if}
   {#if items && !items.length}
-    <p class="muted">Sampah kosong. Halaman yang kamu buang muncul di sini dan bisa dipulihkan.</p>
+    <p class="muted">{tr("Sampah kosong. Halaman yang kamu buang muncul di sini dan bisa dipulihkan.", "The trash is empty. Pages you remove show up here and can be restored.")}</p>
   {/if}
   <ul>
     {#each items ?? [] as item (item.id)}
       {@const KindIcon = kindIcon(item.kind)}
       <li>
         <KindIcon size={16} />
-        <span class="t">{item.title || "Tanpa judul"}{#if item.descendants} <small>dan {item.descendants} halaman di dalamnya</small>{/if}</span>
-        <button title="Pulihkan" aria-label="Pulihkan" onclick={() => restore(item)}><RotateCcw size={15} /> Pulihkan</button>
-        <button class="danger" title="Hapus selamanya" aria-label="Hapus selamanya" onclick={() => remove(item)}><Trash2 size={15} /></button>
+        <span class="t">{item.title || tr("Tanpa judul", "Untitled")}{#if item.descendants} <small>{tr(`dan ${item.descendants} halaman di dalamnya`, `and ${item.descendants} pages inside`)}</small>{/if}</span>
+        <button title={tr("Pulihkan", "Restore")} aria-label={tr("Pulihkan", "Restore")} onclick={() => restore(item)}><RotateCcw size={15} /> {tr("Pulihkan", "Restore")}</button>
+        <button class="danger" title={tr("Hapus selamanya", "Delete forever")} aria-label={tr("Hapus selamanya", "Delete forever")} onclick={() => remove(item)}><Trash2 size={15} /></button>
       </li>
     {/each}
   </ul>

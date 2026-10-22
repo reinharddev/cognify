@@ -15,9 +15,7 @@ function parseBlock(block: string): Tokens {
   return out;
 }
 
-const light = parseBlock(css.slice(css.indexOf(":root {"), css.indexOf(':root[data-theme="dark"]')));
-const darkBlock = css.slice(css.indexOf(':root[data-theme="dark"]'));
-const dark = { ...light, ...parseBlock(darkBlock.slice(0, darkBlock.indexOf("\n}\n\n") > 0 ? darkBlock.indexOf("\n}\n\n") : undefined)) };
+const light = parseBlock(css.slice(css.indexOf(":root {"), css.indexOf("\n}\n", css.indexOf(":root {"))));
 
 function resolve(tokens: Tokens, name: string, depth = 0): string {
   const v = tokens[name];
@@ -47,7 +45,7 @@ function ratio(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-const THEMES: [string, Tokens][] = [["terang", light], ["gelap", dark]];
+const THEMES: [string, Tokens][] = [["terang", light]];
 const TINTS = [1, 2, 3, 4, 5, 6].map((n) => `tint-${n}`);
 const CATS = [0, 1, 2, 3, 4, 5, 6, 7].map((n) => `cat-${n}`);
 const STATUS = ["ok", "warn", "danger", "info"];
@@ -102,7 +100,7 @@ describe.each(THEMES)("kontras tema %s", (_name, t) => {
   it("latar tetap pastel: tidak terlalu terang atau terlalu gelap, dan tidak ada hitam atau putih murni di halaman", () => {
     const l = luminance(c("bg"));
     if (_name === "terang") {
-      expect(l).toBeGreaterThan(0.9);
+      expect(l).toBeGreaterThan(0.85); // krem hangat seperti kertas (situs Cognify), bukan putih kebiruan
       expect(c("bg").toLowerCase()).not.toBe("#ffffff");
     } else {
       expect(l).toBeLessThan(0.05);
@@ -113,21 +111,16 @@ describe.each(THEMES)("kontras tema %s", (_name, t) => {
 });
 
 describe("konsistensi", () => {
-  it("setiap token tema terang yang dipakai komponen juga punya nilai di tema gelap bila tema gelap perlu mengubahnya", () => {
-    // Token berwarna (bukan ukuran/huruf) yang berubah antar-tema harus ada di kedua blok.
-    const colorTokens = Object.keys(light).filter((k) => /^#/.test(light[k]));
-    const overridden = new Set(Object.keys(parseBlock(darkBlock)));
-    const missing = colorTokens.filter((k) => !overridden.has(k));
-    expect(missing, `Token berwarna tanpa nilai tema gelap: ${missing.join(", ")}`).toEqual([]);
-  });
-
   it("tidak ada warna hex di komponen, kecuali yang memang sengaja", () => {
     const allowed: Record<string, string[]> = {
       "lib/tools/dev/QrCreate.svelte": ["#000000", "#ffffff"], // QR harus hitam di atas putih agar terbaca pemindai
       // Isi pemilih warna: data pilihan pengguna, bukan warna tema.
-      "lib/ui/ColorPicker.svelte": ["#7e6cf0", "#3592be", "#39986c", "#b27f19", "#e26336", "#dd5b92", "#a26cf0", "#3d9793", "#2b2745", "#6a6486", "#ffffff", "#000000", "#000", "#fff", "#f00", "#ff0", "#0f0", "#0ff", "#00f", "#f0f"],
+      "lib/ui/ColorPicker.svelte": ["#7e6cf0", "#328ab4", "#379268", "#ab7a18", "#df5524", "#db508b", "#9c63ef", "#398e8a", "#2b2745", "#6a6486", "#ffffff", "#000000", "#000", "#fff", "#f00", "#ff0", "#0f0", "#0ff", "#00f", "#f0f"],
+      // Warna isi gambar Excalidraw (tinta dan isian awal), disimpan di dokumen papan, bukan warna tema.
+      "lib/whiteboard/neo.ts": ["#1e1e1e", "#ffec99", "#ffffff"],
+      "lib/whiteboard/excalidraw.ts": ["#1e1e1e", "#ffffff"],
       "lib/components/Editor.svelte": ["#7e6cf0", "#ffe066"], // warna awal pemilih warna teks dan sorot
-      "lib/components/EventForm.svelte": ["#7e6cf0", "#3592be", "#b27f19", "#dd5b92", "#39986c", "#e26336"], // = --cat-* terang
+      "lib/components/EventForm.svelte": ["#7e6cf0", "#328ab4", "#ab7a18", "#db508b", "#379268", "#df5524"], // = --cat-* terang
     };
     const skip = /(\.test\.ts|mock\.ts|templates\.ts|i18n\.svelte\.ts|app\.css|theme\/palette\.ts)$/; // palette.ts = mesin warna, putih murni untuk kartu tema terang
     const offenders: string[] = [];
@@ -147,13 +140,9 @@ describe("konsistensi", () => {
   });
 
   it("pilihan warna acara sama dengan warna kategori tema terang", () => {
-    const palette = ["#7e6cf0", "#3592be", "#b27f19", "#dd5b92", "#39986c", "#e26336"];
+    const palette = ["#7e6cf0", "#328ab4", "#ab7a18", "#db508b", "#379268", "#df5524"];
     const cats = CATS.map((n) => resolve(light, n).toLowerCase());
     for (const p of palette) expect(cats).toContain(p);
-    // Terbaca di kedua tema, karena warnanya disimpan sebagai hex tetap.
-    for (const p of palette) {
-      expect(ratio(p, resolve(light, "bg"))).toBeGreaterThanOrEqual(3);
-      expect(ratio(p, resolve(dark, "bg"))).toBeGreaterThanOrEqual(3);
-    }
+    for (const p of palette) expect(ratio(p, resolve(light, "bg"))).toBeGreaterThanOrEqual(3);
   });
 });

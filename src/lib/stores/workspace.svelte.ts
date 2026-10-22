@@ -1,3 +1,4 @@
+import { tr } from "$lib/i18n.svelte";
 // Status ruang kerja untuk seluruh UI: daftar halaman (untuk sidebar) dan aksi dasarnya.
 
 import { workspace } from "$lib/workspace/api";
@@ -31,7 +32,7 @@ class WorkspaceStore {
       this.error = null;
       await this.refreshTags();
     } catch (e) {
-      this.error = e instanceof Error ? e.message : "Penyimpanan tidak bisa dibuka.";
+      this.error = e instanceof Error ? e.message : tr("Penyimpanan tidak bisa dibuka.", "Storage could not be opened.");
     } finally {
       this.loaded = true;
     }

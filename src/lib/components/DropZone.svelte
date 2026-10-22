@@ -22,7 +22,7 @@
 		align-items: center;
 		gap: 8px;
 		padding: 32px 16px;
-		border: 2px dashed var(--border);
+		border: var(--edge-w) dashed var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
 		color: var(--text-dim);

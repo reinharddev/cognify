@@ -200,7 +200,7 @@
 		flex-direction: column;
 		gap: 4px;
 		padding: 12px 14px;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
 		text-align: left;
@@ -225,7 +225,7 @@
 		list-style: none;
 		margin: 0 0 18px;
 		padding: 0;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
 		overflow: hidden;

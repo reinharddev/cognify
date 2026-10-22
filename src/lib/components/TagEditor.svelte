@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tr } from "$lib/i18n.svelte";
   import { X } from "@lucide/svelte";
 
   let { tags, onchange }: { tags: string[]; onchange: (next: string[]) => void } = $props();
@@ -35,10 +36,10 @@
   {#each tags as t (t.toLowerCase())}
     <span class="tag" style:--c="var(--cat-{colorOf(t)})">
       <a href="/tags/{encodeURIComponent(t)}">#{t}</a>
-      <button aria-label="Hapus tag {t}" onclick={() => onchange(tags.filter((x) => x !== t))}><X size={12} /></button>
+      <button aria-label="{tr("Hapus tag", "Remove tag")} {t}" onclick={() => onchange(tags.filter((x) => x !== t))}><X size={12} /></button>
     </span>
   {/each}
-  <input placeholder={tags.length ? "Tag baru" : "Tambah tag"} aria-label="Tambah tag" bind:value={draft} {onkeydown} onblur={() => add(draft)} maxlength={MAX_LEN} />
+  <input placeholder={tags.length ? tr("Tag baru", "New tag") : tr("Tambah tag", "Add tag")} aria-label={tr("Tambah tag", "Add tag")} bind:value={draft} {onkeydown} onblur={() => add(draft)} maxlength={MAX_LEN} />
 </div>
 
 <style>

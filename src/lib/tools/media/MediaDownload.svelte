@@ -324,7 +324,7 @@
 		gap: 12px;
 		margin-bottom: 14px;
 		padding: 16px 18px;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
 	}
@@ -382,7 +382,7 @@
 
 	input:not([type]) {
 		padding: 8px 10px;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: 8px;
 		background: var(--surface);
 		color: var(--text);
@@ -421,7 +421,7 @@
 
 	.seg {
 		display: inline-flex;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: 8px;
 		overflow: hidden;
 	}
@@ -500,7 +500,7 @@
 	.result ul {
 		list-style: none;
 		padding: 0;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
 		gap: 0;

@@ -202,7 +202,7 @@
 		gap: 12px;
 		margin-top: 16px;
 		padding: 10px 14px;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
 	}
@@ -253,7 +253,7 @@
 	input {
 		width: 140px;
 		padding: 8px 10px;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: 8px;
 		background: var(--surface);
 		color: var(--text);
@@ -272,7 +272,7 @@
 		place-items: center;
 		width: 240px;
 		aspect-ratio: 16 / 9;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: 8px;
 		background: var(--surface-2);
 		overflow: hidden;
@@ -324,7 +324,7 @@
 		flex-direction: column;
 		gap: 4px;
 		padding: 12px 14px;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
 		text-align: left;

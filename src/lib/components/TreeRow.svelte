@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tr } from "$lib/i18n.svelte";
   import { goto } from "$app/navigation";
   import { slide } from "svelte/transition";
   import { dur } from "$lib/motion";
@@ -69,10 +70,18 @@
     });
   }
 
-  async function addChild(event: MouseEvent) {
+  // Selalu tanya jenis halaman yang mau dibuat di dalam baris ini.
+  const childItems = () =>
+    ([
+      ["doc", tr("Dokumen baru di dalam", "New document inside"), FileText],
+      ["board", tr("Papan baru di dalam", "New board inside"), Shapes],
+      ["table", tr("Tabel baru di dalam", "New table inside"), Table2],
+      ["folder", tr("Folder baru di dalam", "New folder inside"), FolderPlus],
+    ] as const).map(([kind, label, icon]) => ({ label, icon, onclick: async () => goto(`/p/${(await ws.create(kind, node.id)).id}`) }));
+
+  function addChild(event: MouseEvent) {
     event.stopPropagation();
-    const page = await ws.create("doc", node.id);
-    await goto(`/p/${page.id}`);
+    contextMenu.show(event, childItems());
   }
 
   async function trash() {
@@ -88,18 +97,11 @@
 
   function onContext(event: MouseEvent) {
     contextMenu.show(event, [
-      { label: "Buka", icon: ExternalLink, onclick: () => goto(`/p/${node.id}`) },
-      ...(node.kind === "folder"
-        ? ([
-            ["doc", "Dokumen baru di dalam", FileText],
-            ["board", "Papan baru di dalam", Shapes],
-            ["table", "Tabel baru di dalam", Table2],
-            ["folder", "Folder baru di dalam", FolderPlus],
-          ] as const).map(([kind, label, icon]) => ({ label, icon, onclick: async () => goto(`/p/${(await ws.create(kind, node.id)).id}`) }))
-        : [{ label: "Tambah halaman di dalam", icon: Plus, onclick: async () => goto(`/p/${(await ws.create("doc", node.id)).id}`) }]),
-      { label: node.favorite ? "Hapus dari favorit" : "Jadikan favorit", icon: Star, onclick: () => ws.setFavorite(node.id, !node.favorite) },
-      ...(node.kind === "doc" ? [{ label: "Jadikan catatan melayang", icon: NotepadText, onclick: () => void workspace.sticky.open(node.id) }] : []),
-      { label: "Buang ke sampah", icon: Trash2, danger: true, separator: true, onclick: trash },
+      { label: tr("Buka", "Open"), icon: ExternalLink, onclick: () => goto(`/p/${node.id}`) },
+      ...childItems(),
+      { label: node.favorite ? tr("Hapus dari favorit", "Remove from favorites") : tr("Jadikan favorit", "Add to favorites"), icon: Star, onclick: () => ws.setFavorite(node.id, !node.favorite) },
+      ...(node.kind === "doc" ? [{ label: tr("Jadikan catatan melayang", "Make floating note"), icon: NotepadText, onclick: () => void workspace.sticky.open(node.id) }] : []),
+      { label: tr("Buang ke sampah", "Move to trash"), icon: Trash2, danger: true, separator: true, onclick: trash },
     ]);
   }
 </script>
@@ -123,18 +125,18 @@
     class="chev"
     class:open
     class:hidden={!node.children.length}
-    aria-label={open ? "Tutup isi halaman" : "Buka isi halaman"}
+    aria-label={open ? tr("Tutup isi halaman", "Collapse page contents") : tr("Buka isi halaman", "Expand page contents")}
     onclick={() => ws.toggle(node.id)}
   >
     <ChevronRight size={14} />
   </button>
   <a class="label" href="/p/{node.id}" draggable="false" ondragstart={(e) => e.preventDefault()}>
     {#if node.icon}<span class="emoji">{node.icon}</span>{:else}<span class="kind k-{node.kind}"><Icon size={15} /></span>{/if}
-    <span class="title" class:untitled={!node.title}>{node.title || "Tanpa judul"}</span>
+    <span class="title" class:untitled={!node.title}>{node.title || tr("Tanpa judul", "Untitled")}</span>
   </a>
   <span class="actions">
-    <button aria-label="Tambah halaman di dalam" title="Tambah halaman di dalam" onclick={addChild}><Plus size={14} /></button>
-    <button aria-label="Buang ke sampah" title="Buang ke sampah" onclick={remove}><Trash2 size={14} /></button>
+    <button aria-label={tr("Tambah halaman di dalam", "Add page inside")} title={tr("Tambah halaman di dalam", "Add page inside")} onclick={addChild}><Plus size={14} /></button>
+    <button aria-label={tr("Buang ke sampah", "Move to trash")} title={tr("Buang ke sampah", "Move to trash")} onclick={remove}><Trash2 size={14} /></button>
   </span>
 </div>
 
@@ -188,8 +190,9 @@
     background: var(--surface);
   }
   .row.active {
-    background: var(--surface);
-    font-weight: 600;
+    background: var(--accent-soft);
+    font-weight: 700;
+    box-shadow: inset 0 0 0 var(--edge-w) var(--edge), var(--lift);
   }
   button {
     display: grid;

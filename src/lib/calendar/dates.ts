@@ -1,11 +1,14 @@
+import { dateLocale, i18n } from "$lib/i18n.svelte";
 // Pembantu tanggal untuk Kalender. Semua perhitungan hari memakai zona waktu lokal.
 
-export const MONTHS = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-export const WEEKDAYS_SHORT = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
+const MONTHS_ID = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+const MONTHS_EN = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+export const monthName = (i: number) => (i18n.lang === "en" ? MONTHS_EN : MONTHS_ID)[i];
+const weekdaysShort = () => (i18n.lang === "en" ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] : ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"]);
 
 /** Nama hari singkat menurut hari pertama pekan (1 = Senin, 0 = Minggu). */
 export const weekdayLabels = (weekStart: 0 | 1): string[] =>
-  weekStart === 1 ? WEEKDAYS_SHORT : [WEEKDAYS_SHORT[6], ...WEEKDAYS_SHORT.slice(0, 6)];
+  weekStart === 1 ? weekdaysShort() : [weekdaysShort()[6], ...weekdaysShort().slice(0, 6)];
 
 export const startOfDay = (ms: number): number => new Date(new Date(ms).setHours(0, 0, 0, 0)).getTime();
 
@@ -46,10 +49,10 @@ export function monthGrid(year: number, month: number, weekStart: 0 | 1 = 1): { 
 }
 
 export const clock = (ms: number): string =>
-  new Date(ms).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }).replace(":", ".");
+  new Date(ms).toLocaleTimeString(dateLocale(), { hour: "2-digit", minute: "2-digit" }).replace(":", dateLocale() === "id-ID" ? "." : ":");
 
 export const longDate = (ms: number): string =>
-  new Date(ms).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  new Date(ms).toLocaleDateString(dateLocale(), { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
 /** Nilai untuk `<input type="date">` dan `<input type="time">` dari waktu lokal. */
 export const inputDate = (ms: number): string => dayKey(ms);

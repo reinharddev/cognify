@@ -25,6 +25,14 @@ export function loc(text: Localized): string {
 	return text[i18n.lang];
 }
 
+/** Kode lokal untuk tanggal dan jam. */
+export const dateLocale = () => (i18n.lang === 'en' ? 'en-US' : 'id-ID');
+
+/** Teks antarmuka utama: tulis Indonesia dan Inggris berdampingan di tempat pemakaiannya. */
+export function tr(id: string, en: string): string {
+	return i18n.lang === 'en' ? en : id;
+}
+
 const dict = {
 	'search.placeholder': { id: 'Cari tool… (mis. "kecilkan pdf")', en: 'Search tools… (e.g. "compress pdf")' },
 	'search.empty': { id: 'Tidak ada tool yang cocok', en: 'No matching tools' },
@@ -38,6 +46,7 @@ const dict = {
 	'home.soon': { id: 'Segera hadir', en: 'Coming soon' },
 	'badge.soon': { id: 'Segera', en: 'Soon' },
 	'tool.notfound': { id: 'Tool tidak ditemukan', en: 'Tool not found' },
+	'tool.back': { id: 'Semua tools', en: 'All tools' },
 	'tool.soon': { id: 'Tool ini belum tersedia.', en: 'This tool is not available yet.' },
 	'convert.drop': { id: 'Seret file ke sini, atau', en: 'Drop files here, or' },
 	'convert.choose': { id: 'Pilih file', en: 'Choose files' },

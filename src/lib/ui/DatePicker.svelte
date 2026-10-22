@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { dateLocale, i18n, tr } from "$lib/i18n.svelte";
   // Pemilih tanggal buatan sendiri (nilai "YYYY-MM-DD"), pengganti <input type="date">.
   import { tick } from "svelte";
   import { CalendarDays, ChevronLeft, ChevronRight } from "@lucide/svelte";
@@ -21,9 +22,9 @@
 
   const text = $derived.by(() => {
     const p = parse(value);
-    return p ? new Date(p[0], p[1], p[2]).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "";
+    return p ? new Date(p[0], p[1], p[2]).toLocaleDateString(dateLocale(), { day: "numeric", month: "short", year: "numeric" }) : "";
   });
-  const title = $derived(new Date(viewY, viewM, 1).toLocaleDateString("id-ID", { month: "long", year: "numeric" }));
+  const title = $derived(new Date(viewY, viewM, 1).toLocaleDateString(dateLocale(), { month: "long", year: "numeric" }));
   const today = key(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
 
   // Senin sebagai hari pertama; sel kosong di depan bulan dibuang.
@@ -32,7 +33,7 @@
     const days = new Date(viewY, viewM + 1, 0).getDate();
     return [...Array<null>(lead).fill(null), ...Array.from({ length: days }, (_, i) => i + 1)];
   });
-  const heads = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
+  const heads = $derived(i18n.lang === "en" ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] : ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"]);
 
   async function show() {
     if (disabled) return;
@@ -67,17 +68,17 @@
 <svelte:window onblur={() => (open = false)} />
 
 <button bind:this={trigger} {id} type="button" class="dp {cls}" class:open {disabled} aria-label={label} aria-haspopup="dialog" aria-expanded={open} onclick={() => (open ? close() : show())} {onkeydown}>
-  <span class="val" class:empty={!text}>{text || "Pilih tanggal"}</span>
+  <span class="val" class:empty={!text}>{text || tr("Pilih tanggal", "Pick a date")}</span>
   <CalendarDays size={15} />
 </button>
 
 {#if open}
   <div class="scrim" role="presentation" onpointerdown={() => (open = false)} oncontextmenu={(e) => { e.preventDefault(); open = false; }}></div>
-  <div class="pop" bind:this={pop} role="dialog" aria-label="Pilih tanggal" style:left="{pos.left}px" style:top="{pos.top}px" {onkeydown} tabindex="-1">
+  <div class="pop" bind:this={pop} role="dialog" aria-label={tr("Pilih tanggal", "Pick a date")} style:left="{pos.left}px" style:top="{pos.top}px" {onkeydown} tabindex="-1">
     <div class="bar">
-      <button type="button" class="nav" aria-label="Bulan sebelumnya" onclick={() => step(-1)}><ChevronLeft size={16} /></button>
+      <button type="button" class="nav" aria-label={tr("Bulan sebelumnya", "Previous month")} onclick={() => step(-1)}><ChevronLeft size={16} /></button>
       <strong>{title}</strong>
-      <button type="button" class="nav" aria-label="Bulan berikutnya" onclick={() => step(1)}><ChevronRight size={16} /></button>
+      <button type="button" class="nav" aria-label={tr("Bulan berikutnya", "Next month")} onclick={() => step(1)}><ChevronRight size={16} /></button>
     </div>
     <div class="grid">
       {#each heads as h (h)}<span class="head">{h}</span>{/each}
@@ -89,7 +90,7 @@
       {/each}
     </div>
     <div class="foot">
-      <button type="button" class="link" onclick={() => { const n = new Date(); value = key(n.getFullYear(), n.getMonth(), n.getDate()); onchange?.(value); close(); }}>Hari ini</button>
+      <button type="button" class="link" onclick={() => { const n = new Date(); value = key(n.getFullYear(), n.getMonth(), n.getDate()); onchange?.(value); close(); }}>{tr("Hari ini", "Today")}</button>
     </div>
   </div>
 {/if}

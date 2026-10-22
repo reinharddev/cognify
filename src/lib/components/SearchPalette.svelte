@@ -1,10 +1,17 @@
 <script lang="ts">
+  import { tr } from "$lib/i18n.svelte";
   import { goto } from "$app/navigation";
+  import { backOut } from "svelte/easing";
+  import { fade, fly, scale } from "svelte/transition";
+  import { motionOff } from "$lib/motion";
   import { kindIcon } from "$lib/workspace/kinds";
   import { workspace } from "$lib/workspace/api";
   import type { SearchHit } from "$lib/workspace/types";
 
   let { open = $bindable(false) }: { open: boolean } = $props();
+
+  // Masuk dan keluar dengan gerak; 0 bila animasi dimatikan.
+  const dur = (ms: number) => (motionOff() ? 0 : ms);
 
   let query = $state("");
   let hits = $state<SearchHit[]>([]);
@@ -53,19 +60,19 @@
 </script>
 
 {#if open}
-  <div class="backdrop" role="presentation" onclick={() => (open = false)}>
-    <div class="box" role="dialog" aria-label="Cari halaman" tabindex="-1" onclick={(e) => e.stopPropagation()} {onkeydown}>
-      <input bind:this={input} bind:value={query} oninput={onInput} placeholder="Cari judul atau isi halaman" aria-label="Cari" />
+  <div class="backdrop" role="presentation" transition:fade={{ duration: dur(150) }} onclick={() => (open = false)}>
+    <div class="box" role="dialog" aria-label={tr("Cari halaman", "Search pages")} tabindex="-1" transition:scale={{ start: 0.93, duration: dur(220), easing: backOut }} onclick={(e) => e.stopPropagation()} {onkeydown}>
+      <input bind:this={input} bind:value={query} oninput={onInput} placeholder={tr("Cari judul atau isi halaman", "Search page titles or contents")} aria-label={tr("Cari", "Search")} />
       {#if query.trim() && done && !hits.length}
-        <p class="none">Tidak ada halaman yang cocok.</p>
+        <p class="none">{tr("Tidak ada halaman yang cocok.", "No matching pages.")}</p>
       {/if}
       <ul>
         {#each hits as hit, i (hit.id)}
           {@const KindIcon = kindIcon(hit.kind)}
-          <li>
+          <li in:fly={{ y: 8, duration: dur(200), delay: dur(Math.min(i, 8) * 28) }}>
             <button class:on={i === index} onmouseenter={() => (index = i)} onclick={() => choose(hit)}>
               <KindIcon size={15} />
-              <span class="t">{hit.title || "Tanpa judul"}</span>
+              <span class="t">{hit.title || tr("Tanpa judul", "Untitled")}</span>
               {#if hit.snippet}<span class="s">{hit.snippet}</span>{/if}
             </button>
           </li>
@@ -80,7 +87,6 @@
     position: fixed;
     inset: 0;
     z-index: 50;
-    animation: fade var(--dur-2) ease both;
     display: flex;
     justify-content: center;
     align-items: flex-start;
@@ -90,14 +96,14 @@
   .box {
     width: min(560px, 92vw);
     background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
+    border: var(--edge-w) solid var(--edge);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--lift-lg);
     overflow: hidden;
-    animation: pop var(--dur-2) var(--ease-out) both;
   }
   input {
     border: none;
-    border-bottom: 1px solid var(--border);
+    border-bottom: var(--edge-w) solid var(--edge);
     border-radius: 0;
     padding: var(--space-3) var(--space-4);
     background: transparent;

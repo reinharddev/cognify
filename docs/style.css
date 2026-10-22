@@ -152,10 +152,10 @@ body.dark .block h2 { color: var(--paper); }
 .canvas svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 
 /* Tabel dan kanban */
-.kanban { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.kanban > div { background: #f2ecdf; border-radius: 14px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.kanban { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.kanban > div { min-width: 0; background: #f2ecdf; border-radius: 14px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
 .kanban h6 { margin: 0 0 2px; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
-.kanban .c { background: #fff; border: 2px solid var(--ink); border-radius: 11px; padding: 8px 10px; font-size: 13px; font-weight: 600; }
+.kanban .c { overflow-wrap: anywhere; background: #fff; border: 2px solid var(--ink); border-radius: 11px; padding: 8px 10px; font-size: 13px; font-weight: 600; }
 .kanban .c small { display: block; font-weight: 500; color: var(--muted); }
 
 /* Kalender */
@@ -264,6 +264,55 @@ footer { max-width: 1100px; margin: 0 auto; padding: 50px 28px 40px; display: fl
 .motion .sticky.b { animation-duration: 6.5s; animation-delay: -2s; }
 @keyframes bob { from { translate: 0 0; } to { translate: 0 -8px; } }
 .lang-fade { transition: opacity .18s; }
+
+/* Muncul dengan "pop" berurutan untuk kartu di dalam kelompok */
+.motion .rv:is(.tools, .net, .pal, .local) > * { opacity: 0; }
+.motion .rv.in:is(.tools, .net, .pal, .local) > * { animation: pop .6s cubic-bezier(.3, 1.45, .5, 1) both; animation-delay: calc(var(--j, 0) * 60ms); }
+@keyframes pop { from { opacity: 0; transform: scale(.86) translateY(14px); } 60% { opacity: 1; transform: scale(1.04); } to { opacity: 1; transform: none; } }
+@keyframes popS { from { opacity: 0; scale: .7; } 60% { opacity: 1; scale: 1.06; } to { opacity: 1; scale: 1; } }
+@keyframes drop { from { transform: translateY(-110%); } to { transform: none; } }
+@keyframes faqIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+@keyframes wiggle { 0%, 100% { rotate: 0deg; } 25% { rotate: -12deg; } 75% { rotate: 12deg; } }
+
+/* Pembuka: navigasi turun, jendela contoh dan catatan melayang muncul menyusul */
+.motion .nav-pill { animation: drop .7s cubic-bezier(.3, 1.3, .45, 1) both; }
+.motion .nav-pill.right { animation-delay: .1s; }
+.motion .app { animation: pop .9s cubic-bezier(.3, 1.35, .5, 1) .35s both; }
+.motion .sticky { animation: popS .6s cubic-bezier(.3, 1.45, .5, 1) 1.1s both, bob 5s ease-in-out 1.7s infinite alternate; }
+.motion .sticky.b { animation: popS .6s cubic-bezier(.3, 1.45, .5, 1) 1.35s both, bob 6.5s ease-in-out 1.95s infinite alternate; }
+
+/* Sentuhan saat disorot dan ditekan */
+.net > div, .tools div, .pal > * { transition: transform .22s cubic-bezier(.3, 1.5, .5, 1), box-shadow .22s; }
+.net > div:hover { transform: translate(-3px, -3px); box-shadow: 9px 9px 0 var(--ink); }
+.tools div:hover { transform: translateY(-4px) rotate(-1.5deg); }
+.pal > *:hover { transform: translateY(-3px) rotate(1.5deg); }
+.btn { transition: transform .2s cubic-bezier(.3, 1.5, .5, 1), box-shadow .2s; }
+.btn:hover { box-shadow: 0 5px 0 rgba(20, 20, 20, .85); }
+.btn:active { transform: translateY(1px) scale(.97); box-shadow: none; }
+.btn:hover svg { animation: wiggle .5s; }
+.motion .faq details[open] p { animation: faqIn .35s cubic-bezier(.3, 1.2, .45, 1); }
+.row { transition: background-color .2s, transform .2s cubic-bezier(.3, 1.5, .5, 1); }
+.side .row:hover { transform: translateX(3px); background: var(--doc-s); }
+
+/* Contoh pencarian (Ctrl K) di jendela app: muncul, mengetik, hasil menyusul, lalu menghilang */
+.spot { position: absolute; inset: 0; z-index: 3; display: none; justify-content: center; align-items: flex-start; padding-top: 78px; background: rgba(244, 239, 230, .62); pointer-events: none; }
+.motion .spot { display: flex; opacity: 0; }
+.spot.on { animation: fadeIn .25s ease forwards; }
+.spot.off { animation: fadeOut .3s ease forwards; }
+.spot-box { width: min(440px, 88%); background: var(--card); border: 2px solid var(--ink); border-radius: 18px; box-shadow: 7px 7px 0 var(--ink); overflow: hidden; transform: scale(.9); opacity: 0; }
+.spot.on .spot-box { animation: pop .55s cubic-bezier(.3, 1.45, .5, 1) forwards; }
+.spot.off .spot-box { animation: popOut .28s ease-in forwards; }
+.spot-in { display: flex; align-items: center; gap: 10px; padding: 13px 16px; border-bottom: 2px solid var(--ink); font-size: 16px; font-weight: 600; }
+.spot-q { min-height: 1.5em; }
+.spot-q::after { content: ""; display: inline-block; width: 2px; height: 1.1em; margin-left: 2px; background: var(--ink); vertical-align: -.15em; animation: caret .8s steps(1) infinite; }
+.spot-res { padding: 6px; min-height: 148px; }
+.spot-res .row { opacity: 0; transform: translateY(8px); padding: 8px 10px; }
+.spot.res .spot-res .row { animation: pop .45s cubic-bezier(.3, 1.4, .5, 1) forwards; animation-delay: calc(var(--j) * 90ms); }
+.spot-res .row.hi { background: var(--doc-s); font-weight: 700; }
+@keyframes fadeIn { to { opacity: 1; } }
+@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes popOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: scale(.94) translateY(8px); } }
+@keyframes caret { 50% { opacity: 0; } }
 .lang-out .lang-fade { opacity: 0; }
 
 @media (max-width: 960px) {
@@ -285,4 +334,8 @@ footer { max-width: 1100px; margin: 0 auto; padding: 50px 28px 40px; display: fl
   .feat { padding-top: 90px; }
   .main { padding: 20px; }
   .mini-table { width: 100%; }
+  .kanban { gap: 6px; }
+  .kanban > div { padding: 8px 6px; }
+  .kanban .c { padding: 6px 7px; font-size: 12px; }
+  .kanban h6 { font-size: 10px; }
 }

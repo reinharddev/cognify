@@ -149,7 +149,7 @@
 
 	.seg {
 		display: inline-flex;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: 8px;
 		overflow: hidden;
 		background: var(--surface);
@@ -227,7 +227,7 @@
 	textarea {
 		height: 340px;
 		padding: 10px 12px;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
 		color: var(--text);

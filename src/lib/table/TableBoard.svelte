@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tr } from "$lib/i18n.svelte";
   import { Plus, Trash2, X } from "@lucide/svelte";
   import CellInput from "./CellInput.svelte";
   import { startPointerDrag } from "$lib/pointerDrag";
@@ -17,7 +18,7 @@
   const openRow = $derived(openId ? (data.rows.find((r) => r.id === openId) ?? null) : null);
 
   const laneKey = (id: string | null) => id ?? "_none";
-  const titleOf = (r: Row) => display(titleCol, r.cells[titleCol.id]) || "Tanpa judul";
+  const titleOf = (r: Row) => display(titleCol, r.cells[titleCol.id]) || tr("Tanpa judul", "Untitled");
   const meta = (r: Row) =>
     data.columns
       .filter((c) => c.id !== titleCol.id && c.id !== data.groupBy)
@@ -84,11 +85,11 @@
     <section
       class="lane"
       class:hot={over?.lane === key}
-      aria-label={lane.option?.label ?? "Tanpa nilai"}
+      aria-label={lane.option?.label ?? tr("Tanpa nilai", "No value")}
       data-lane={key}
     >
       <header>
-        <span class="tag" style:--c={lane.option ? `var(--cat-${lane.option.color})` : "var(--border-strong)"}>{lane.option?.label ?? "Tanpa nilai"}</span>
+        <span class="tag" style:--c={lane.option ? `var(--cat-${lane.option.color})` : "var(--border-strong)"}>{lane.option?.label ?? tr("Tanpa nilai", "No value")}</span>
         <small>{lane.rows.length}</small>
       </header>
       <div class="cards">
@@ -109,22 +110,22 @@
         {/each}
         {#if !lane.rows.length}<div class="gap" class:show={over?.lane === key}></div>{/if}
       </div>
-      {#if lane.option}<button class="add" onclick={() => addCard(lane.option!.id)}><Plus size={14} /> Kartu</button>{/if}
+      {#if lane.option}<button class="add" onclick={() => addCard(lane.option!.id)}><Plus size={14} /> {tr("Kartu", "Card")}</button>{/if}
     </section>
   {/each}
 </div>
 
 {#if openRow}
   <div class="backdrop" role="presentation" onclick={() => (openId = null)}>
-    <div class="sheet" role="dialog" aria-label="Detail kartu" tabindex="-1" use:focusFirst onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.key === "Escape" && (openId = null)}>
+    <div class="sheet" role="dialog" aria-label={tr("Detail kartu", "Card details")} tabindex="-1" use:focusFirst onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.key === "Escape" && (openId = null)}>
       <header>
         <strong>{titleOf(openRow)}</strong>
-        <button class="close" aria-label="Tutup" onclick={() => (openId = null)}><X size={16} /></button>
+        <button class="close" aria-label={tr("Tutup", "Close")} onclick={() => (openId = null)}><X size={16} /></button>
       </header>
       {#each data.columns as c (c.id)}
         <div class="field"><span>{c.name}</span><CellInput column={c} value={openRow.cells[c.id]} label={c.name} onchange={(v) => onchange(setCell(data, openRow.id, c.id, v))} /></div>
       {/each}
-      <button class="remove" onclick={() => { const id = openRow.id; openId = null; onchange(removeRow(data, id)); }}><Trash2 size={14} /> Hapus kartu</button>
+      <button class="remove" onclick={() => { const id = openRow.id; openId = null; onchange(removeRow(data, id)); }}><Trash2 size={14} /> {tr("Hapus kartu", "Delete card")}</button>
     </div>
   </div>
 {/if}

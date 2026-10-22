@@ -1,3 +1,4 @@
+import { tr } from "$lib/i18n.svelte";
 // Status hubungan ke Cognify Notch dan data terakhirnya, dipakai halaman Notch dan Beranda.
 
 import { link } from "$lib/link/api";
@@ -35,7 +36,7 @@ class LinkStore {
       this.data = this.status.connected ? await link.data() : null;
       this.error = null;
     } catch (e) {
-      this.error = typeof e === "string" ? e : e instanceof Error ? e.message : "Data Notch tidak bisa dibaca.";
+      this.error = typeof e === "string" ? e : e instanceof Error ? e.message : tr("Data Notch tidak bisa dibaca.", "Notch data could not be read.");
     }
   }
 

@@ -1,17 +1,22 @@
 <script lang="ts">
+  import { tr } from "$lib/i18n.svelte";
   import { goto } from "$app/navigation";
   import { page as route } from "$app/state";
   import { onDestroy } from "svelte";
   import { invoke, isTauri } from "@tauri-apps/api/core";
-  import { Download, Quote, Star, Trash2 } from "@lucide/svelte";
+  import { Download, Lock, LockOpen, Quote, Star, StickyNote, Trash2 } from "@lucide/svelte";
   import CitePanel from "$lib/components/CitePanel.svelte";
   import FolderView from "$lib/components/FolderView.svelte";
-  import { KIND_LABEL, kindIcon } from "$lib/workspace/kinds";
+  import { kindLabel, kindIcon } from "$lib/workspace/kinds";
   import Board from "$lib/components/Board.svelte";
+  import NoteArrows from "$lib/components/NoteArrows.svelte";
+  import DocNotes from "$lib/components/DocNotes.svelte";
+  import { newNote, readLocked, readNotes, withNotes, type DocNote } from "$lib/workspace/docNotes";
   import Editor from "$lib/components/Editor.svelte";
   import TableEditor from "$lib/table/TableEditor.svelte";
   import TagEditor from "$lib/components/TagEditor.svelte";
   import { createBroadcaster, onRemoteChange } from "$lib/pageSync";
+  import { createAutosave } from "$lib/autosave";
   import { pickSavePath } from "$lib/savePath";
   import { prefs } from "$lib/stores/prefs.svelte";
   import { ws } from "$lib/stores/workspace.svelte";
@@ -25,46 +30,37 @@
   let status = $state<"saved" | "saving" | "error">("saved");
   let board = $state<{ exportPng(): Promise<Blob>; exportSvg(): Promise<string> }>();
   let notice = $state<string | null>(null);
-  let docEditor = $state<{ setRemote(json: string): void }>();
+  let docEditor = $state<{ setRemote(json: string): void; unlinkNote(noteId: string): void }>();
   const sync = createBroadcaster(() => id);
 
-  // Perubahan ditahan sebentar lalu dikirim sekaligus; berpindah halaman mengirim sisanya lebih dulu.
-  let pending: PageUpdate = {};
+  // Penyimpanan otomatis: satu per satu, dicoba ulang bila gagal, dan segera saat jendela ditinggalkan.
   let pendingId = "";
-  let timer: ReturnType<typeof setTimeout> | undefined;
-
-  async function flush() {
-    clearTimeout(timer);
-    if (!pendingId || !Object.keys(pending).length) return;
-    const target = pendingId;
-    const patch = pending;
-    pending = {};
-    status = "saving";
-    try {
-      await workspace.pages.update(target, patch);
-      status = "saved";
+  const saver = createAutosave<PageUpdate & { pageId: string }>(
+    async ({ pageId, ...patch }) => {
+      await workspace.pages.update(pageId, patch);
       if (patch.tags) void ws.refreshTags();
-    } catch {
-      status = "error";
-    }
-  }
+    },
+    (state) => (status = state),
+  );
 
   function queue(patch: PageUpdate) {
+    // Halaman lain yang masih antre disimpan dulu supaya tidak tercampur.
+    if (pendingId && pendingId !== id) void saver.flush();
     pendingId = id;
-    pending = { ...pending, ...patch };
     sync.push({ content: patch.content, title: patch.title });
-    status = "saving";
-    clearTimeout(timer);
-    timer = setTimeout(flush, 600);
+    saver.push({ ...patch, pageId: id });
   }
+
+  const flush = () => saver.flush();
 
   $effect(() => {
     const target = id;
     current = null;
     missing = false;
     status = "saved";
-    workspace.pages
-      .get(target)
+    // Tunggu simpanan yang masih jalan, supaya halaman yang baru ditinggalkan dibaca versi terbarunya.
+    saver.flush()
+      .then(() => workspace.pages.get(target))
       .then((p) => {
         if (target === id) current = p;
       })
@@ -75,7 +71,7 @@
   });
 
   onDestroy(() => {
-    void flush();
+    saver.dispose();
     sync.flush();
   });
 
@@ -83,7 +79,7 @@
   // belum tersimpan, yang lokal dipertahankan.
   $effect(() =>
     onRemoteChange((c) => {
-      if (c.id !== id || !current || Object.keys(pending).length) return;
+      if (c.id !== id || !current || saver.dirty()) return;
       if (c.title !== undefined && c.title !== current.title) current.title = c.title;
       if (c.content !== undefined && current.kind === "doc") {
         current.content = c.content;
@@ -101,6 +97,71 @@
   function onTitle(event: Event) {
     setTitle((event.currentTarget as HTMLInputElement).value);
   }
+
+  // Catatan melayang milik dokumen ini; tersimpan di JSON dokumennya.
+  let notes = $state<DocNote[]>([]);
+  let locked = $state(false);
+  let stage = $state<HTMLDivElement>();
+  let lastJson = "";
+  $effect(() => {
+    if (current?.kind === "doc") {
+      notes = readNotes(current.content);
+      locked = readLocked(current.content);
+      lastJson = current.content;
+    } else notes = [];
+  });
+
+  function saveDoc(json: string, plain: string) {
+    lastJson = json;
+    queue({ content: withNotes(json, notes, locked), plainText: plain });
+  }
+
+  function setNotes(next: DocNote[]) {
+    // Catatan yang dihapus: teks yang tadinya dihubungkan ke sana tidak lagi disorot.
+    for (const gone of notes.filter((o) => !next.some((n) => n.id === o.id))) docEditor?.unlinkNote(gone.id);
+    notes = next;
+    if (!current) return;
+    const content = withNotes(lastJson || current.content || '{"type":"doc","content":[]}', next, locked);
+    current.content = content;
+    queue({ content });
+  }
+
+  function toggleLock() {
+    locked = !locked;
+    if (!current) return;
+    const content = withNotes(lastJson || current.content || '{"type":"doc","content":[]}', notes, locked);
+    current.content = content;
+    queue({ content });
+  }
+
+  function addNote(): string {
+    const note = newNote(notes.length, stage?.clientWidth ?? 780);
+    setNotes([...notes, note]);
+    return note.id;
+  }
+
+  const noteLabel = (n: DocNote, i: number) => {
+    const text = (n.title || n.text).trim().replace(/\s+/g, " ");
+    return text ? `«${text.length > 22 ? text.slice(0, 22) + "…" : text}»` : `catatan ${i + 1}`;
+  };
+  const noteChoices = $derived(notes.map((n, i) => ({ id: n.id, label: noteLabel(n, i) })));
+
+  // Halaman lain yang menautkan ke halaman ini (dibaca dari isi dokumen mereka).
+  let backlinks = $state<{ id: string; title: string; kind: string }[]>([]);
+  $effect(() => {
+    const target = id;
+    const kind = current?.kind;
+    backlinks = [];
+    if (kind === undefined) return;
+    const needle = `"id":"${target}"`;
+    const docs = ws.nodes.filter((n) => n.kind === "doc" && n.id !== target);
+    Promise.all(docs.map((n) => workspace.pages.get(n.id).catch(() => null))).then((pages) => {
+      if (target !== id) return;
+      backlinks = pages
+        .filter((p): p is Page => !!p && p.content.includes('"pageLink"') && p.content.includes(needle))
+        .map((p) => ({ id: p.id, title: p.title || tr("Tanpa judul", "Untitled"), kind: p.kind }));
+    });
+  });
 
   let citeOpen = $state(false);
   $effect(() => {
@@ -130,12 +191,12 @@
     const path = await pickSavePath(`${base}.${format}`, { name: format.toUpperCase(), extensions: [format] });
     if (!path) return;
     try {
-      if (!isTauri()) throw new Error("Simpan gambar hanya tersedia di aplikasi Cognify.");
+      if (!isTauri()) throw new Error(tr("Simpan gambar hanya tersedia di aplikasi Cognify.", "Saving images is only available in the Cognify app."));
       if (format === "png") await invoke("write_base64_file", { path, data: await toBase64(await board.exportPng()) });
       else await invoke("write_text_file", { path, content: await board.exportSvg() });
-      notice = `Gambar disimpan di ${path}`;
+      notice = tr(`Gambar disimpan di ${path}`, `Image saved to ${path}`);
     } catch (e) {
-      notice = typeof e === "string" ? e : e instanceof Error ? e.message : "Gambar gagal disimpan.";
+      notice = typeof e === "string" ? e : e instanceof Error ? e.message : tr("Gambar gagal disimpan.", "The image could not be saved.");
     }
   }
 
@@ -149,30 +210,34 @@
 
 {#if missing}
   <div class="msg">
-    <h1>Halaman tidak ditemukan</h1>
-    <p>Mungkin sudah dibuang ke sampah atau dihapus.</p>
-    <a href="/">Kembali ke Beranda</a>
+    <h1>{tr("Halaman tidak ditemukan", "Page not found")}</h1>
+    <p>{tr("Mungkin sudah dibuang ke sampah atau dihapus.", "It may have been moved to the trash or deleted.")}</p>
+    <a href="/">{tr("Kembali ke Beranda", "Back to Home")}</a>
   </div>
 {:else if current}
+  <div class="stage" bind:this={stage}>
+  {#if current.kind === "doc"}<NoteArrows {notes} {stage} />{/if}
   <div class="page" class:wide={current.kind === "board" || current.kind === "table"}>
     <header>
       <span class="kind">
-        <HeaderIcon size={15} /> {KIND_LABEL[current.kind]}
+        <HeaderIcon size={15} /> {kindLabel(current.kind)}
       </span>
       <span class="state" class:err={status === "error"}>
-        {status === "saving" ? "Menyimpan…" : status === "error" ? "Gagal menyimpan" : "Tersimpan"}
+        {status === "saving" ? tr("Menyimpan…", "Saving…") : status === "error" ? tr("Gagal menyimpan", "Save failed") : tr("Tersimpan", "Saved")}
       </span>
       {#if current.kind === "board"}
-        <button class="icon" aria-label="Simpan gambar PNG" title="Simpan gambar PNG" onclick={() => exportBoard("png")}><Download size={16} /></button>
+        <button class="icon" aria-label={tr("Simpan gambar PNG", "Save as PNG image")} title={tr("Simpan gambar PNG", "Save as PNG image")} onclick={() => exportBoard("png")}><Download size={16} /></button>
       {/if}
       {#if current.kind === "doc"}
-        <button class="icon" aria-label="Kutip" title="Kutip" onclick={() => (citeOpen = true)}><Quote size={16} /></button>
+        <button class="icon" aria-label={tr("Catatan melayang", "Floating notes")} title={tr("Tambah catatan melayang", "Add a floating note")} onclick={addNote}><StickyNote size={16} /></button>
+        <button class="icon" class:on={locked} aria-label={locked ? tr("Buka kunci objek", "Unlock objects") : tr("Kunci objek", "Lock objects")} title={locked ? tr("Objek terkunci: blok dan catatan tidak bisa bergeser. Klik untuk membuka.", "Objects locked: blocks and notes cannot move. Click to unlock.") : tr("Kunci objek supaya tidak tergeser tanpa sengaja", "Lock objects so they do not move by accident")} onclick={toggleLock}>{#if locked}<Lock size={16} />{:else}<LockOpen size={16} />{/if}</button>
+        <button class="icon" aria-label={tr("Kutip", "Cite")} title={tr("Kutip", "Cite")} onclick={() => (citeOpen = true)}><Quote size={16} /></button>
       {/if}
-      <button class="icon" class:on={current.favorite} aria-label={current.favorite ? "Hapus dari favorit" : "Jadikan favorit"} title="Favorit" onclick={favorite}><Star size={16} /></button>
-      <button class="icon" aria-label="Buang ke sampah" title="Buang ke sampah" onclick={remove}><Trash2 size={16} /></button>
+      <button class="icon" class:on={current.favorite} aria-label={current.favorite ? tr("Hapus dari favorit", "Remove from favorites") : tr("Jadikan favorit", "Add to favorites")} title={tr("Favorit", "Favorite")} onclick={favorite}><Star size={16} /></button>
+      <button class="icon" aria-label={tr("Buang ke sampah", "Move to trash")} title={tr("Buang ke sampah", "Move to trash")} onclick={remove}><Trash2 size={16} /></button>
     </header>
 
-    <input class="title" value={current.title} placeholder="Tanpa judul" aria-label="Judul halaman" oninput={onTitle} />
+    <input class="title" value={current.title} placeholder={tr("Tanpa judul", "Untitled")} aria-label={tr("Judul halaman", "Page title")} oninput={onTitle} />
 
     {#if current.kind !== "folder"}
     <TagEditor tags={current.tags} onchange={(tags) => { if (current) current.tags = tags; queue({ tags }); }} />
@@ -182,7 +247,7 @@
 
     {#if current.kind === "board"}
       {#key current.id}
-        <Board bind:this={board} content={current.content} onchange={(json, plain) => queue({ content: json, plainText: plain })} />
+        <Board bind:this={board} viewKey="cognify.board.view.{current.id}" content={current.content} onchange={(json, plain) => queue({ content: json, plainText: plain })} />
       {/key}
     {:else if current.kind === "folder"}
       {#key current.id}
@@ -190,13 +255,25 @@
       {/key}
     {:else if current.kind === "doc"}
       {#key current.id}
-        <Editor bind:this={docEditor} content={current.content} spellcheck={prefs.value.spellcheck} onchange={(json, plain) => queue({ content: json, plainText: plain })} />
+        <Editor bind:this={docEditor} {locked} pageId={current.id} noteLinks={{ notes: noteChoices, create: addNote }} content={current.content} spellcheck={prefs.value.spellcheck} onchange={saveDoc} />
       {/key}
     {:else}
       {#key current.id}
         <TableEditor content={current.content} onchange={(json, plain) => queue({ content: json, plainText: plain })} />
       {/key}
     {/if}
+  </div>
+  {#if current.kind === "doc" && backlinks.length}
+    <section class="back">
+      <h2>{tr("Tertaut dari", "Linked from")}</h2>
+      <div>
+        {#each backlinks as b (b.id)}
+          <a href="/p/{b.id}">{b.title}</a>
+        {/each}
+      </div>
+    </section>
+  {/if}
+  {#if current.kind === "doc"}<DocNotes {notes} {locked} onchange={setNotes} />{/if}
   </div>
 {/if}
 
@@ -205,12 +282,50 @@
 {/if}
 
 <style>
+  .stage {
+    position: relative;
+    min-height: 100%;
+  }
   .page {
+    position: relative;
+    z-index: 1;
     max-width: 780px;
     margin: 0 auto;
   }
   .page.wide {
     max-width: none;
+  }
+  .back {
+    max-width: 780px;
+    margin: var(--space-8) auto 0;
+    padding-top: var(--space-4);
+    border-top: var(--edge-w) solid var(--edge);
+  }
+  .back h2 {
+    margin-bottom: var(--space-2);
+    color: var(--text-muted);
+    font-size: 0.78em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .back div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .back a {
+    padding: 2px 10px;
+    border: var(--edge-w) solid var(--edge);
+    border-radius: 99px;
+    background: var(--accent-soft);
+    color: var(--text);
+    font-size: 0.9em;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .back a:hover {
+    box-shadow: var(--lift);
   }
   .notice {
     color: var(--text-muted);

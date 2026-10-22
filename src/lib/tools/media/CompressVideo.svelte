@@ -328,7 +328,7 @@
 
 	.seg {
 		display: inline-flex;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: 8px;
 		overflow: hidden;
 		background: var(--surface);
@@ -359,7 +359,7 @@
 	input[type='number'] {
 		width: 80px;
 		padding: 6px 8px;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: 8px;
 		background: var(--surface);
 		color: var(--text);
@@ -370,7 +370,7 @@
 
 	select {
 		padding: 7px 10px;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: 8px;
 		background: var(--surface);
 		color: var(--text);
@@ -390,7 +390,7 @@
 		list-style: none;
 		margin: 0 0 18px;
 		padding: 0;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
 		overflow: hidden;

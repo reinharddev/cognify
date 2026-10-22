@@ -11,14 +11,14 @@
       (function () {
         try {
           var b = JSON.parse(localStorage.getItem("cognify.boot") || "{}");
-          var dark = b.mode === "dark" || (b.mode !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
           var root = document.documentElement;
-          root.dataset.theme = dark ? "dark" : "light";
-          var vars = (b.vars && b.vars[dark ? "dark" : "light"]) || {};
+          root.dataset.theme = "light";
+          var vars = (b.vars && b.vars.light) || {};
           for (var k in vars) root.style.setProperty("--" + k, vars[k]);
           if (b.font) root.style.setProperty("--font", b.font);
           if (b.fs) root.style.setProperty("--fs", b.fs);
           if (b.motion === false) root.dataset.motion = "off";
+          root.dataset.style = b.style === "normal" ? "normal" : "neo";
           // Jendela catatan melayang transparan: tanpa latar sejak awal supaya tidak berkedip putih.
           if (location.pathname.indexOf("/sticky/") === 0) root.classList.add("sticky-mode");
         } catch (e) {}

@@ -1,3 +1,4 @@
+import { tr } from "$lib/i18n.svelte";
 // Klien kalender (src-tauri/src/store/calendar.rs). Di browser biasa dipakai penyimpanan sementara.
 
 import { invoke, isTauri } from "@tauri-apps/api/core";
@@ -81,7 +82,7 @@ async function mock(command: string, a: Record<string, any>): Promise<unknown> {
     }
     case "event_update": {
       const ev = state.events.find((e) => e.id === a.id);
-      if (!ev) throw { code: "not_found", message: "Acara tidak ditemukan." };
+      if (!ev) throw { code: "not_found", message: tr("Acara tidak ditemukan.", "Event not found.") };
       const i = a.input as EventInput;
       if (!i.title?.trim()) throw bad("Beri judul pada acara.");
       Object.assign(ev, { title: i.title.trim(), notes: i.notes ?? "", start: i.start, end: i.end ?? null, allDay: i.allDay, repeat: i.repeat ?? "none", repeatUntil: i.repeatUntil ?? null, remindMin: i.remindMin ?? null, color: i.color ?? null });
@@ -109,7 +110,7 @@ async function mock(command: string, a: Record<string, any>): Promise<unknown> {
     }
     case "calendar_source_refresh": {
       const src = state.sources.find((s) => s.id === a.id);
-      if (!src) throw { code: "not_found", message: "Kalender tidak ditemukan." };
+      if (!src) throw { code: "not_found", message: tr("Kalender tidak ditemukan.", "Calendar not found.") };
       if (src.kind === "url") src.ics = sampleIcs();
       src.fetchedAt = now;
       persist();
@@ -117,7 +118,7 @@ async function mock(command: string, a: Record<string, any>): Promise<unknown> {
     }
     case "calendar_source_enable": {
       const src = state.sources.find((s) => s.id === a.id);
-      if (!src) throw { code: "not_found", message: "Kalender tidak ditemukan." };
+      if (!src) throw { code: "not_found", message: tr("Kalender tidak ditemukan.", "Calendar not found.") };
       src.enabled = a.enabled;
       persist();
       return src;

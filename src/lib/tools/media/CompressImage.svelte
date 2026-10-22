@@ -197,7 +197,7 @@
 
 	.seg {
 		display: inline-flex;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: 8px;
 		overflow: hidden;
 		background: var(--surface);
@@ -256,7 +256,7 @@
 		list-style: none;
 		margin: 0 0 18px;
 		padding: 0;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
 		overflow: hidden;

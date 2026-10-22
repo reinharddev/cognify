@@ -15,10 +15,10 @@
 <section>
 	<h2>{t('home.ready')}</h2>
 	<div class="grid">
-		{#each ready as tool (tool.id)}
+		{#each ready as tool, i (tool.id)}
 			{@const Icon = tool.icon}
 			<a class="card" href="/tools/{tool.id}">
-				<span class="icon"><Icon size={20} /></span>
+				<span class="icon" style:--tint="var(--tint-{(i % 6) + 1})"><Icon size={20} /></span>
 				<strong>{loc(tool.name)}</strong>
 				<span class="desc">{loc(tool.description)}</span>
 			</a>
@@ -44,8 +44,10 @@
 	}
 
 	h1 {
-		font-size: 26px;
-		font-weight: 650;
+		font-family: var(--font-display);
+		font-size: 30px;
+		font-weight: 700;
+		letter-spacing: -0.02em;
 		margin-bottom: 6px;
 	}
 
@@ -65,7 +67,7 @@
 	h2 {
 		font-size: 12px;
 		font-weight: 600;
-		letter-spacing: 0.04em;
+		letter-spacing: 0.06em;
 		text-transform: uppercase;
 		color: var(--text-dim);
 		margin-bottom: 12px;
@@ -82,13 +84,16 @@
 		flex-direction: column;
 		gap: 4px;
 		padding: 16px;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
+		box-shadow: var(--lift);
+		transition: transform var(--dur-1), box-shadow var(--dur-1);
 	}
 
 	.card:hover {
-		border-color: var(--accent-strong);
+		transform: translate(var(--hop), var(--hop));
+		box-shadow: var(--lift-lg);
 	}
 
 	.icon {
@@ -97,9 +102,10 @@
 		width: 36px;
 		height: 36px;
 		margin-bottom: 8px;
+		border: var(--edge-w) solid var(--edge);
 		border-radius: 9px;
-		background: var(--accent-soft);
-		color: var(--link);
+		background: var(--tint, var(--accent-soft));
+		color: var(--text);
 	}
 
 	.desc {
@@ -118,7 +124,7 @@
 		align-items: center;
 		gap: 6px;
 		padding: 5px 11px;
-		border: 1px dashed var(--border);
+		border: var(--edge-w) dashed var(--edge);
 		border-radius: 999px;
 		color: var(--text-dim);
 		font-size: 13px;

@@ -1,9 +1,10 @@
 <script lang="ts">
+  import { tr } from "$lib/i18n.svelte";
   // Pemilih warna buatan sendiri (nilai "#rrggbb"), pengganti <input type="color">.
   import { tick, type Snippet } from "svelte";
   import { place } from "./place";
 
-  let { value = $bindable("#7e6cf0"), label, id, disabled = false, class: cls = "", onchange, onclear, clearLabel = "Tanpa warna", children }: { class?: string; onclear?: () => void; clearLabel?: string; children?: Snippet; onchange?: (v: string) => void; value: string; label?: string; id?: string; disabled?: boolean } = $props();
+  let { value = $bindable("#7e6cf0"), label, id, disabled = false, class: cls = "", onchange, onclear, clearLabel = tr("Tanpa warna", "No color"), children }: { class?: string; onclear?: () => void; clearLabel?: string; children?: Snippet; onchange?: (v: string) => void; value: string; label?: string; id?: string; disabled?: boolean } = $props();
 
   let open = $state(false);
   let trigger = $state<HTMLButtonElement>();
@@ -31,7 +32,7 @@
   }
   const valid = (h: string) => /^#[0-9a-f]{6}$/i.test(h);
 
-  const SWATCHES = ["#7e6cf0", "#3592be", "#39986c", "#b27f19", "#e26336", "#dd5b92", "#a26cf0", "#3d9793", "#2b2745", "#6a6486", "#ffffff", "#000000"];
+  const SWATCHES = ["#7e6cf0", "#328ab4", "#379268", "#ab7a18", "#df5524", "#db508b", "#9c63ef", "#398e8a", "#2b2745", "#6a6486", "#ffffff", "#000000"];
 
   async function show() {
     if (disabled) return;
@@ -86,19 +87,19 @@
 
 {#if open}
   <div class="scrim" role="presentation" onpointerdown={() => (open = false)} oncontextmenu={(e) => { e.preventDefault(); open = false; }}></div>
-  <div class="pop" bind:this={pop} role="dialog" aria-label="Pilih warna" style:left="{pos.left}px" style:top="{pos.top}px" {onkeydown} tabindex="-1">
+  <div class="pop" bind:this={pop} role="dialog" aria-label={tr("Pilih warna", "Pick a color")} style:left="{pos.left}px" style:top="{pos.top}px" {onkeydown} tabindex="-1">
     <div
       class="area"
       style:background-color="hsl({hue} 100% 50%)"
       use:drag={(x, y) => { sat = x; val = 1 - y; commit(); }}
       role="slider"
       tabindex="0"
-      aria-label="Kecerahan dan kejenuhan"
+      aria-label={tr("Kecerahan dan kejenuhan", "Brightness and saturation")}
       aria-valuenow={Math.round(sat * 100)}
     >
       <span class="knob" style:left="{sat * 100}%" style:top="{(1 - val) * 100}%"></span>
     </div>
-    <div class="hue" use:drag={(x) => { hue = x * 360; commit(); }} role="slider" tabindex="0" aria-label="Rona" aria-valuenow={Math.round(hue)}>
+    <div class="hue" use:drag={(x) => { hue = x * 360; commit(); }} role="slider" tabindex="0" aria-label={tr("Rona", "Hue")} aria-valuenow={Math.round(hue)}>
       <span class="knob" style:left="{(hue / 360) * 100}%"></span>
     </div>
     <div class="swatches">
@@ -109,7 +110,7 @@
     {#if onclear}<button type="button" class="clear" onclick={() => { onclear(); close(); }}>{clearLabel}</button>{/if}
     <input
       class="hex"
-      aria-label="Kode warna"
+      aria-label={tr("Kode warna", "Color code")}
       spellcheck="false"
       maxlength="7"
       bind:value={hex}

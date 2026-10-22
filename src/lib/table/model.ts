@@ -1,3 +1,4 @@
+import { tr } from "$lib/i18n.svelte";
 // Model halaman Tabel: kolom bertipe, baris, tampilan tabel atau papan (kanban), urutan, dan pengelompokan.
 // Semua fungsi murni dan tidak mengubah masukannya; isi disimpan sebagai JSON di kolom `content` halaman.
 
@@ -379,15 +380,15 @@ const opts = (labels: [string, number][]): Option[] => labels.map(([label, color
 
 /** Daftar PR: judul, mapel, tenggat, status. */
 export function prTemplate(): TableData {
-  const mapel: Column = { id: newId(), name: "Mapel", type: "select", options: opts([["Matematika", 0], ["IPA", 4], ["Bahasa", 3], ["Lainnya", 1]]) };
-  const status: Column = { id: newId(), name: "Status", type: "select", options: opts([["Belum", 3], ["Dikerjakan", 2], ["Selesai", 4]]) };
-  const columns: Column[] = [{ id: newId(), name: "PR", type: "text" }, mapel, { id: newId(), name: "Tenggat", type: "date" }, status];
+  const mapel: Column = { id: newId(), name: tr("Mapel", "Subject"), type: "select", options: opts([[tr("Matematika", "Math"), 0], [tr("IPA", "Science"), 4], [tr("Bahasa", "Language"), 3], [tr("Lainnya", "Other"), 1]]) };
+  const status: Column = { id: newId(), name: "Status", type: "select", options: opts([[tr("Belum", "To do"), 3], [tr("Dikerjakan", "In progress"), 2], [tr("Selesai", "Done"), 4]]) };
+  const columns: Column[] = [{ id: newId(), name: tr("PR", "Homework"), type: "text" }, mapel, { id: newId(), name: tr("Tenggat", "Due date"), type: "date" }, status];
   return { version: 1, columns, rows: [], view: "board", groupBy: status.id, sort: null };
 }
 
 /** Jadwal pelajaran: hari, jam, mapel, ruang. */
 export function scheduleTemplate(): TableData {
-  const hari: Column = { id: newId(), name: "Hari", type: "select", options: opts([["Senin", 0], ["Selasa", 1], ["Rabu", 2], ["Kamis", 3], ["Jumat", 4], ["Sabtu", 5]]) };
-  const columns: Column[] = [{ id: newId(), name: "Mapel", type: "text" }, hari, { id: newId(), name: "Jam", type: "text" }, { id: newId(), name: "Ruang", type: "text" }];
+  const hari: Column = { id: newId(), name: tr("Hari", "Day"), type: "select", options: opts([[tr("Senin", "Monday"), 0], [tr("Selasa", "Tuesday"), 1], [tr("Rabu", "Wednesday"), 2], [tr("Kamis", "Thursday"), 3], [tr("Jumat", "Friday"), 4], [tr("Sabtu", "Saturday"), 5]]) };
+  const columns: Column[] = [{ id: newId(), name: tr("Mapel", "Subject"), type: "text" }, hari, { id: newId(), name: tr("Jam", "Time"), type: "text" }, { id: newId(), name: tr("Ruang", "Room"), type: "text" }];
   return { version: 1, columns, rows: [], view: "table", groupBy: hari.id, sort: null };
 }

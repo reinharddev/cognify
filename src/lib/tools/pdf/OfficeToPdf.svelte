@@ -228,7 +228,7 @@
 		gap: 10px;
 		margin-bottom: 16px;
 		padding: 14px 16px;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
 	}
@@ -276,7 +276,7 @@
 		list-style: none;
 		margin: 0 0 16px;
 		padding: 0;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
 		overflow: hidden;

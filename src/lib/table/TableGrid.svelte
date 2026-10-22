@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tr } from "$lib/i18n.svelte";
   import { ArrowDown, ArrowUp, ArrowUpDown, MoreHorizontal, Plus, Trash2, X } from "@lucide/svelte";
   import CellInput from "./CellInput.svelte";
   import {
@@ -8,7 +9,7 @@
 
   let { data, query, onchange }: { data: TableData; query: string; onchange: (next: TableData) => void } = $props();
 
-  const TYPE_LABEL: Record<ColType, string> = { text: "Teks", number: "Angka", date: "Tanggal", select: "Pilihan", checkbox: "Kotak centang" };
+  const TYPE_LABEL = $derived<Record<ColType, string>>({ text: tr("Teks", "Text"), number: tr("Angka", "Number"), date: tr("Tanggal", "Date"), select: tr("Pilihan", "Select"), checkbox: tr("Kotak centang", "Checkbox") });
 
   const rows = $derived(visibleRows(data, query));
   let menu = $state<string | null>(null);
@@ -42,14 +43,14 @@
           {@const Sort = sortIcon(c.id)}
           <th aria-sort={data.sort?.col === c.id ? (data.sort.dir === "asc" ? "ascending" : "descending") : "none"}>
             <div class="head">
-              <button class="name" title="Urutkan" onclick={() => onchange(cycleSort(data, c.id))}>
+              <button class="name" title={tr("Urutkan", "Sort")} onclick={() => onchange(cycleSort(data, c.id))}>
                 <span>{c.name}</span><Sort size={13} class={data.sort?.col === c.id ? "on" : "dim"} />
               </button>
               <button class="more" aria-label="Pengaturan kolom {c.name}" aria-expanded={menu === c.id} onclick={(e) => toggleMenu(e, c.id)}><MoreHorizontal size={15} /></button>
             </div>
             {#if menu === c.id}
-              <div class="menu" style:left="{menuAt.x}px" style:top="{menuAt.y}px" style:max-height="{menuAt.maxH}px" role="dialog" aria-label="Kolom {c.name}" tabindex="-1" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.key === "Escape" && (menu = null)}>
-                <label>Nama<input value={c.name} onchange={(e) => onchange(renameColumn(data, c.id, e.currentTarget.value))} /></label>
+              <div class="menu" style:left="{menuAt.x}px" style:top="{menuAt.y}px" style:max-height="{menuAt.maxH}px" role="dialog" aria-label="{tr("Kolom", "Column")} {c.name}" tabindex="-1" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.key === "Escape" && (menu = null)}>
+                <label>{tr("Nama", "Name")}<input value={c.name} onchange={(e) => onchange(renameColumn(data, c.id, e.currentTarget.value))} /></label>
                 <label>Tipe
                   <select value={c.type} onchange={(e) => onchange(setColumnType(data, c.id, e.currentTarget.value as ColType))}>
                     {#each COL_TYPES as t (t)}<option value={t}>{TYPE_LABEL[t]}</option>{/each}
@@ -57,25 +58,25 @@
                 </label>
                 {#if c.type === "select"}
                   <div class="opts">
-                    <b>Pilihan</b>
+                    <b>{tr("Pilihan", "Options")}</b>
                     {#each c.options ?? [] as o (o.id)}
                       <div class="opt">
-                        <button class="dot" style:--c="var(--cat-{o.color})" aria-label="Ganti warna {o.label}" onclick={() => onchange(recolorOption(data, c.id, o.id, o.color + 1))}></button>
-                        <input value={o.label} aria-label="Nama pilihan" onchange={(e) => onchange(renameOption(data, c.id, o.id, e.currentTarget.value))} />
-                        <button class="x" aria-label="Hapus pilihan {o.label}" onclick={() => onchange(removeOption(data, c.id, o.id))}><X size={13} /></button>
+                        <button class="dot" style:--c="var(--cat-{o.color})" aria-label="{tr("Ganti warna", "Change color")} {o.label}" onclick={() => onchange(recolorOption(data, c.id, o.id, o.color + 1))}></button>
+                        <input value={o.label} aria-label={tr("Nama pilihan", "Option name")} onchange={(e) => onchange(renameOption(data, c.id, o.id, e.currentTarget.value))} />
+                        <button class="x" aria-label="{tr("Hapus pilihan", "Delete option")} {o.label}" onclick={() => onchange(removeOption(data, c.id, o.id))}><X size={13} /></button>
                       </div>
                     {/each}
                     <form onsubmit={(e) => { e.preventDefault(); onchange(addOption(data, c.id, newOption)); newOption = ""; }}>
-                      <input placeholder="Pilihan baru" bind:value={newOption} aria-label="Pilihan baru" />
+                      <input placeholder={tr("Pilihan baru", "New option")} bind:value={newOption} aria-label={tr("Pilihan baru", "New option")} />
                     </form>
                   </div>
                 {/if}
-                <button class="danger" disabled={data.columns.length <= 1} onclick={() => { menu = null; onchange(removeColumn(data, c.id)); }}><Trash2 size={14} /> Hapus kolom</button>
+                <button class="danger" disabled={data.columns.length <= 1} onclick={() => { menu = null; onchange(removeColumn(data, c.id)); }}><Trash2 size={14} /> {tr("Hapus kolom", "Delete column")}</button>
               </div>
             {/if}
           </th>
         {/each}
-        <th class="add"><button aria-label="Tambah kolom" title="Tambah kolom" onclick={() => onchange(addColumn(data, "Kolom"))}><Plus size={15} /></button></th>
+        <th class="add"><button aria-label={tr("Tambah kolom", "Add column")} title={tr("Tambah kolom", "Add column")} onclick={() => onchange(addColumn(data, tr("Kolom", "Column")))}><Plus size={15} /></button></th>
       </tr>
     </thead>
     <tbody>
@@ -84,16 +85,16 @@
           {#each data.columns as c (c.id)}
             <td><CellInput column={c} value={r.cells[c.id]} label={c.name} onchange={(v) => onchange(setCell(data, r.id, c.id, v))} /></td>
           {/each}
-          <td class="del"><button aria-label="Hapus baris" title="Hapus baris" onclick={() => onchange(removeRow(data, r.id))}><Trash2 size={14} /></button></td>
+          <td class="del"><button aria-label={tr("Hapus baris", "Delete row")} title={tr("Hapus baris", "Delete row")} onclick={() => onchange(removeRow(data, r.id))}><Trash2 size={14} /></button></td>
         </tr>
       {/each}
     </tbody>
   </table>
   {#if !rows.length}
-    <p class="empty">{query.trim() ? "Tidak ada baris yang cocok." : "Belum ada baris."}</p>
+    <p class="empty">{query.trim() ? tr("Tidak ada baris yang cocok.", "No matching rows.") : tr("Belum ada baris.", "No rows yet.")}</p>
   {/if}
 </div>
-<button class="addrow" onclick={() => onchange(addRow(data))}><Plus size={15} /> Baris baru</button>
+<button class="addrow" onclick={() => onchange(addRow(data))}><Plus size={15} /> {tr("Baris baru", "New row")}</button>
 
 <style>
   .scroll {

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tr } from "$lib/i18n.svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
   import NotchIcon from "./NotchIcon.svelte";
@@ -16,12 +17,12 @@
   const path = $derived(page.url.pathname);
   const is = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
 
-  const KINDS: { kind: PageKind; label: string; icon: typeof FileText }[] = [
-    { kind: "doc", label: "Dokumen", icon: FileText },
-    { kind: "board", label: "Papan", icon: Shapes },
-    { kind: "table", label: "Tabel", icon: Table2 },
-    { kind: "folder", label: "Folder", icon: Folder },
-  ];
+  const KINDS = $derived<{ kind: PageKind; label: string; icon: typeof FileText }[]>([
+    { kind: "doc", label: tr("Dokumen", "Document"), icon: FileText },
+    { kind: "board", label: tr("Papan", "Board"), icon: Shapes },
+    { kind: "table", label: tr("Tabel", "Table"), icon: Table2 },
+    { kind: "folder", label: tr("Folder", "Folder"), icon: Folder },
+  ]);
 
   async function create(kind: PageKind) {
     menu = false;
@@ -35,37 +36,37 @@
 <aside>
   <div class="ws">
     <span class="avatar">R</span>
-    <strong>Ruang saya</strong>
+    <strong>{tr("Ruang saya", "My space")}</strong>
   </div>
 
   <button class="search" onclick={onsearch}>
-    <span><Search size={15} /> Cari</span>
+    <span><Search size={15} /> {tr("Cari", "Search")}</span>
     <kbd>Ctrl K</kbd>
   </button>
 
   <nav>
-    <a href="/" class:on={is("/")}><Home size={16} />Beranda</a>
-    <a href="/calendar" class="k-calendar" class:on={is("/calendar")}><CalendarDays size={16} />Kalender</a>
+    <a href="/" class:on={is("/")}><Home size={16} />{tr("Beranda", "Home")}</a>
+    <a href="/calendar" class="k-calendar" class:on={is("/calendar")}><CalendarDays size={16} />{tr("Kalender", "Calendar")}</a>
     <a href="/notch" class="k-notch" class:on={is("/notch")}><NotchIcon size={16} />Notch</a>
-    <a href="/tools" class:on={is("/tools")}><Wrench size={16} />Alat</a>
+    <a href="/tools" class:on={is("/tools")}><Wrench size={16} />{tr("Alat", "Tools")}</a>
     {#if prefs.value.mcp.propose || proposals.count > 0}
-      <a href="/proposals" class:on={is("/proposals")}><Inbox size={16} />Usulan{#if proposals.count > 0}<span class="badge" aria-label="{proposals.count} usulan menunggu">{proposals.count}</span>{/if}</a>
+      <a href="/proposals" class:on={is("/proposals")}><Inbox size={16} />{tr("Usulan", "Proposals")}{#if proposals.count > 0}<span class="badge" aria-label="{proposals.count} {tr("usulan menunggu", "proposals pending")}">{proposals.count}</span>{/if}</a>
     {/if}
   </nav>
 
   {#if ws.favorites.length}
-    <div class="sec">Favorit</div>
+    <div class="sec">{tr("Favorit", "Favorites")}</div>
     {#each ws.favorites as fav (fav.id)}
-      <a class="fav" class:on={activeId === fav.id} href="/p/{fav.id}"><Star size={14} /><span>{fav.title || "Tanpa judul"}</span></a>
+      <a class="fav" class:on={activeId === fav.id} href="/p/{fav.id}"><Star size={14} /><span>{fav.title || tr("Tanpa judul", "Untitled")}</span></a>
     {/each}
   {/if}
 
   <div class="sec head">
-    <span>Halaman</span>
+    <span>{tr("Halaman", "Pages")}</span>
     <span class="new">
       <button
-        aria-label="Halaman baru"
-        title="Halaman baru"
+        aria-label={tr("Halaman baru", "New page")}
+        title={tr("Halaman baru", "New page")}
         onclick={(e) => {
           e.stopPropagation();
           menu = !menu;
@@ -83,7 +84,7 @@
 
   <div class="tree" data-stagger>
     {#if !ws.tree.length}
-      <p class="empty">Belum ada halaman. Tekan + untuk membuat yang pertama.</p>
+      <p class="empty">{tr("Belum ada halaman. Tekan + untuk membuat yang pertama.", "No pages yet. Press + to create the first one.")}</p>
     {/if}
     {#each ws.tree as node (node.id)}
       <TreeRow {node} depth={0} {activeId} />
@@ -100,8 +101,8 @@
   {/if}
 
   <nav class="foot">
-    <a href="/trash" class:on={is("/trash")}><Trash2 size={16} />Sampah</a>
-    <a href="/settings" class:on={is("/settings")}><Settings size={16} />Pengaturan</a>
+    <a href="/trash" class:on={is("/trash")}><Trash2 size={16} />{tr("Sampah", "Trash")}</a>
+    <a href="/settings" class:on={is("/settings")}><Settings size={16} />{tr("Pengaturan", "Settings")}</a>
   </nav>
 </aside>
 
@@ -128,10 +129,12 @@
     place-items: center;
     width: 1.8em;
     height: 1.8em;
-    border-radius: 6px;
+    border-radius: 7px;
     background: var(--accent);
     color: var(--accent-contrast);
-    font-weight: 600;
+    border: var(--edge-w) solid var(--edge);
+    font-family: var(--font-display);
+    font-weight: 800;
     font-size: 0.9em;
   }
   .search {
@@ -140,8 +143,8 @@
     align-items: center;
     padding: 5px 8px;
     margin-bottom: 4px;
-    background: transparent;
-    border: 1px solid var(--border);
+    background: var(--surface);
+    border: var(--edge-w) solid var(--edge);
     border-radius: var(--radius-sm);
     color: var(--text-muted);
     cursor: pointer;
@@ -152,7 +155,8 @@
     gap: 6px;
   }
   .search:hover {
-    background: var(--surface);
+    box-shadow: var(--lift);
+    transform: translate(var(--hop), var(--hop));
   }
   kbd {
     font: inherit;
@@ -198,8 +202,9 @@
   .badge { animation: pop var(--dur-3) var(--ease-spring) both; margin-left: auto; background: var(--accent); color: var(--accent-contrast); border-radius: 99px; font-size: 0.75em; font-weight: 700; padding: 0 7px; line-height: 1.6; }
   nav a.on,
   .fav.on {
-    background: var(--surface);
-    font-weight: 600;
+    background: var(--accent-soft);
+    font-weight: 700;
+    box-shadow: inset 0 0 0 var(--edge-w) var(--edge), var(--lift);
   }
   .fav span {
     overflow: hidden;

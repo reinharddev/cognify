@@ -1,3 +1,4 @@
+import { tr } from "$lib/i18n.svelte";
 // Dialog konfirmasi dan isian buatan sendiri, pengganti confirm() dan prompt() bawaan webview.
 
 interface Request {
@@ -36,8 +37,8 @@ class DialogStore {
         kind: r.kind,
         message: r.message,
         detail: r.opts.detail,
-        okLabel: r.opts.okLabel ?? (r.opts.danger ? "Hapus" : "OK"),
-        cancelLabel: r.opts.cancelLabel ?? "Batal",
+        okLabel: r.opts.okLabel ?? (r.opts.danger ? tr("Hapus", "Delete") : "OK"),
+        cancelLabel: r.opts.cancelLabel ?? tr("Batal", "Cancel"),
         danger: !!r.opts.danger,
         value: r.value,
         resolve,

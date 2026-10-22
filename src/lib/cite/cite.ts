@@ -3,6 +3,7 @@
 // bahasa app lewat berkas locale CSL.
 
 import CSL from "citeproc";
+import { tr } from "$lib/i18n.svelte";
 
 export interface CslName {
   family?: string;
@@ -155,30 +156,30 @@ export async function formatCitation(source: CslSource, styleId: StyleId, lang: 
 /** Kolom penting yang kosong, menurut jenis sumber, untuk ditampilkan sebagai "belum ada". */
 export function missingFields(source: CslSource, docTitle = ""): string[] {
   const out: string[] = [];
-  if (!source.author?.some((a) => (a.family ?? "").trim() || (a.literal ?? "").trim())) out.push("Penulis");
-  if (!source.issued) out.push("Tanggal terbit");
-  if (!docTitle.trim() && !source.title?.trim()) out.push("Judul");
+  if (!source.author?.some((a) => (a.family ?? "").trim() || (a.literal ?? "").trim())) out.push(tr("Penulis", "Author"));
+  if (!source.issued) out.push(tr("Tanggal terbit", "Publication date"));
+  if (!docTitle.trim() && !source.title?.trim()) out.push(tr("Judul", "Title"));
   if (source.type === "article-journal") {
-    if (!source["container-title"]) out.push("Nama jurnal");
-    if (!source.volume && !source.DOI) out.push("Volume atau DOI");
+    if (!source["container-title"]) out.push(tr("Nama jurnal", "Journal name"));
+    if (!source.volume && !source.DOI) out.push(tr("Volume atau DOI", "Volume or DOI"));
   } else if (!source["container-title"] && !source.publisher) {
-    out.push("Nama situs atau penerbit");
+    out.push(tr("Nama situs atau penerbit", "Site name or publisher"));
   }
-  if (!source.URL && !source.DOI) out.push("URL atau DOI");
+  if (!source.URL && !source.DOI) out.push(tr("URL atau DOI", "URL or DOI"));
   return out;
 }
 
-const GUESS_LABEL: Record<string, string> = {
-  title: "Judul",
-  author: "Penulis (nama diurai otomatis)",
-  issued: "Tanggal terbit",
-  "container-title": "Nama situs",
-  type: "Jenis sumber",
-};
+const guessLabel = (): Record<string, string> => ({
+  title: tr("Judul", "Title"),
+  author: tr("Penulis (nama diurai otomatis)", "Author (name parsed automatically)"),
+  issued: tr("Tanggal terbit", "Publication date"),
+  "container-title": tr("Nama situs", "Site name"),
+  type: tr("Jenis sumber", "Source type"),
+});
 
 /** Kolom yang hanya disimpulkan, bukan dibaca dari sumber, untuk ditampilkan sebagai "periksa". */
 export function guessedFields(source: CslSource): string[] {
   const g = new Set<string>(source._guess ?? []);
   if (source.author?.some((a) => a._guess)) g.add("author");
-  return [...g].map((k) => GUESS_LABEL[k] ?? k);
+  return [...g].map((k) => guessLabel()[k] ?? k);
 }

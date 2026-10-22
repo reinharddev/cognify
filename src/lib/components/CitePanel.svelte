@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tr } from "$lib/i18n.svelte";
   import { onMount } from "svelte";
   import { Copy, X } from "@lucide/svelte";
   import { i18n } from "$lib/i18n.svelte";
@@ -11,18 +12,18 @@
   // Judul dokumen adalah judul yang dikutip; mengubahnya di sini sama dengan mengubah judul halaman.
   let { pageId, title, onTitle, onClose }: { pageId: string; title: string; onTitle: (title: string) => void; onClose: () => void } = $props();
 
-  const TYPES: [string, string][] = [
-    ["article-journal", "Artikel jurnal"],
-    ["webpage", "Halaman web"],
-    ["article-newspaper", "Berita"],
-    ["post-weblog", "Blog"],
-    ["entry-encyclopedia", "Ensiklopedia"],
-    ["article", "Preprint"],
-    ["report", "Laporan"],
-    ["thesis", "Skripsi, tesis, atau disertasi"],
-    ["book", "Buku"],
-    ["document", "Dokumen (mis. PDF)"],
-  ];
+  const TYPES = $derived<[string, string][]>([
+    ["article-journal", tr("Artikel jurnal", "Journal article")],
+    ["webpage", tr("Halaman web", "Web page")],
+    ["article-newspaper", tr("Berita", "News article")],
+    ["post-weblog", tr("Blog", "Blog post")],
+    ["entry-encyclopedia", tr("Ensiklopedia", "Encyclopedia entry")],
+    ["article", tr("Preprint", "Preprint")],
+    ["report", tr("Laporan", "Report")],
+    ["thesis", tr("Skripsi, tesis, atau disertasi", "Thesis or dissertation")],
+    ["book", tr("Buku", "Book")],
+    ["document", tr("Dokumen (mis. PDF)", "Document (e.g. PDF)")],
+  ]);
 
   const STYLE_KEY = "cognify.cite.style";
   let styleId = $state<StyleId>(((): StyleId => {
@@ -161,14 +162,14 @@
   /** Petunjuk isi sorotan dari alamat bagiannya: kata-kata awal yang disorot. */
   function hint(mark: SourceMark): string {
     const m = mark.url.match(/#:~:text=([^,&]*)/);
-    if (!m) return mark.page ? `hlm. ${mark.page}` : "Sorotan";
+    if (!m) return mark.page ? tr(`hlm. ${mark.page}`, `p. ${mark.page}`) : tr("Sorotan", "Highlight");
     try {
       return `“${decodeURIComponent(m[1])}…”`;
     } catch {
-      return "Sorotan";
+      return tr("Sorotan", "Highlight");
     }
   }
-  const where = (m: SourceMark) => (m.page ? `hlm. ${m.page}` : m.section ? `bagian “${m.section}”` : "");
+  const where = (m: SourceMark) => (m.page ? tr(`hlm. ${m.page}`, `p. ${m.page}`) : m.section ? tr(`bagian “${m.section}”`, `section “${m.section}”`) : "");
 
   function onKey(event: KeyboardEvent) {
     if (event.key === "Escape") onClose();
@@ -179,40 +180,40 @@
 <svelte:window onkeydown={onKey} />
 
 <div class="overlay" role="presentation" onclick={(e) => e.target === e.currentTarget && onClose()}>
-  <div class="panel" role="dialog" aria-modal="true" aria-label="Kutip">
+  <div class="panel" role="dialog" aria-modal="true" aria-label={tr("Kutip", "Cite")}>
     <header>
-      <h2>Kutip</h2>
+      <h2>{tr("Kutip", "Cite")}</h2>
       <label class="style">
-        <span>Gaya</span>
+        <span>{tr("Gaya", "Style")}</span>
         <select bind:value={styleId}>
           {#each STYLES as s (s.id)}<option value={s.id}>{s.label}</option>{/each}
         </select>
       </label>
-      <button class="x" aria-label="Tutup" onclick={onClose}><X size={16} /></button>
+      <button class="x" aria-label={tr("Tutup", "Close")} onclick={onClose}><X size={16} /></button>
     </header>
 
     {#if !loaded}
-      <p class="muted">Memuat…</p>
+      <p class="muted">{tr("Memuat…", "Loading…")}</p>
     {:else}
       {#if missing.length || guessed.length}
         <div class="status" role="note">
-          {#if missing.length}<p><b>Belum ada:</b> {missing.join(", ")}. Sitasi tetap dibuat dengan aturan gaya untuk data yang kurang; lengkapi di bawah bila kamu tahu.</p>{/if}
-          {#if guessed.length}<p><b>Periksa:</b> {guessed.join(", ")}. Ini disimpulkan otomatis, bukan dibaca langsung dari sumber.</p>{/if}
+          {#if missing.length}<p><b>{tr("Belum ada:", "Missing:")}</b> {missing.join(", ")}. {tr("Sitasi tetap dibuat dengan aturan gaya untuk data yang kurang; lengkapi di bawah bila kamu tahu.", "The citation is still built using the style rules for missing data; fill it in below if you know it.")}</p>{/if}
+          {#if guessed.length}<p><b>{tr("Periksa:", "Check:")}</b> {guessed.join(", ")}. {tr("Ini disimpulkan otomatis, bukan dibaca langsung dari sumber.", "This was inferred automatically, not read directly from the source.")}</p>{/if}
         </div>
       {/if}
 
       <section>
-        <h3>Daftar pustaka</h3>
+        <h3>{tr("Daftar pustaka", "Bibliography")}</h3>
         {#if error}
           <p class="err">{error}</p>
         {:else if result}
           <div class="out">{@html result.bibliography}</div>
-          <button class="copy" onclick={() => copyRich("bib", result!.bibliography)}><Copy size={13} />{copied === "bib" ? "Tersalin" : "Salin"}</button>
+          <button class="copy" onclick={() => copyRich("bib", result!.bibliography)}><Copy size={13} />{copied === "bib" ? tr("Tersalin", "Copied") : tr("Salin", "Copy")}</button>
         {/if}
       </section>
 
       <section>
-        <h3>Dalam teks</h3>
+        <h3>{tr("Dalam teks", "In-text")}</h3>
         {#if result}
           {#if marks.length}
             <ul class="intext">
@@ -220,64 +221,64 @@
                 <li>
                   <div class="what"><span class="hint">{hint(m)}</span>{#if where(m)}<small>{where(m)}</small>{/if}</div>
                   <div class="cite">{result.inText[i]}</div>
-                  <button class="copy" onclick={() => copyText(`t${i}`, result!.inText[i])}><Copy size={13} />{copied === `t${i}` ? "Tersalin" : "Salin"}</button>
+                  <button class="copy" onclick={() => copyText(`t${i}`, result!.inText[i])}><Copy size={13} />{copied === `t${i}` ? tr("Tersalin", "Copied") : tr("Salin", "Copy")}</button>
                 </li>
               {/each}
             </ul>
           {:else}
             <div class="intext one">
               <div class="cite">{result.inTextBase}</div>
-              <button class="copy" onclick={() => copyText("t", result!.inTextBase)}><Copy size={13} />{copied === "t" ? "Tersalin" : "Salin"}</button>
+              <button class="copy" onclick={() => copyText("t", result!.inTextBase)}><Copy size={13} />{copied === "t" ? tr("Tersalin", "Copied") : tr("Salin", "Copy")}</button>
             </div>
           {/if}
-          <p class="note">Sorotan ke PDF memakai nomor halaman; ke halaman web memakai judul bagian terdekat bila ada. Gaya catatan kaki (Chicago) menghasilkan isi catatan kakinya.</p>
+          <p class="note">{tr("Sorotan ke PDF memakai nomor halaman; ke halaman web memakai judul bagian terdekat bila ada. Gaya catatan kaki (Chicago) menghasilkan isi catatan kakinya.", "Highlights of a PDF use the page number; highlights of a web page use the nearest section heading when there is one. The footnote style (Chicago) produces the footnote text.")}</p>
         {/if}
       </section>
 
       <section>
-        <button class="toggle" aria-expanded={showFields} onclick={() => (showFields = !showFields)}>{showFields ? "Sembunyikan data sumber" : "Lengkapi atau ubah data sumber"}</button>
+        <button class="toggle" aria-expanded={showFields} onclick={() => (showFields = !showFields)}>{showFields ? tr("Sembunyikan data sumber", "Hide source data") : tr("Lengkapi atau ubah data sumber", "Complete or edit source data")}</button>
         {#if showFields}
           <div class="fields">
             <label class="wide">
-              <span>Judul <small>(ikut judul halaman)</small></span>
+              <span>{tr("Judul", "Title")} <small>{tr("(ikut judul halaman)", "(follows the page title)")}</small></span>
               <input value={title} oninput={(e) => onTitle(field(e))} />
               {#if original && original !== title}
-                <small class="orig">Judul sumber aslinya: “{original}” <button class="link" onclick={() => onTitle(original)}>Pakai judul asli</button></small>
+                <small class="orig">{tr("Judul sumber aslinya:", "Original source title:")} “{original}” <button class="link" onclick={() => onTitle(original)}>{tr("Pakai judul asli", "Use original title")}</button></small>
               {/if}
             </label>
             <label>
-              <span>Jenis sumber</span>
+              <span>{tr("Jenis sumber", "Source type")}</span>
               <select value={source.type ?? "webpage"} onchange={(e) => edit({ type: field(e) }, ["type"])}>
                 {#each TYPES as [v, label] (v)}<option value={v}>{label}</option>{/each}
               </select>
             </label>
 
             <div class="wide authors">
-              <span>Penulis <small>(isi nama keluarga saja untuk lembaga)</small></span>
+              <span>{tr("Penulis", "Author")} <small>{tr("(isi nama keluarga saja untuk lembaga)", "(fill in only the family name for an organization)")}</small></span>
               {#each authors as a, i (i)}
                 <div class="row">
-                  <input placeholder="Nama keluarga" value={a.family ?? a.literal ?? ""} oninput={(e) => setAuthor(i, field(e), a.given ?? "")} />
-                  <input placeholder="Nama depan" value={a.given ?? ""} oninput={(e) => setAuthor(i, a.family ?? a.literal ?? "", field(e))} />
-                  <button class="x" aria-label="Hapus penulis" onclick={() => removeAuthor(i)}><X size={14} /></button>
+                  <input placeholder={tr("Nama keluarga", "Family name")} value={a.family ?? a.literal ?? ""} oninput={(e) => setAuthor(i, field(e), a.given ?? "")} />
+                  <input placeholder={tr("Nama depan", "Given name")} value={a.given ?? ""} oninput={(e) => setAuthor(i, a.family ?? a.literal ?? "", field(e))} />
+                  <button class="x" aria-label={tr("Hapus penulis", "Remove author")} onclick={() => removeAuthor(i)}><X size={14} /></button>
                 </div>
               {/each}
-              <button class="link" onclick={addAuthor}>+ Tambah penulis</button>
+              <button class="link" onclick={addAuthor}>{tr("+ Tambah penulis", "+ Add author")}</button>
             </div>
 
             <div class="wide date">
-              <span>Tanggal terbit</span>
+              <span>{tr("Tanggal terbit", "Publication date")}</span>
               <div class="row">
-                <input inputmode="numeric" placeholder="Tahun" value={date[0] ?? ""} oninput={(e) => setDate(0, field(e))} />
-                <input inputmode="numeric" placeholder="Bulan" value={date[1] ?? ""} oninput={(e) => setDate(1, field(e))} />
-                <input inputmode="numeric" placeholder="Tanggal" value={date[2] ?? ""} oninput={(e) => setDate(2, field(e))} />
+                <input inputmode="numeric" placeholder={tr("Tahun", "Year")} value={date[0] ?? ""} oninput={(e) => setDate(0, field(e))} />
+                <input inputmode="numeric" placeholder={tr("Bulan", "Month")} value={date[1] ?? ""} oninput={(e) => setDate(1, field(e))} />
+                <input inputmode="numeric" placeholder={tr("Tanggal", "Day")} value={date[2] ?? ""} oninput={(e) => setDate(2, field(e))} />
               </div>
             </div>
 
-            <label class="wide"><span>{source.type === "article-journal" ? "Nama jurnal" : "Nama situs atau terbitan"}</span><input value={source["container-title"] ?? ""} oninput={(e) => edit({ "container-title": field(e) }, ["container-title"])} /></label>
-            <label class="wide"><span>Penerbit</span><input value={source.publisher ?? ""} oninput={(e) => edit({ publisher: field(e) })} /></label>
+            <label class="wide"><span>{source.type === "article-journal" ? tr("Nama jurnal", "Journal name") : tr("Nama situs atau terbitan", "Site or publication name")}</span><input value={source["container-title"] ?? ""} oninput={(e) => edit({ "container-title": field(e) }, ["container-title"])} /></label>
+            <label class="wide"><span>{tr("Penerbit", "Publisher")}</span><input value={source.publisher ?? ""} oninput={(e) => edit({ publisher: field(e) })} /></label>
             <label><span>Volume</span><input value={source.volume ?? ""} oninput={(e) => edit({ volume: field(e) })} /></label>
-            <label><span>Nomor (issue)</span><input value={source.issue ?? ""} oninput={(e) => edit({ issue: field(e) })} /></label>
-            <label><span>Halaman artikel</span><input placeholder="143-158" value={source.page ?? ""} oninput={(e) => edit({ page: field(e) })} /></label>
+            <label><span>{tr("Nomor (issue)", "Issue")}</span><input value={source.issue ?? ""} oninput={(e) => edit({ issue: field(e) })} /></label>
+            <label><span>{tr("Halaman artikel", "Article pages")}</span><input placeholder="143-158" value={source.page ?? ""} oninput={(e) => edit({ page: field(e) })} /></label>
             <label><span>DOI</span><input value={source.DOI ?? ""} oninput={(e) => edit({ DOI: field(e) })} /></label>
             <label class="wide"><span>URL</span><input placeholder={urlFromMarks(marks) ?? ""} value={source.URL ?? ""} oninput={(e) => edit({ URL: field(e) })} /></label>
           </div>
@@ -285,15 +286,15 @@
       </section>
 
       <section class="exports">
-        <h3>Ekspor</h3>
-        <p class="note">Untuk Zotero, Mendeley, EndNote, atau LaTeX.</p>
+        <h3>{tr("Ekspor", "Export")}</h3>
+        <p class="note">{tr("Untuk Zotero, Mendeley, EndNote, atau LaTeX.", "For Zotero, Mendeley, EndNote, or LaTeX.")}</p>
         <div class="row">
           {#each exports as e (e.key)}
-            <button class="copy" onclick={() => copyText(e.key, e.text())}><Copy size={13} />{copied === e.key ? "Tersalin" : e.label}</button>
+            <button class="copy" onclick={() => copyText(e.key, e.text())}><Copy size={13} />{copied === e.key ? tr("Tersalin", "Copied") : e.label}</button>
           {/each}
         </div>
       </section>
-      <p class="note lang">Istilah dalam sitasi mengikuti bahasa app ({lang === "id" ? "Indonesia" : "Inggris"}). Gaya ISO 690 hanya tersedia dalam versi bahasa Inggris dari CSL.</p>
+      <p class="note lang">{tr("Istilah dalam sitasi mengikuti bahasa app", "Terms in the citation follow the app language")} ({lang === "id" ? tr("Indonesia", "Indonesian") : tr("Inggris", "English")}). {tr("Gaya ISO 690 hanya tersedia dalam versi bahasa Inggris dari CSL.", "The ISO 690 style is only available in the English version of CSL.")}</p>
     {/if}
   </div>
 </div>

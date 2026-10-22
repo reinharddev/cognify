@@ -94,6 +94,48 @@
     $$('.rv').forEach((el) => io.observe(el));
   }
 
+  // ---------- Pop berurutan: beri tiap anak kelompok kartu nomor urut ----------
+  $$('.rv.tools, .rv.net, .rv.pal, .rv.local').forEach((g) => [...g.children].forEach((c, i) => c.style.setProperty('--j', i)));
+
+  // ---------- Contoh pencarian di jendela app: berulang selama jendelanya terlihat ----------
+  const spot = document.querySelector('.spot');
+  if (spot && root.classList.contains('motion')) {
+    const q = spot.querySelector('.spot-q');
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    let visible = false;
+    let running = false;
+    async function cycle() {
+      if (running) return;
+      running = true;
+      while (visible) {
+        await wait(2600);
+        if (!visible) break;
+        const word = root.lang === 'en' ? 'photosynthesis' : 'fotosintesis';
+        q.textContent = '';
+        spot.classList.remove('off', 'res');
+        spot.classList.add('on');
+        await wait(650);
+        for (const ch of word) {
+          if (!visible) break;
+          q.textContent += ch;
+          await wait(85);
+        }
+        spot.classList.add('res');
+        await wait(2800);
+        spot.classList.remove('on');
+        spot.classList.add('off');
+        await wait(450);
+        spot.classList.remove('off', 'res');
+        await wait(2200);
+      }
+      running = false;
+    }
+    new IntersectionObserver((es) => {
+      visible = es[0].isIntersecting;
+      if (visible) cycle();
+    }, { threshold: 0.35 }).observe(document.querySelector('.app'));
+  }
+
   // ---------- Mulai ----------
   apply(root.dataset.lang === 'en' ? 'en' : 'id');
   paint();

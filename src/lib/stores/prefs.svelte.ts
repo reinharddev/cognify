@@ -4,13 +4,14 @@
 import { workspace } from "$lib/workspace/api";
 import { derive, overrides, type PaletteChoice, type Mode } from "$lib/theme/palette";
 
-export type ThemeMode = "system" | "light" | "dark";
 export type FontChoice = "rounded" | "system" | "serif" | "mono";
+/** neo = garis tinta dan bayangan; normal = tampilan datar biasa. */
+export type StyleChoice = "neo" | "normal";
 export type StartPage = "home" | "last";
 
 export interface Prefs {
-  mode: ThemeMode;
   palette: PaletteChoice;
+  style: StyleChoice;
   font: FontChoice;
   /** Ukuran huruf dasar dalam px. */
   fontSize: number;
@@ -27,8 +28,8 @@ export interface Prefs {
 }
 
 export const DEFAULTS: Prefs = {
-  mode: "system",
   palette: { kind: "default" },
+  style: "neo",
   font: "rounded",
   fontSize: 15,
   weekStart: 1,
@@ -63,8 +64,8 @@ export function sanitize(raw: unknown): Prefs {
   else if (pal?.kind === "custom" && typeof pal.hex === "string" && /^#[0-9a-f]{6}$/i.test(pal.hex)) palette = { kind: "custom", hex: pal.hex };
   const size = Number(r.fontSize);
   return {
-    mode: pick(r.mode, ["system", "light", "dark"] as const, DEFAULTS.mode),
     palette,
+    style: pick(r.style, ["neo", "normal"] as const, DEFAULTS.style),
     font: pick(r.font, Object.keys(FONTS) as FontChoice[], DEFAULTS.font),
     fontSize: Number.isFinite(size) ? Math.min(19, Math.max(13, Math.round(size))) : DEFAULTS.fontSize,
     weekStart: r.weekStart === 0 ? 0 : 1,
@@ -79,10 +80,9 @@ export function sanitize(raw: unknown): Prefs {
 
 class PrefsStore {
   value = $state<Prefs>({ ...DEFAULTS });
-  /** Tema yang benar-benar dipakai saat ini (mode "system" sudah diterjemahkan). */
-  resolved = $state<Mode>("light");
+  /** Cognify hanya punya satu tema: terang. */
+  readonly resolved: Mode = "light";
   loaded = $state(false);
-  private media: MediaQueryList | null = null;
 
   async init() {
     try {
@@ -93,10 +93,6 @@ class PrefsStore {
     }
     this.loaded = true;
     this.apply();
-    if (typeof matchMedia === "function") {
-      this.media = matchMedia("(prefers-color-scheme: dark)");
-      this.media.addEventListener("change", () => this.value.mode === "system" && this.apply());
-    }
   }
 
   /** Ubah sebagian preferensi, terapkan, dan simpan. */
@@ -116,14 +112,13 @@ class PrefsStore {
 
   apply() {
     const v = this.value;
-    const dark = v.mode === "dark" || (v.mode === "system" && typeof matchMedia === "function" && matchMedia("(prefers-color-scheme: dark)").matches);
-    this.resolved = dark ? "dark" : "light";
     const root = document.documentElement;
-    const mode: Mode = this.resolved;
+    const mode: Mode = "light";
     // Hapus timpaan lama, lalu pasang yang baru.
-    for (const m of ["light", "dark"] as Mode[]) for (const k of Object.keys(derive(0, 1, m))) root.style.removeProperty(`--${k}`);
+    for (const k of Object.keys(derive(0, 1, "light"))) root.style.removeProperty(`--${k}`);
     root.dataset.theme = mode;
     root.dataset.motion = v.motion ? "on" : "off";
+    root.dataset.style = v.style;
     const vars = overrides(v.palette, mode);
     for (const [k, val] of Object.entries(vars)) root.style.setProperty(`--${k}`, val);
     root.style.setProperty("--font", FONTS[v.font].css);
@@ -132,11 +127,11 @@ class PrefsStore {
       localStorage.setItem(
         BOOT_KEY,
         JSON.stringify({
-          mode: v.mode,
-          vars: { light: overrides(v.palette, "light"), dark: overrides(v.palette, "dark") },
+          vars: { light: overrides(v.palette, "light") },
           font: FONTS[v.font].css,
           fs: `${v.fontSize}px`,
           motion: v.motion,
+          style: v.style,
         }),
       );
     } catch {

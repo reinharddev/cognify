@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tr } from "$lib/i18n.svelte";
   // Jendela catatan melayang. Isinya halaman dokumen biasa (tersimpan di app); jendelanya transparan,
   // selalu di atas, dan kartunya berayun seperti bandul saat jendela digeser (lib/swing.ts).
   import { onMount } from "svelte";
@@ -8,6 +9,7 @@
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { LogicalPosition } from "@tauri-apps/api/dpi";
   import { ExternalLink, Palette, Pin, PinOff, Trash2, X } from "@lucide/svelte";
+  import { createAutosave } from "$lib/autosave";
   import Editor from "$lib/components/Editor.svelte";
   import { motionOff } from "$lib/motion";
   import { createBroadcaster, onRemoteChange } from "$lib/pageSync";
@@ -37,36 +39,24 @@
   let geometry: { x?: number; y?: number; w?: number; h?: number } = {};
 
   // ── Penyimpanan isi ──
-  let saveTimer: ReturnType<typeof setTimeout> | undefined;
-  let pending: { content: string; plainText: string } | null = null;
-
   /** Beri tahu jendela utama supaya daftar halaman di sidebarnya ikut diperbarui. */
   const announce = () => (isTauri() ? void emit("pages-changed") : undefined);
 
   const firstLine = (text: string) => text.split("\n").map((l) => l.trim()).find(Boolean)?.slice(0, 60) ?? "";
 
-  async function flush() {
-    clearTimeout(saveTimer);
-    if (!pending || !note) return;
-    const { content, plainText } = pending;
-    pending = null;
-    const patch: { content: string; plainText: string; title?: string } = { content, plainText };
-    if (titleAuto) patch.title = firstLine(plainText);
-    try {
+  const saver = createAutosave<{ content: string; plainText: string; title?: string }>(
+    async (patch) => {
       await workspace.pages.update(id, patch);
       announce();
-    } catch {
-      error = "Catatan belum tersimpan.";
-    }
-  }
+    },
+    (state) => (error = state === "error" ? tr("Catatan belum tersimpan, mencoba lagi…", "The note is not saved yet, retrying…") : ""),
+  );
+  const flush = () => saver.flush();
 
   function onEdit(json: string, text: string) {
     plain = text;
-    pending = { content: json, plainText: text };
     sync.push({ content: json, ...(titleAuto ? { title: firstLine(text) } : {}) });
-    error = "";
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => void flush(), 500);
+    saver.push({ content: json, plainText: text, ...(titleAuto ? { title: firstLine(text) } : {}) });
   }
 
   // ── Warna, posisi, dan ukuran jendela ──
@@ -107,8 +97,7 @@
   }
 
   async function deleteNote() {
-    clearTimeout(saveTimer);
-    pending = null;
+    saver.cancel();
     await workspace.pages.trash(id).catch(() => undefined);
     announce();
     await workspace.sticky.close(id);
@@ -240,13 +229,13 @@
         swing = push(swing, -420);
         startLoop();
       } catch {
-        error = "Catatan tidak ditemukan.";
+        error = tr("Catatan tidak ditemukan.", "Note not found.");
       }
     })();
 
     // Perubahan dari jendela utama langsung tampil di catatan ini (kecuali ada ketikan lokal yang belum tersimpan).
     const offRemote = onRemoteChange((c) => {
-      if (c.id === id && c.content !== undefined && !pending) editor?.setRemote(c.content);
+      if (c.id === id && c.content !== undefined && !saver.dirty()) editor?.setRemote(c.content);
     });
     if (!isTauri()) return () => { offRemote(); document.documentElement.classList.remove("sticky-mode"); };
     const win = getCurrentWindow();
@@ -257,6 +246,7 @@
       void offMove.then((off) => off());
       void offSize.then((off) => off());
       offRemote();
+      saver.dispose();
       sync.flush();
       cancelAnimationFrame(raf);
       document.documentElement.classList.remove("sticky-mode");
@@ -273,16 +263,16 @@
 <svelte:window onbeforeunload={() => void flush()} />
 
 <div class="frame">
-  <section class="card" class:moving bind:this={card} style:--paper="var(--tint-{color + 1})" aria-label="Catatan melayang">
+  <section class="card" class:moving bind:this={card} style:--paper="var(--tint-{color + 1})" aria-label={tr("Catatan melayang", "Floating note")}>
     <header role="presentation" onpointerdown={dragStart} onpointermove={dragMove} onpointerup={dragEnd} onpointercancel={dragEnd}>
-      <button class="ico" title="Ganti warna" aria-label="Ganti warna" onclick={cycleColor}><Palette size={15} /></button>
-      <button class="ico" class:on={pinned} title={pinned ? "Selalu di atas (klik untuk melepas)" : "Biarkan di atas"} aria-label="Selalu di atas" aria-pressed={pinned} onclick={togglePin}>
+      <button class="ico" title={tr("Ganti warna", "Change color")} aria-label={tr("Ganti warna", "Change color")} onclick={cycleColor}><Palette size={15} /></button>
+      <button class="ico" class:on={pinned} title={pinned ? tr("Selalu di atas (klik untuk melepas)", "Always on top (click to release)") : tr("Biarkan di atas", "Keep on top")} aria-label={tr("Selalu di atas", "Always on top")} aria-pressed={pinned} onclick={togglePin}>
         {#if pinned}<Pin size={15} />{:else}<PinOff size={15} />{/if}
       </button>
       <span class="grow"></span>
-      <button class="ico" title="Buka di Cognify" aria-label="Buka di Cognify" onclick={() => workspace.sticky.openInMain(id)}><ExternalLink size={15} /></button>
-      <button class="ico" title="Buang catatan" aria-label="Buang catatan" onclick={deleteNote}><Trash2 size={15} /></button>
-      <button class="ico" title="Tutup (tetap tersimpan)" aria-label="Tutup" onclick={closeNote}><X size={15} /></button>
+      <button class="ico" title={tr("Buka di Cognify", "Open in Cognify")} aria-label={tr("Buka di Cognify", "Open in Cognify")} onclick={() => workspace.sticky.openInMain(id)}><ExternalLink size={15} /></button>
+      <button class="ico" title={tr("Buang catatan", "Delete note")} aria-label={tr("Buang catatan", "Delete note")} onclick={deleteNote}><Trash2 size={15} /></button>
+      <button class="ico" title={tr("Tutup (tetap tersimpan)", "Close (stays saved)")} aria-label={tr("Tutup", "Close")} onclick={closeNote}><X size={15} /></button>
     </header>
     <div class="body">
       {#if note}

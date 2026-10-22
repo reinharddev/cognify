@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tr } from "$lib/i18n.svelte";
   import "../app.css";
   import { onMount, type Snippet } from "svelte";
   import { page } from "$app/state";
@@ -143,16 +144,33 @@
     if (window.getSelection()?.toString()) return contextMenu.show(event, textMenu(null));
     if (isSticky) return void event.preventDefault();
     contextMenu.show(event, [
-      { label: "Dokumen baru", icon: FileText, onclick: () => newPage("doc") },
-      { label: "Papan baru", icon: Shapes, onclick: () => newPage("board") },
-      { label: "Tabel baru", icon: Table2, onclick: () => newPage("table") },
-      { label: "Catatan melayang baru", icon: NotepadText, onclick: () => void workspace.sticky.create() },
+      { label: tr("Dokumen baru", "New document"), icon: FileText, onclick: () => newPage("doc") },
+      { label: tr("Papan baru", "New board"), icon: Shapes, onclick: () => newPage("board") },
+      { label: tr("Tabel baru", "New table"), icon: Table2, onclick: () => newPage("table") },
+      { label: tr("Catatan melayang baru", "New floating note"), icon: NotepadText, onclick: () => void workspace.sticky.create() },
       { label: "Cari", icon: Search, separator: true, onclick: () => void (searching = true) },
-      { label: "Beranda", icon: Home, onclick: () => goto("/") },
+      { label: tr("Beranda", "Home"), icon: Home, onclick: () => goto("/") },
     ]);
   }
 
+  // Pilih semua hanya bekerja di dalam kolom isian atau dokumen; di tempat lain tidak memilih apa pun,
+  // supaya sidebar dan tampilan aplikasi tidak ikut terblok. Zoom halaman ala browser juga dimatikan.
+  function appKeys(event: KeyboardEvent) {
+    const mod = event.metaKey || event.ctrlKey;
+    if (!mod) return;
+    const k = event.key.toLowerCase();
+    if (k === "a" && !editableOf(event.target as Element | null) && !(event.target as Element | null)?.closest?.(".excalidraw")) event.preventDefault();
+    if (k === "+" || k === "=" || k === "-" || k === "0") event.preventDefault();
+  }
+  const noZoom = (event: WheelEvent) => event.ctrlKey && event.preventDefault();
+  $effect(() => {
+    // Harus tidak pasif supaya preventDefault berlaku.
+    window.addEventListener("wheel", noZoom, { passive: false });
+    return () => window.removeEventListener("wheel", noZoom);
+  });
+
   function onkeydown(event: KeyboardEvent) {
+    appKeys(event);
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
       event.preventDefault();
       searching = !searching;
@@ -169,8 +187,8 @@
   <div class="side" class:open={navOpen}>
     <Sidebar onsearch={() => { navOpen = false; searching = true; }} />
   </div>
-  {#if navOpen}<button class="scrim" aria-label="Tutup menu" onclick={() => (navOpen = false)}></button>{/if}
-  <button class="burger" aria-label="Buka menu" aria-expanded={navOpen} onclick={() => (navOpen = true)}><Menu size={18} /></button>
+  {#if navOpen}<button class="scrim" aria-label={tr("Tutup menu", "Close menu")} onclick={() => (navOpen = false)}></button>{/if}
+  <button class="burger" aria-label={tr("Buka menu", "Open menu")} aria-expanded={navOpen} onclick={() => (navOpen = true)}><Menu size={18} /></button>
   <main>
     {#if ws.error}
       <p class="fail">Penyimpanan tidak bisa dibuka: {ws.error}</p>

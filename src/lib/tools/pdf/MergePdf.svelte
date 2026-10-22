@@ -141,7 +141,7 @@
 		list-style: none;
 		margin: 12px 0 0;
 		padding: 0;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
 		overflow: hidden;

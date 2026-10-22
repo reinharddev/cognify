@@ -1,3 +1,4 @@
+import { tr } from "$lib/i18n.svelte";
 // Usulan dari AI (lewat MCP) yang menunggu persetujuan. Server MCP berjalan di proses lain dan menulis
 // ke database yang sama, jadi daftar ini disegarkan berkala dan saat jendela kembali aktif.
 
@@ -16,7 +17,7 @@ class ProposalStore {
       this.items = await workspace.proposals.list();
       this.error = null;
     } catch (e) {
-      this.error = e instanceof Error ? e.message : "Usulan tidak bisa dimuat.";
+      this.error = e instanceof Error ? e.message : tr("Usulan tidak bisa dimuat.", "Proposals could not be loaded.");
     }
   }
 

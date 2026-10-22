@@ -1,3 +1,4 @@
+import { tr } from "$lib/i18n.svelte";
 // Menu klik kanan untuk kolom teks, editor, dan teks terpilih. Menggantikan menu bawaan webview.
 import { ClipboardPaste, Copy, Scissors, TextSelect } from "@lucide/svelte";
 import type { MenuItem } from "$lib/stores/contextmenu.svelte";
@@ -32,19 +33,19 @@ export function textMenu(field: Field | null, readonly = false): MenuItem[] {
   const items: MenuItem[] = [];
   const back = () => field?.focus({ preventScroll: true });
   if (field && !readonly && !(field instanceof HTMLInputElement && field.readOnly)) {
-    items.push({ label: "Potong", icon: Scissors, onclick: async () => {
+    items.push({ label: tr("Potong", "Cut"), icon: Scissors, onclick: async () => {
       back();
       if (!text) return;
       await writeClipboard(text);
       document.execCommand("delete");
     } });
   }
-  items.push({ label: "Salin", icon: Copy, onclick: async () => {
+  items.push({ label: tr("Salin", "Copy"), icon: Copy, onclick: async () => {
     if (text) await writeClipboard(text);
   } });
   if (field && !readonly) {
     items.push({
-      label: "Tempel",
+      label: tr("Tempel", "Paste"),
       icon: ClipboardPaste,
       onclick: async () => {
         back();
@@ -58,7 +59,7 @@ export function textMenu(field: Field | null, readonly = false): MenuItem[] {
     });
   }
   items.push({
-    label: "Pilih semua",
+    label: tr("Pilih semua", "Select all"),
     icon: TextSelect,
     separator: true,
     onclick: () => {

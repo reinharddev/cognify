@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tr } from "$lib/i18n.svelte";
   import { goto } from "$app/navigation";
   import { FileText, Shapes, Table2 } from "@lucide/svelte";
   import { kindIcon } from "$lib/workspace/kinds";
@@ -8,7 +9,7 @@
   import { dueLabel } from "$lib/link/format";
   import { calendar } from "$lib/stores/calendar.svelte";
   import { plainText as tablePlain, prTemplate, scheduleTemplate, serialize as tableJson, type TableData } from "$lib/table/model";
-  import { blankTemplate, plainTextOf, templates, type Template } from "$lib/workspace/templates";
+  import { blankTemplate, plainTextOf, templateList, type Template } from "$lib/workspace/templates";
 
   async function fromTemplate(t: Template) {
     const page = await ws.create("doc", null, {
@@ -19,10 +20,10 @@
     await goto(`/p/${page.id}`);
   }
 
-  const tableTemplates: { id: string; name: string; hint: string; title: string; make: () => TableData }[] = [
-    { id: "pr-tabel", name: "Tabel PR", hint: "Papan Belum, Dikerjakan, Selesai", title: "Tabel PR", make: prTemplate },
-    { id: "jadwal", name: "Jadwal pelajaran", hint: "Hari, jam, mapel, dan ruang", title: "Jadwal pelajaran", make: scheduleTemplate },
-  ];
+  const tableTemplates = $derived<{ id: string; name: string; hint: string; title: string; make: () => TableData }[]>([
+    { id: "pr-tabel", name: tr("Tabel PR", "Homework table"), hint: tr("Papan Belum, Dikerjakan, Selesai", "Board: To do, In progress, Done"), title: tr("Tabel PR", "Homework table"), make: prTemplate },
+    { id: "jadwal", name: tr("Jadwal pelajaran", "Class schedule"), hint: tr("Hari, jam, mapel, dan ruang", "Day, time, subject, and room"), title: tr("Jadwal pelajaran", "Class schedule"), make: scheduleTemplate },
+  ]);
 
   async function fromTableTemplate(t: (typeof tableTemplates)[number]) {
     const data = t.make();
@@ -32,7 +33,7 @@
 
   async function blank(kind: "doc" | "board" | "table") {
     const page = kind === "doc"
-      ? await ws.create("doc", null, { content: JSON.stringify(blankTemplate.doc) })
+      ? await ws.create("doc", null, { content: JSON.stringify(blankTemplate().doc) })
       : await ws.create(kind);
     await goto(`/p/${page.id}`);
   }
@@ -50,7 +51,7 @@
 
   const greeting = () => {
     const h = new Date().getHours();
-    return h < 11 ? "Selamat pagi" : h < 15 ? "Selamat siang" : h < 18 ? "Selamat sore" : "Selamat malam";
+    return h < 11 ? tr("Selamat pagi", "Good morning") : h < 15 ? tr("Selamat siang", "Good afternoon") : h < 18 ? tr("Selamat sore", "Good evening") : tr("Selamat malam", "Good night");
   };
 </script>
 
@@ -59,45 +60,45 @@
     <h1>{greeting()}</h1>
 
     <section>
-      <h2>Mulai</h2>
+      <h2>{tr("Mulai", "Start")}</h2>
       <div class="starts">
-        <button onclick={() => blank("doc")}><span class="ic k-doc"><FileText size={18} /></span>Dokumen kosong</button>
-        <button onclick={() => blank("board")}><span class="ic k-board"><Shapes size={18} /></span>Papan</button>
-        <button onclick={() => blank("table")}><span class="ic k-table"><Table2 size={18} /></span>Tabel</button>
+        <button onclick={() => blank("doc")}><span class="ic k-doc"><FileText size={18} /></span>{tr("Dokumen kosong", "Blank document")}</button>
+        <button onclick={() => blank("board")}><span class="ic k-board"><Shapes size={18} /></span>{tr("Papan", "Board")}</button>
+        <button onclick={() => blank("table")}><span class="ic k-table"><Table2 size={18} /></span>{tr("Tabel", "Table")}</button>
       </div>
     </section>
 
     {#if todayEvents.length || (nl.connected && openTodos.length)}
       <section>
-        <h2>Hari ini</h2>
+        <h2>{tr("Hari ini", "Today")}</h2>
         <div class="fromnotch">
           {#each todayEvents as o (o.key)}
-            <div><span class="when">{o.allDay ? "Seharian" : clockOf(o.start)}</span>{o.title}</div>
+            <div><span class="when">{o.allDay ? tr("Seharian", "All day") : clockOf(o.start)}</span>{o.title}</div>
           {/each}
           {#if nl.connected}
             {#each openTodos as t (t.id)}
-              <div><span class="when">{t.dueAt ? dueLabel(t.dueAt, nl.now) : "Tugas"}</span>{t.title}</div>
+              <div><span class="when">{t.dueAt ? dueLabel(t.dueAt, nl.now) : tr("Tugas", "Task")}</span>{t.title}</div>
             {/each}
           {/if}
-          <a href="/calendar">Buka kalender</a>
+          <a href="/calendar">{tr("Buka kalender", "Open calendar")}</a>
         </div>
       </section>
     {/if}
     {#if nl.loaded && !nl.connected}
-      <p class="hint">Punya Cognify Notch? <a href="/notch">Hubungkan</a> untuk melihat tugas, catatan cepat, dan agendanya di sini.</p>
+      <p class="hint">{tr("Punya Cognify Notch?", "Have Cognify Notch?")} <a href="/notch">{tr("Hubungkan", "Connect")}</a> {tr("untuk melihat tugas, catatan cepat, dan agendanya di sini.", "to see its tasks, quick notes, and agenda here.")}</p>
     {/if}
 
     <section>
-      <h2>Templat</h2>
+      <h2>{tr("Templat", "Templates")}</h2>
       <div class="grid">
-        {#each templates as t, i (t.id)}
+        {#each templateList() as t, i (t.id)}
           <button class="card" style:--tint="var(--tint-{(i % 6) + 1})" style:--i={i} onclick={() => fromTemplate(t)}>
             <strong>{t.name}</strong>
             <span>{t.hint}</span>
           </button>
         {/each}
         {#each tableTemplates as t, j (t.id)}
-          <button class="card" style:--tint="var(--tint-{((templates.length + j) % 6) + 1})" style:--i={templates.length + j} onclick={() => fromTableTemplate(t)}>
+          <button class="card" style:--tint="var(--tint-{((templateList().length + j) % 6) + 1})" style:--i={templateList().length + j} onclick={() => fromTableTemplate(t)}>
             <strong>{t.name}</strong>
             <span>{t.hint}</span>
           </button>
@@ -107,11 +108,11 @@
 
     {#if ws.recent.length}
       <section>
-        <h2>Terakhir diubah</h2>
+        <h2>{tr("Terakhir diubah", "Recently edited")}</h2>
         <ul class="recent">
           {#each ws.recent as n (n.id)}
             {@const KindIcon = kindIcon(n.kind)}
-            <li><a href="/p/{n.id}"><KindIcon size={15} />{n.title || "Tanpa judul"}</a></li>
+            <li><a href="/p/{n.id}"><KindIcon size={15} />{n.title || tr("Tanpa judul", "Untitled")}</a></li>
           {/each}
         </ul>
       </section>
@@ -125,12 +126,18 @@
     margin: 0 auto;
   }
   h1 {
-    font-size: 1.9em;
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    font-size: 2.3em;
+    line-height: 1.05;
     margin-bottom: var(--space-4);
   }
   h2 {
-    font-size: 0.85em;
-    font-weight: 600;
+    font-size: 0.74em;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
     color: var(--text-muted);
     margin-bottom: var(--space-3);
   }
@@ -151,16 +158,21 @@
     padding: var(--space-4);
     background: var(--tint);
     color: var(--text);
-    border: 1px solid transparent;
+    border: var(--edge-w) solid var(--edge);
     border-radius: var(--radius-lg);
     text-align: left;
     cursor: pointer;
+    transition: transform var(--dur-1), box-shadow var(--dur-1);
     animation: rise var(--dur-3) var(--ease-out) backwards;
     animation-delay: calc(240ms + var(--i, 0) * 50ms);
   }
   .card:hover {
-    border-color: var(--accent-strong);
-    transform: translateY(-3px);
+    transform: translate(-2px, -2px);
+    box-shadow: var(--lift-lg);
+  }
+  .card:active {
+    transform: none;
+    box-shadow: none;
   }
   .card span {
     color: var(--text-muted);
@@ -177,9 +189,11 @@
     gap: 8px;
     padding: 8px 14px;
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: var(--edge-w) solid var(--edge);
     border-radius: 99px;
+    font-weight: 600;
     cursor: pointer;
+    transition: transform var(--dur-1), box-shadow var(--dur-1);
   }
   .ic {
     display: inline-flex;
@@ -194,7 +208,12 @@
     color: var(--kind-table);
   }
   .starts button:hover {
-    border-color: var(--accent-strong);
+    transform: translate(var(--hop), var(--hop));
+    box-shadow: var(--lift);
+  }
+  .starts button:active {
+    transform: none;
+    box-shadow: none;
   }
   .grid {
     display: grid;
@@ -207,8 +226,9 @@
     gap: 6px;
     padding: var(--space-4);
     background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
+    border: var(--edge-w) solid var(--edge);
+    border-radius: 14px;
+    box-shadow: var(--lift);
   }
   .when {
     display: inline-block;

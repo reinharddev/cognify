@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tr } from "$lib/i18n.svelte";
   // Pemilih jam buatan sendiri (nilai "HH:MM", 24 jam), pengganti <input type="time">.
   import { tick } from "svelte";
   import { Clock } from "@lucide/svelte";
@@ -53,18 +54,18 @@
 
 {#if open}
   <div class="scrim" role="presentation" onpointerdown={() => (open = false)} oncontextmenu={(e) => { e.preventDefault(); open = false; }}></div>
-  <div class="pop" bind:this={pop} role="dialog" aria-label="Pilih jam" style:left="{pos.left}px" style:top="{pos.top}px" {onkeydown} tabindex="-1">
-    <div class="col" role="listbox" aria-label="Jam">
+  <div class="pop" bind:this={pop} role="dialog" aria-label={tr("Pilih jam", "Pick a time")} style:left="{pos.left}px" style:top="{pos.top}px" {onkeydown} tabindex="-1">
+    <div class="col" role="listbox" aria-label={tr("Jam", "Hour")}>
       {#each hours as h (h)}
         <button type="button" role="option" aria-selected={parts?.h === h} class:on={parts?.h === h} onclick={() => set(h, parts?.m ?? 0)}>{two(h)}</button>
       {/each}
     </div>
-    <div class="col" role="listbox" aria-label="Menit">
+    <div class="col" role="listbox" aria-label={tr("Menit", "Minute")}>
       {#each minutes as m (m)}
         <button type="button" role="option" aria-selected={parts?.m === m} class:on={parts?.m === m} onclick={() => set(parts?.h ?? 9, m)}>{two(m)}</button>
       {/each}
     </div>
-    <button type="button" class="done" onclick={close}>Selesai</button>
+    <button type="button" class="done" onclick={close}>{tr("Selesai", "Done")}</button>
   </div>
 {/if}
 

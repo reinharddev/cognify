@@ -255,7 +255,7 @@
 		gap: 10px;
 		margin: 0;
 		padding: 12px 14px;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
 	}
@@ -290,7 +290,7 @@
 
 	input:not([type]) {
 		padding: 7px 10px;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: 8px;
 		background: var(--surface);
 		color: var(--text);
@@ -306,7 +306,7 @@
 	.num {
 		width: 64px;
 		padding: 6px 8px;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: 8px;
 		background: var(--surface);
 		color: var(--text);
@@ -315,7 +315,7 @@
 
 	.chip {
 		padding: 3px 10px;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: 999px;
 		background: var(--surface-2);
 		font: 12.5px ui-monospace, Menlo, monospace;
@@ -356,7 +356,7 @@
 		padding: 0;
 		max-height: 340px;
 		overflow-y: auto;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
 	}

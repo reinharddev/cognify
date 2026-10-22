@@ -195,7 +195,7 @@
 	.seg {
 		display: inline-flex;
 		align-self: flex-start;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: 8px;
 		overflow: hidden;
 		background: var(--surface);
@@ -234,7 +234,7 @@
 	input:not([type]),
 	textarea {
 		padding: 8px 10px;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: 8px;
 		background: var(--surface);
 		color: var(--text);
@@ -289,7 +289,7 @@
 		place-items: center;
 		aspect-ratio: 1;
 		padding: 12px;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
 		overflow: hidden;

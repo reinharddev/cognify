@@ -23,7 +23,7 @@
 	.tabs {
 		display: inline-flex;
 		margin-bottom: 18px;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: 8px;
 		overflow: hidden;
 		background: var(--surface);

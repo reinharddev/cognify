@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tr } from "$lib/i18n.svelte";
   import { goto } from "$app/navigation";
   import { Check, Sparkles, X } from "@lucide/svelte";
   import { proposals } from "$lib/stores/proposals.svelte";
@@ -7,7 +8,7 @@
   let busy = $state<string | null>(null);
   let error = $state<string | null>(null);
 
-  const parentTitle = (id: string | null) => (id ? (ws.nodes.find((n) => n.id === id)?.title || "Tanpa judul") : null);
+  const parentTitle = (id: string | null) => (id ? (ws.nodes.find((n) => n.id === id)?.title || tr("Tanpa judul", "Untitled")) : null);
 
   async function approve(id: string) {
     busy = id;
@@ -17,7 +18,7 @@
       await ws.refresh();
       await goto(`/p/${page.id}`);
     } catch (e) {
-      error = e instanceof Error ? e.message : "Usulan tidak bisa disetujui.";
+      error = e instanceof Error ? e.message : tr("Usulan tidak bisa disetujui.", "The proposal could not be approved.");
     } finally {
       busy = null;
     }
@@ -29,7 +30,7 @@
     try {
       await proposals.reject(id);
     } catch (e) {
-      error = e instanceof Error ? e.message : "Usulan tidak bisa ditolak.";
+      error = e instanceof Error ? e.message : tr("Usulan tidak bisa ditolak.", "The proposal could not be rejected.");
     } finally {
       busy = null;
     }
@@ -37,13 +38,13 @@
 </script>
 
 <div class="wrap">
-  <h1>Usulan</h1>
-  <p class="hint">AI yang terhubung lewat MCP hanya bisa mengusulkan. Halaman baru dibuat setelah kamu menyetujuinya di sini.</p>
+  <h1>{tr("Usulan", "Proposals")}</h1>
+  <p class="hint">{tr("AI yang terhubung lewat MCP hanya bisa mengusulkan. Halaman baru dibuat setelah kamu menyetujuinya di sini.", "An AI connected through MCP can only propose. A new page is created after you approve it here.")}</p>
 
   {#if error}<p class="err" role="alert">{error}</p>{/if}
 
   {#if proposals.items.length === 0}
-    <div class="empty"><Sparkles size={22} /><p>Belum ada usulan. Saat AI mengusulkan halaman atas permintaanmu, usulannya muncul di sini.</p></div>
+    <div class="empty"><Sparkles size={22} /><p>{tr("Belum ada usulan. Saat AI mengusulkan halaman atas permintaanmu, usulannya muncul di sini.", "No proposals yet. When an AI proposes a page at your request, it shows up here.")}</p></div>
   {:else}
     <ul>
       {#each proposals.items as p (p.id)}
@@ -54,8 +55,8 @@
           </div>
           <pre>{p.body || "(tanpa isi)"}</pre>
           <div class="actions">
-            <button class="primary" disabled={busy === p.id} onclick={() => approve(p.id)}><Check size={15} /> Setujui dan buat halaman</button>
-            <button disabled={busy === p.id} onclick={() => reject(p.id)}><X size={15} /> Tolak</button>
+            <button class="primary" disabled={busy === p.id} onclick={() => approve(p.id)}><Check size={15} /> {tr("Setujui dan buat halaman", "Approve and create page")}</button>
+            <button disabled={busy === p.id} onclick={() => reject(p.id)}><X size={15} /> {tr("Tolak", "Reject")}</button>
           </div>
         </li>
       {/each}

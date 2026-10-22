@@ -14,6 +14,8 @@ export interface PageChange {
 }
 
 const EVENT = "page-synced";
+// Di luar Tauri (pratinjau browser) antartab memakai BroadcastChannel.
+const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("cognify-page-sync") : null;
 const SOURCE = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Math.random());
 
 /** Kirim perubahan ke jendela lain, digabung dan ditahan ≈120 ms supaya mengetik cepat tidak membanjiri. */
@@ -24,7 +26,8 @@ export function createBroadcaster(pageId: () => string) {
     timer = undefined;
     const out = acc;
     acc = {};
-    if (!isTauri() || (out.content === undefined && out.title === undefined)) return;
+    if (out.content === undefined && out.title === undefined) return;
+    if (!isTauri()) return void channel?.postMessage({ id: pageId(), ...out, from: SOURCE } satisfies PageChange);
     void emit(EVENT, { id: pageId(), ...out, from: SOURCE } satisfies PageChange).catch(() => undefined);
   };
   return {
@@ -42,7 +45,12 @@ export function createBroadcaster(pageId: () => string) {
 
 /** Dengarkan perubahan dari jendela lain; mengembalikan fungsi untuk berhenti. */
 export function onRemoteChange(handler: (change: PageChange) => void): () => void {
-  if (!isTauri()) return () => undefined;
+  if (!isTauri()) {
+    if (!channel) return () => undefined;
+    const on = (e: MessageEvent<PageChange>) => e.data.from !== SOURCE && handler(e.data);
+    channel.addEventListener("message", on);
+    return () => channel.removeEventListener("message", on);
+  }
   const off = listen<PageChange>(EVENT, (e) => {
     if (e.payload.from !== SOURCE) handler(e.payload);
   });

@@ -1,10 +1,12 @@
 <script lang="ts">
+  import { tr } from "$lib/i18n.svelte";
   import { isTauri } from "@tauri-apps/api/core";
   import { openUrl } from "@tauri-apps/plugin-opener";
   import { ChevronLeft, ChevronRight, Plus, Video } from "@lucide/svelte";
+  import AgendaList from "$lib/components/AgendaList.svelte";
   import CalendarSources from "$lib/components/CalendarSources.svelte";
   import EventForm from "$lib/components/EventForm.svelte";
-  import { MONTHS, addDays, clock, longDate, monthGrid, sameDay, startOfDay, weekdayLabels } from "$lib/calendar/dates";
+  import { monthName, addDays, clock, longDate, monthGrid, sameDay, startOfDay, weekdayLabels } from "$lib/calendar/dates";
   import { prefs } from "$lib/stores/prefs.svelte";
   import type { CalEvent, Occurrence } from "$lib/calendar/types";
   import { calendar } from "$lib/stores/calendar.svelte";
@@ -13,7 +15,29 @@
   let year = $state(new Date().getFullYear());
   let month = $state(new Date().getMonth());
   let selected = $state(today);
-  let form = $state<{ event: CalEvent | null; day: number } | null>(null);
+  let form = $state<{ event: CalEvent | null; day: number; endDay?: number } | null>(null);
+  // Seret di kalender atau Shift+klik untuk memilih beberapa hari sekaligus.
+  let anchor = $state<number | null>(null);
+  let hover = $state<number | null>(null);
+  const span = $derived(anchor !== null && hover !== null ? [Math.min(anchor, hover), Math.max(anchor, hover)] : null);
+  const inSpan = (ms: number) => !!span && span[0] !== span[1] && ms >= span[0] && ms <= span[1];
+
+  function press(e: PointerEvent, ms: number) {
+    if (e.button !== 0) return;
+    if (e.shiftKey && selected !== ms) {
+      form = { event: null, day: Math.min(selected, ms), endDay: Math.max(selected, ms) };
+      return;
+    }
+    anchor = hover = ms;
+  }
+
+  function release() {
+    if (anchor !== null && span && span[0] !== span[1]) {
+      selected = span[0];
+      form = { event: null, day: span[0], endDay: span[1] };
+    }
+    anchor = hover = null;
+  }
 
   const grid = $derived(monthGrid(year, month, prefs.value.weekStart));
   const range = $derived({ from: grid[0].ms, to: addDays(grid[41].ms, 1) - 1 });
@@ -56,15 +80,17 @@
   }
 </script>
 
+<svelte:window onpointerup={release} onpointercancel={() => (anchor = hover = null)} />
+
 <div class="cal">
   <header>
-    <h1>{MONTHS[month]} {year}</h1>
+    <h1>{monthName(month)} {year}</h1>
     <div class="nav">
-      <button aria-label="Bulan sebelumnya" onclick={() => shift(-1)}><ChevronLeft size={16} /></button>
-      <button onclick={goToday}>Hari ini</button>
-      <button aria-label="Bulan berikutnya" onclick={() => shift(1)}><ChevronRight size={16} /></button>
+      <button aria-label={tr("Bulan sebelumnya", "Previous month")} onclick={() => shift(-1)}><ChevronLeft size={16} /></button>
+      <button onclick={goToday}>{tr("Hari ini", "Today")}</button>
+      <button aria-label={tr("Bulan berikutnya", "Next month")} onclick={() => shift(1)}><ChevronRight size={16} /></button>
     </div>
-    <button class="primary" onclick={() => (form = { event: null, day: selected })}><Plus size={15} /> Acara baru</button>
+    <button class="primary" onclick={() => (form = { event: null, day: selected })}><Plus size={15} /> {tr("Acara baru", "New event")}</button>
   </header>
 
   {#if calendar.error}<p class="err">{calendar.error}</p>{/if}
@@ -78,6 +104,9 @@
         class:out={!cell.inMonth}
         class:today={cell.ms === today}
         class:sel={sameDay(cell.ms, selected)}
+        class:range={inSpan(cell.ms)}
+        onpointerdown={(e) => press(e, cell.ms)}
+        onpointerenter={() => anchor !== null && (hover = cell.ms)}
         onclick={() => (selected = cell.ms)}
         ondblclick={() => (form = { event: null, day: cell.ms })}
         aria-label="{longDate(cell.ms)}, {list.length} acara"
@@ -94,27 +123,17 @@
   <section class="day">
     <h2>{longDate(selected)}</h2>
     {#if !dayList.length}
-      <p class="muted">Tidak ada acara. <button class="link" onclick={() => (form = { event: null, day: selected })}>Tambah acara</button></p>
+      <p class="muted">{tr("Tidak ada acara.", "No events.")} <button class="link" onclick={() => (form = { event: null, day: selected })}>{tr("Tambah acara", "Add event")}</button></p>
     {/if}
-    <ul>
-      {#each dayList as o (o.key)}
-        <li style:--c={colorOf(o)}>
-          <i></i>
-          <span class="time">{o.allDay ? "Seharian" : clock(o.start) + (o.end ? ` sampai ${clock(o.end)}` : "")}</span>
-          <span class="t">{o.title}{#if o.calendar}<small>{o.calendar}</small>{/if}</span>
-          {#if o.meeting}<button class="link" onclick={() => join(o.meeting!)}><Video size={14} /> Gabung</button>{/if}
-          {#if o.eventId}<button class="link" onclick={() => edit(o)}>Ubah</button>{/if}
-        </li>
-      {/each}
-    </ul>
+    <AgendaList items={dayList} onedit={edit} onjoin={join} />
   </section>
 
   <CalendarSources />
 </div>
 
 {#if form}
-  {#key `${form.event?.id ?? "baru"}:${form.day}`}
-    <EventForm event={form.event} day={form.day} onclose={() => (form = null)} />
+  {#key `${form.event?.id ?? "baru"}:${form.day}:${form.endDay ?? ""}`}
+    <EventForm event={form.event} day={form.day} endDay={form.endDay} onclose={() => (form = null)} />
   {/key}
 {/if}
 
@@ -130,7 +149,9 @@
     margin-bottom: var(--space-4);
   }
   h1 {
-    font-size: 1.7em;
+    font-family: var(--font-display);
+    font-size: 1.9em;
+    letter-spacing: -0.02em;
     flex: 1;
   }
   .nav {
@@ -144,16 +165,24 @@
     gap: 6px;
     padding: 6px 12px;
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: var(--edge-w) solid var(--edge);
     border-radius: var(--radius-sm);
+    box-shadow: var(--lift);
     cursor: pointer;
+    transition: transform var(--dur-1), box-shadow var(--dur-1);
   }
-  .nav button:hover {
-    border-color: var(--accent-strong);
+  .nav button:hover,
+  .primary:hover {
+    transform: translate(var(--hop), var(--hop));
+    box-shadow: var(--lift-lg);
+  }
+  .nav button:active,
+  .primary:active {
+    transform: translate(var(--press), var(--press));
+    box-shadow: none;
   }
   .primary {
     background: var(--accent);
-    border-color: var(--accent-strong);
     color: var(--accent-contrast);
     font-weight: 600;
   }
@@ -171,13 +200,20 @@
     grid-template-columns: repeat(7, 1fr);
     padding: 0 2px 6px;
     color: var(--text-muted);
-    font-size: 0.85em;
+    font-size: 0.78em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
   }
   .grid {
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
-    border-top: 1px solid var(--border);
-    border-left: 1px solid var(--border);
+    border: var(--edge-w) solid var(--edge);
+    border-right: none;
+    border-bottom: none;
+    border-radius: var(--radius-sm);
+    box-shadow: var(--lift-lg);
+    overflow: hidden;
   }
   .cell {
     display: flex;
@@ -201,22 +237,31 @@
     background: var(--surface-2);
     color: var(--text-muted);
   }
+  .cell.range {
+    background: var(--accent-soft);
+    box-shadow: inset 0 0 0 var(--edge-w) var(--edge);
+  }
+  .cell {
+    user-select: none;
+  }
   .cell.sel {
-    outline: 2px solid var(--accent-strong);
-    outline-offset: -2px;
+    background: var(--accent-soft);
+    box-shadow: inset 0 0 0 var(--edge-w) var(--edge);
   }
   .num {
     align-self: flex-start;
     min-width: 1.7em;
     padding: 1px 4px;
+    border: var(--edge-w) solid transparent;
     border-radius: 99px;
     font-size: 0.9em;
     text-align: center;
   }
   .today .num {
     background: var(--accent);
+    border-color: var(--edge);
     color: var(--accent-contrast);
-    font-weight: 600;
+    font-weight: 700;
   }
   .chip {
     display: flex;
@@ -227,8 +272,7 @@
     white-space: nowrap;
     text-overflow: ellipsis;
   }
-  .chip i,
-  li i {
+  .chip i {
     width: 7px;
     height: 7px;
     border-radius: 50%;
@@ -243,34 +287,9 @@
     margin-top: var(--space-6);
   }
   .day h2 {
-    font-size: 1.05em;
+    font-family: var(--font-display);
+    font-size: 1.25em;
     margin-bottom: var(--space-2);
-  }
-  ul {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-  li {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    padding: 7px 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .time {
-    width: 9.5em;
-    flex: none;
-    color: var(--text-muted);
-    font-variant-numeric: tabular-nums;
-  }
-  .t {
-    flex: 1;
-    min-width: 0;
-  }
-  small {
-    display: block;
-    color: var(--text-muted);
   }
   .link {
     display: inline-flex;

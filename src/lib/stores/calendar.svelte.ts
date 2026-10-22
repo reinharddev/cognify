@@ -1,3 +1,4 @@
+import { tr } from "$lib/i18n.svelte";
 // Kalender untuk seluruh UI: acara Cognify, langganan ICS, dan agenda dari Notch (baca saja),
 // digabung menjadi kemunculan di sebuah rentang waktu.
 
@@ -27,7 +28,7 @@ class CalendarStore {
       [this.events, this.sources] = await Promise.all([calendarApi.events.list(), calendarApi.sources.list()]);
       this.error = null;
     } catch (e) {
-      this.error = e instanceof Error ? e.message : "Kalender tidak bisa dimuat.";
+      this.error = e instanceof Error ? e.message : tr("Kalender tidak bisa dimuat.", "The calendar could not be loaded.");
     } finally {
       this.loaded = true;
     }
@@ -48,7 +49,7 @@ class CalendarStore {
     try {
       this.#replaceSource(await calendarApi.sources.refresh(id));
     } catch (e) {
-      this.error = e instanceof Error ? e.message : "Kalender tidak bisa diperbarui.";
+      this.error = e instanceof Error ? e.message : tr("Kalender tidak bisa diperbarui.", "The calendar could not be updated.");
     } finally {
       this.refreshing = false;
     }

@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { tr } from "$lib/i18n.svelte";
   import { onMount } from "svelte";
+  import { goto } from "$app/navigation";
   import { Editor } from "@tiptap/core";
   import { isTauri } from "@tauri-apps/api/core";
   import { openUrl } from "@tauri-apps/plugin-opener";
@@ -14,15 +16,24 @@
   import Superscript from "@tiptap/extension-superscript";
   import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
   import {
-    AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, Code, Heading1, Heading2, Heading3, Highlighter, IndentDecrease,
-    IndentIncrease, Italic, Link as LinkIcon, List, ListChecks, ListOrdered, Minus, Quote, Redo2, RemoveFormatting,
+    AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, Code, SquareCode, Heading1, Heading2, Heading3, Highlighter, IndentDecrease,
+    IndentIncrease, CalendarDays, Shapes, Italic, Link as LinkIcon, Link2, StickyNote, Unlink, List, ListChecks, ListOrdered, Minus, Quote, Redo2, RemoveFormatting,
     Strikethrough, Subscript as SubIcon, Superscript as SupIcon, Table as TableIcon, Underline as UnderlineIcon, Undo2,
   } from "@lucide/svelte";
+  import { BlockMove } from "$lib/editor/blockMove";
+  import { NoteLink } from "$lib/editor/noteLink";
+  import { BoardBlockNode } from "$lib/editor/boardBlock.svelte";
+  import { CalendarBlockNode } from "$lib/editor/calendarBlock.svelte";
+  import { PageLink, refreshPageLinks } from "$lib/editor/pageLink";
+  import { ws } from "$lib/stores/workspace.svelte";
+  import { contextMenu } from "$lib/stores/contextmenu.svelte";
+  import { editableOf, textMenu } from "$lib/ui/textmenu";
+  import { kindIcon } from "$lib/workspace/kinds";
   import Select from "$lib/ui/Select.svelte";
   import ColorPicker from "$lib/ui/ColorPicker.svelte";
   import { dialog } from "$lib/stores/dialog.svelte";
 
-  let { content, onchange, spellcheck = true, toolbar = true }: { content: string; onchange: (json: string, plain: string) => void; spellcheck?: boolean; toolbar?: boolean } = $props();
+  let { content, onchange, spellcheck = true, toolbar = true, pageId = "", locked = false, noteLinks = null }: { content: string; onchange: (json: string, plain: string) => void; spellcheck?: boolean; toolbar?: boolean; pageId?: string; locked?: boolean; noteLinks?: { notes: { id: string; label: string }[]; create: () => string } | null } = $props();
 
   let element: HTMLDivElement;
   let editor = $state.raw<Editor>();
@@ -31,25 +42,89 @@
 
   // Menu "/": ketik "/" di awal baris atau setelah spasi untuk menyisipkan blok.
   type SlashItem = { label: string; hint: string; keys: string; icon: typeof Bold; run: (c: ReturnType<Editor["chain"]>) => ReturnType<Editor["chain"]> };
-  const SLASH: SlashItem[] = [
-    { label: "Judul besar", hint: "Judul bagian utama", keys: "judul heading h1 besar", icon: Heading1, run: (c) => c.toggleHeading({ level: 1 }) },
-    { label: "Judul", hint: "Judul bagian", keys: "judul heading h2", icon: Heading2, run: (c) => c.toggleHeading({ level: 2 }) },
-    { label: "Sub judul", hint: "Judul kecil", keys: "sub judul heading h3", icon: Heading3, run: (c) => c.toggleHeading({ level: 3 }) },
-    { label: "Daftar poin", hint: "Daftar dengan titik", keys: "daftar poin bullet list", icon: List, run: (c) => c.toggleBulletList() },
-    { label: "Daftar bernomor", hint: "Daftar 1, 2, 3", keys: "daftar nomor numbered urut", icon: ListOrdered, run: (c) => c.toggleOrderedList() },
-    { label: "Daftar centang", hint: "Tugas yang bisa dicentang", keys: "centang tugas todo task checklist", icon: ListChecks, run: (c) => c.toggleTaskList() },
-    { label: "Kutipan", hint: "Teks kutipan", keys: "kutipan quote", icon: Quote, run: (c) => c.toggleBlockquote() },
-    { label: "Blok kode", hint: "Kode berhuruf tetap", keys: "kode code blok", icon: Code, run: (c) => c.toggleCodeBlock() },
-    { label: "Garis pemisah", hint: "Garis mendatar", keys: "garis pemisah divider hr", icon: Minus, run: (c) => c.setHorizontalRule() },
-    { label: "Tabel", hint: "Tabel 3 × 3", keys: "tabel table kolom baris", icon: TableIcon, run: (c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }) },
-  ];
+  const SLASH = $derived<SlashItem[]>([
+    { label: tr("Judul besar", "Large heading"), hint: tr("Judul bagian utama", "Main section heading"), keys: "judul heading h1 besar title heading h1 large", icon: Heading1, run: (c) => c.toggleHeading({ level: 1 }) },
+    { label: tr("Judul", "Heading"), hint: tr("Judul bagian", "Section heading"), keys: "judul heading h2 title heading h2", icon: Heading2, run: (c) => c.toggleHeading({ level: 2 }) },
+    { label: tr("Sub judul", "Subheading"), hint: tr("Judul kecil", "Small heading"), keys: "sub judul heading h3 subtitle heading h3", icon: Heading3, run: (c) => c.toggleHeading({ level: 3 }) },
+    { label: tr("Daftar poin", "Bullet list"), hint: tr("Daftar dengan titik", "List with dots"), keys: "daftar poin bullet list bullet list points", icon: List, run: (c) => c.toggleBulletList() },
+    { label: tr("Daftar bernomor", "Numbered list"), hint: tr("Daftar 1, 2, 3", "List 1, 2, 3"), keys: "daftar nomor numbered urut numbered list order", icon: ListOrdered, run: (c) => c.toggleOrderedList() },
+    { label: tr("Daftar centang", "Task list"), hint: tr("Tugas yang bisa dicentang", "Tasks you can check off"), keys: "centang tugas todo task checklist check task todo checklist", icon: ListChecks, run: (c) => c.toggleTaskList() },
+    { label: tr("Kutipan", "Quote"), hint: tr("Teks kutipan", "Quoted text"), keys: "kutipan quote quote blockquote", icon: Quote, run: (c) => c.toggleBlockquote() },
+    { label: tr("Kotak kode", "Code block"), hint: tr("Beberapa baris kode dalam satu kotak", "Several lines of code in one box"), keys: "kode code kotak blok code block", icon: SquareCode, run: (c) => c.toggleCodeBlock() },
+    { label: tr("Garis pemisah", "Divider"), hint: tr("Garis mendatar", "Horizontal line"), keys: "garis pemisah divider hr divider line hr", icon: Minus, run: (c) => c.setHorizontalRule() },
+    { label: tr("Tautan ke halaman", "Link to page"), hint: tr("Hubungkan ke dokumen, papan, atau tabel lain", "Connect to another document, board, or table"), keys: "tautan link halaman wiki dokumen link page wiki document", icon: Link2, run: (c) => c.insertContent("[[") },
+    { label: tr("Kalender", "Calendar"), hint: tr("Acara untuk rentang waktu pilihanmu", "Events for a time range you choose"), keys: "kalender calendar agenda acara jadwal calendar agenda event schedule", icon: CalendarDays, run: (c) => c.insertContent({ type: "calendarBlock", attrs: { range: "week" } }) },
+    { label: tr("Papan", "Board"), hint: tr("Tampilkan gambar dari papan (hanya baca)", "Show the drawing from a board (read only)"), keys: "papan board gambar whiteboard board whiteboard drawing", icon: Shapes, run: (c) => c.insertContent({ type: "boardBlock", attrs: { pageId: "" } }) },
+    { label: tr("Tabel", "Table"), hint: tr("Tabel 3 × 3", "3 × 3 table"), keys: "tabel table kolom baris table column row", icon: TableIcon, run: (c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }) },
+  ]);
   let slash = $state<{ from: number; to: number; query: string; x: number; y: number } | null>(null);
   let slashIndex = $state(0);
   const slashItems = $derived(
     slash ? SLASH.filter((i) => `${i.label} ${i.keys}`.toLowerCase().includes(slash!.query.toLowerCase())) : [],
   );
 
+  // Menu "[[": cari halaman lalu sisipkan tautan; judul yang belum ada bisa langsung dibuat.
+  type WikiItem = { id: string | null; label: string; kind: string };
+  let wiki = $state<{ from: number; to: number; query: string; x: number; y: number } | null>(null);
+  let wikiIndex = $state(0);
+  const wikiItems = $derived.by<WikiItem[]>(() => {
+    if (!wiki) return [];
+    const q = wiki.query.trim().toLowerCase();
+    const hits = ws.nodes
+      .filter((n) => n.id !== pageId && (n.title || tr("Tanpa judul", "Untitled")).toLowerCase().includes(q))
+      .slice(0, 8)
+      .map((n) => ({ id: n.id, label: n.title || tr("Tanpa judul", "Untitled"), kind: n.kind }));
+    const exact = ws.nodes.some((n) => n.title.trim().toLowerCase() === q);
+    return q && !exact ? [...hits, { id: null, label: wiki.query.trim(), kind: "new" }] : hits;
+  });
+
+  function updateWiki(e: Editor): boolean {
+    const { selection } = e.state;
+    const res = selection.$from;
+    if (!selection.empty || !res.parent.isTextblock || res.parent.type.name === "codeBlock") return false;
+    const before = res.parent.textBetween(0, res.parentOffset, undefined, "\ufffc");
+    const m = /\[\[([^\]\[]*)$/.exec(before);
+    if (!m) return false;
+    const to = selection.from;
+    const at = e.view.coordsAtPos(to);
+    if (!wiki || wiki.query !== m[1]) wikiIndex = 0;
+    wiki = { from: to - m[1].length - 2, to, query: m[1], x: at.left, y: at.bottom + 6 };
+    return true;
+  }
+
+  async function runWiki(item: WikiItem) {
+    if (!editor || !wiki) return;
+    const { from, to } = wiki;
+    wiki = null;
+    let id = item.id;
+    if (!id) id = (await ws.create("doc", null, { title: item.label })).id;
+    editor.chain().focus().deleteRange({ from, to }).insertContent([{ type: "pageLink", attrs: { id, title: item.label } }, { type: "text", text: " " }]).run();
+  }
+
+  function wikiKey(event: KeyboardEvent): boolean {
+    if (!wiki || !wikiItems.length) return false;
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      const n = wikiItems.length;
+      wikiIndex = (wikiIndex + (event.key === "ArrowDown" ? 1 : n - 1)) % n;
+      return true;
+    }
+    if (event.key === "Enter" || event.key === "Tab") {
+      void runWiki(wikiItems[Math.min(wikiIndex, wikiItems.length - 1)]);
+      return true;
+    }
+    if (event.key === "Escape") {
+      wiki = null;
+      return true;
+    }
+    return false;
+  }
+
   function updateSlash(e: Editor) {
+    if (updateWiki(e)) {
+      slash = null;
+      return;
+    }
+    wiki = null;
     const { selection } = e.state;
     const res = selection.$from;
     if (!selection.empty || !res.parent.isTextblock || res.parent.type.name === "codeBlock") {
@@ -94,7 +169,7 @@
     return false;
   }
 
-  const editorProps = () => ({ attributes: { spellcheck: String(spellcheck) }, handleKeyDown: (_view: unknown, event: KeyboardEvent) => slashKey(event) });
+  const editorProps = () => ({ attributes: { spellcheck: String(spellcheck) }, handleKeyDown: (_view: unknown, event: KeyboardEvent) => wikiKey(event) || slashKey(event) });
 
   function parse(raw: string): object | string {
     if (!raw.trim()) return "";
@@ -110,6 +185,11 @@
       element,
       extensions: [
         StarterKit,
+        BlockMove.configure({ locked: () => locked }),
+        NoteLink,
+        CalendarBlockNode,
+        BoardBlockNode,
+        PageLink.configure({ open: (id) => void goto(`/p/${id}`) }),
         TextStyleKit,
         Highlight.configure({ multicolor: true }),
         TextAlign.configure({ types: ["heading", "paragraph"] }),
@@ -121,7 +201,7 @@
         TableCell,
         TaskList,
         TaskItem.configure({ nested: true }),
-        Placeholder.configure({ placeholder: "Tulis sesuatu di sini…" }),
+        Placeholder.configure({ placeholder: tr("Tulis sesuatu di sini…", "Write something here…") }),
       ],
       content: parse(content),
       editorProps: editorProps(),
@@ -129,7 +209,10 @@
         tick++;
         updateSlash(e);
       },
-      onBlur: () => (slash = null),
+      onBlur: () => {
+        slash = null;
+        wiki = null;
+      },
       onUpdate: ({ editor: e }) => onchange(JSON.stringify(e.getJSON()), e.getText({ blockSeparator: "\n" })),
     });
     editor = instance;
@@ -139,6 +222,12 @@
   $effect(() => {
     void spellcheck;
     editor?.setOptions({ editorProps: editorProps() });
+  });
+
+  // Judul halaman diganti atau halaman dibuang: chip tautan ikut diperbarui.
+  $effect(() => {
+    void ws.nodes;
+    refreshPageLinks();
   });
 
   const active = (name: string, attrs?: Record<string, unknown>) => {
@@ -175,28 +264,28 @@
     const cur = (editor?.getAttributes("paragraph").textAlign ?? editor?.getAttributes("heading").textAlign ?? "left") as string;
     return cur === a;
   };
-  const BLOCKS = [
-    { value: "p", label: "Paragraf" },
-    { value: "h1", label: "Judul 1" },
-    { value: "h2", label: "Judul 2" },
-    { value: "h3", label: "Judul 3" },
-  ];
-  const FONTS = [
-    { value: "", label: "Bawaan" },
+  const BLOCKS = $derived([
+    { value: "p", label: tr("Paragraf", "Paragraph") },
+    { value: "h1", label: tr("Judul 1", "Heading 1") },
+    { value: "h2", label: tr("Judul 2", "Heading 2") },
+    { value: "h3", label: tr("Judul 3", "Heading 3") },
+  ]);
+  const FONTS = $derived([
+    { value: "", label: tr("Bawaan", "Default") },
     { value: "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif", label: "Sans" },
     { value: "ui-serif, Georgia, 'Times New Roman', serif", label: "Serif" },
     { value: "ui-monospace, 'SF Mono', Menlo, Consolas, monospace", label: "Mono" },
-    { value: "'Comic Sans MS', 'Chalkboard SE', cursive", label: "Santai" },
-  ];
-  const SIZES = ["", "10px", "12px", "14px", "16px", "18px", "20px", "24px", "28px", "32px", "40px"].map((v) => ({ value: v, label: v ? v.replace("px", "") : "Ukuran" }));
-  const LINES = [
-    { value: "", label: "Jarak baris" },
+    { value: "'Comic Sans MS', 'Chalkboard SE', cursive", label: tr("Santai", "Casual") },
+  ]);
+  const SIZES = $derived(["", "10px", "12px", "14px", "16px", "18px", "20px", "24px", "28px", "32px", "40px"].map((v) => ({ value: v, label: v ? v.replace("px", "") : tr("Ukuran", "Size") })));
+  const LINES = $derived([
+    { value: "", label: tr("Jarak baris", "Line spacing") },
     { value: "1", label: "1,0" },
     { value: "1.15", label: "1,15" },
     { value: "1.5", label: "1,5" },
     { value: "2", label: "2,0" },
     { value: "2.5", label: "2,5" },
-  ];
+  ]);
   function setBlock(v: string) {
     if (v === "p") run((c) => c.setParagraph());
     else run((c) => c.setHeading({ level: Number(v[1]) as 1 | 2 | 3 }));
@@ -211,7 +300,7 @@
     if (!editor) return;
     const prev = (editor.getAttributes("link").href as string | undefined) ?? "";
     const { from, to } = editor.state.selection;
-    const input = await dialog.prompt("Alamat tautan (kosongkan untuk melepas):", prev || "https://", { okLabel: "Pasang" });
+    const input = await dialog.prompt(tr("Alamat tautan (kosongkan untuk melepas):", "Link address (leave empty to remove):"), prev || "https://", { okLabel: tr("Pasang", "Apply") });
     if (input === null) return;
     const href = input.trim();
     const chain = editor.chain().focus();
@@ -219,6 +308,70 @@
     const full = /^(https?:|mailto:)/i.test(href) ? href : `https://${href}`;
     if (from === to && !editor.isActive("link")) chain.insertContent({ type: "text", text: full, marks: [{ type: "link", attrs: { href: full } }] }).run();
     else chain.extendMarkRange("link").setLink({ href: full }).run();
+  }
+
+  /** Sisipkan blok sebagai blok tersendiri di bawah paragraf atau butir yang sedang dipakai. */
+  function insertBlock(type: string, attrs: Record<string, unknown>) {
+    if (!editor) return;
+    const sel = editor.state.selection;
+    const pos = sel.$to.depth >= 1 ? sel.$to.after(1) : sel.to;
+    editor.chain().focus().insertContentAt(pos, { type, attrs }).run();
+  }
+
+  /** Pilih seluruh tabel tempat kursor berada (untuk dihapus, atau diberi tanda pilihan). */
+  function selectTable() {
+    if (!editor) return;
+    const from = editor.state.selection.$from;
+    for (let d = from.depth; d > 0; d--) {
+      if (from.node(d).type.name === "table") return void editor.chain().focus().setNodeSelection(from.before(d)).run();
+    }
+  }
+
+  const randomArrow = () => Math.floor(Math.random() * 10);
+
+  /** Sorot teks terpilih dan hubungkan ke catatan melayang (panah digambar oleh halaman). */
+  function linkToNote(noteId: string) {
+    if (!editor) return;
+    editor.chain().focus().setMark("noteLink", { noteId, linkId: crypto.randomUUID(), arrow: randomArrow() }).run();
+  }
+
+  /** Lepas semua hubungan ke satu catatan (dipanggil saat catatannya dihapus). */
+  export function unlinkNote(noteId: string) {
+    if (!editor) return;
+    const type = editor.schema.marks.noteLink;
+    const tr = editor.state.tr;
+    editor.state.doc.descendants((node, pos) => {
+      if (node.marks.some((m) => m.type === type && m.attrs.noteId === noteId)) tr.removeMark(pos, pos + node.nodeSize, type);
+    });
+    if (tr.docChanged || tr.steps.length) editor.view.dispatch(tr);
+  }
+
+  function onContext(event: MouseEvent) {
+    if (!noteLinks || !editor) return;
+    const field = editableOf(event.target as Element | null);
+    const link = (event.target as Element | null)?.closest("[data-note-link]");
+    const { empty } = editor.state.selection;
+    if (link && empty) {
+      const hit = editor.view.posAtCoords({ left: event.clientX, top: event.clientY });
+      contextMenu.show(event, [
+        ...textMenu(field),
+        {
+          label: tr("Lepas hubungan ke catatan", "Unlink from note"),
+          icon: Unlink,
+          separator: true,
+          onclick: () => {
+            if (hit) editor!.chain().focus().setTextSelection(hit.pos).extendMarkRange("noteLink").unsetMark("noteLink").run();
+          },
+        },
+      ]);
+      return;
+    }
+    if (empty) return;
+    contextMenu.show(event, [
+      ...textMenu(field),
+      ...noteLinks.notes.map((n, i) => ({ label: tr(`Hubungkan ke ${n.label}`, `Link to ${n.label}`), icon: StickyNote, separator: i === 0, onclick: () => linkToNote(n.id) })),
+      { label: tr("Hubungkan ke catatan baru", "Link to new note"), icon: StickyNote, separator: noteLinks.notes.length === 0, onclick: () => linkToNote(noteLinks!.create()) },
+    ]);
   }
 
   function indent(by: 1 | -1) {
@@ -240,60 +393,78 @@
 
 {#if toolbar}
 <div class="bar" role="toolbar" aria-label="Format teks">
-  <button title="Urungkan (⌘Z)" aria-label="Urungkan" onclick={() => run((c) => c.undo())}><Undo2 size={16} /></button>
-  <button title="Ulangi (⇧⌘Z)" aria-label="Ulangi" onclick={() => run((c) => c.redo())}><Redo2 size={16} /></button>
-  <button title="Hapus format" aria-label="Hapus format" onclick={() => run((c) => c.unsetAllMarks().clearNodes().unsetTextAlign())}><RemoveFormatting size={16} /></button>
-  <span class="sep"></span>
-  <div class="dd w-block"><Select class="tb-sel" value={blockStyle} options={BLOCKS} label="Gaya paragraf" onchange={setBlock} /></div>
-  <div class="dd w-font"><Select class="tb-sel" value={attr("textStyle", "fontFamily")} options={FONTS} label="Jenis huruf" onchange={setFont} /></div>
-  <div class="dd w-size"><Select class="tb-sel" value={attr("textStyle", "fontSize")} options={SIZES} label="Ukuran huruf" onchange={setSize} /></div>
-  <span class="sep"></span>
-  <button class:on={active("bold")} title="Tebal (⌘B)" aria-label="Tebal" onclick={() => run((c) => c.toggleBold())}><Bold size={16} /></button>
-  <button class:on={active("italic")} title="Miring (⌘I)" aria-label="Miring" onclick={() => run((c) => c.toggleItalic())}><Italic size={16} /></button>
-  <button class:on={active("underline")} title="Garis bawah (⌘U)" aria-label="Garis bawah" onclick={() => run((c) => c.toggleUnderline())}><UnderlineIcon size={16} /></button>
-  <button class:on={active("strike")} title="Coret" aria-label="Coret" onclick={() => run((c) => c.toggleStrike())}><Strikethrough size={16} /></button>
-  <button class:on={active("subscript")} title="Subskrip" aria-label="Subskrip" onclick={() => run((c) => c.toggleSubscript())}><SubIcon size={16} /></button>
-  <button class:on={active("superscript")} title="Superskrip" aria-label="Superskrip" onclick={() => run((c) => c.toggleSuperscript())}><SupIcon size={16} /></button>
-  <button class:on={active("code")} title="Kode sebaris" aria-label="Kode sebaris" onclick={() => run((c) => c.toggleCode())}><Code size={16} /></button>
-  <ColorPicker
-    class="tb-ico"
-    label="Warna teks"
-    value={attr("textStyle", "color") || "#7e6cf0"}
-    onchange={(v) => run((c) => c.setColor(v))}
-    onclear={() => run((c) => c.unsetColor())}
-  >
-    <span class="aa" style:--c={attr("textStyle", "color") || "var(--text-muted)"}>A</span>
-  </ColorPicker>
-  <ColorPicker
-    class="tb-ico"
-    label="Warna sorot"
-    value={attr("highlight", "color") || "#ffe066"}
-    onchange={(v) => run((c) => c.setHighlight({ color: v }))}
-    onclear={() => run((c) => c.unsetHighlight())}
-  >
-    <Highlighter size={16} />
-  </ColorPicker>
-  <span class="sep"></span>
-  <button class:on={active("link")} title="Tautan" aria-label="Tautan" onclick={setLink}><LinkIcon size={16} /></button>
-  <button class:on={aligned("left")} title="Rata kiri" aria-label="Rata kiri" onclick={() => run((c) => c.setTextAlign("left"))}><AlignLeft size={16} /></button>
-  <button class:on={aligned("center")} title="Rata tengah" aria-label="Rata tengah" onclick={() => run((c) => c.setTextAlign("center"))}><AlignCenter size={16} /></button>
-  <button class:on={aligned("right")} title="Rata kanan" aria-label="Rata kanan" onclick={() => run((c) => c.setTextAlign("right"))}><AlignRight size={16} /></button>
-  <button class:on={aligned("justify")} title="Rata kiri-kanan" aria-label="Rata kiri-kanan" onclick={() => run((c) => c.setTextAlign("justify"))}><AlignJustify size={16} /></button>
-  <div class="dd w-line"><Select class="tb-sel" value={attr("textStyle", "lineHeight")} options={LINES} label="Jarak baris" onchange={setLine} /></div>
-  <span class="sep"></span>
-  <button class:on={active("bulletList")} title="Daftar poin" aria-label="Daftar poin" onclick={() => run((c) => c.toggleBulletList())}><List size={16} /></button>
-  <button class:on={active("orderedList")} title="Daftar bernomor" aria-label="Daftar bernomor" onclick={() => run((c) => c.toggleOrderedList())}><ListOrdered size={16} /></button>
-  <button class:on={active("taskList")} title="Daftar centang" aria-label="Daftar centang" onclick={() => run((c) => c.toggleTaskList())}><ListChecks size={16} /></button>
-  <button disabled={!canList} title="Kurangi lekukan" aria-label="Kurangi lekukan" onclick={() => indent(-1)}><IndentDecrease size={16} /></button>
-  <button disabled={!canList} title="Tambah lekukan" aria-label="Tambah lekukan" onclick={() => indent(1)}><IndentIncrease size={16} /></button>
-  <span class="sep"></span>
-  <button class:on={active("blockquote")} title="Kutipan" aria-label="Kutipan" onclick={() => run((c) => c.toggleBlockquote())}><Quote size={16} /></button>
-  <button class:on={active("codeBlock")} title="Blok kode" aria-label="Blok kode" onclick={() => run((c) => c.toggleCodeBlock())}><Code size={16} /></button>
-  <button title="Tabel" aria-label="Sisipkan tabel" onclick={() => run((c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }))}><TableIcon size={16} /></button>
-  <button title="Garis pemisah" aria-label="Garis pemisah" onclick={() => run((c) => c.setHorizontalRule())}><Minus size={16} /></button>
+  <div class="row">
+    <div class="grp">
+      <button title={tr("Urungkan (⌘Z)", "Undo (⌘Z)")} aria-label={tr("Urungkan", "Undo")} onclick={() => run((c) => c.undo())}><Undo2 size={16} /></button>
+      <button title={tr("Ulangi (⇧⌘Z)", "Redo (⇧⌘Z)")} aria-label={tr("Ulangi", "Redo")} onclick={() => run((c) => c.redo())}><Redo2 size={16} /></button>
+      <button title={tr("Hapus format", "Clear formatting")} aria-label={tr("Hapus format", "Clear formatting")} onclick={() => run((c) => c.unsetAllMarks().clearNodes().unsetTextAlign())}><RemoveFormatting size={16} /></button>
+    </div>
+    <div class="grp">
+      <div class="dd w-block"><Select class="tb-sel" value={blockStyle} options={BLOCKS} label={tr("Gaya paragraf", "Paragraph style")} onchange={setBlock} /></div>
+      <div class="dd w-font"><Select class="tb-sel" value={attr("textStyle", "fontFamily")} options={FONTS} label={tr("Jenis huruf", "Font")} onchange={setFont} /></div>
+      <div class="dd w-size"><Select class="tb-sel" value={attr("textStyle", "fontSize")} options={SIZES} label={tr("Ukuran huruf", "Font size")} onchange={setSize} /></div>
+    </div>
+    <div class="grp">
+      <button class:on={active("bold")} title={tr("Tebal (⌘B)", "Bold (⌘B)")} aria-label={tr("Tebal", "Bold")} onclick={() => run((c) => c.toggleBold())}><Bold size={16} /></button>
+      <button class:on={active("italic")} title={tr("Miring (⌘I)", "Italic (⌘I)")} aria-label={tr("Miring", "Italic")} onclick={() => run((c) => c.toggleItalic())}><Italic size={16} /></button>
+      <button class:on={active("underline")} title={tr("Garis bawah (⌘U)", "Underline (⌘U)")} aria-label={tr("Garis bawah", "Underline")} onclick={() => run((c) => c.toggleUnderline())}><UnderlineIcon size={16} /></button>
+      <button class:on={active("strike")} title={tr("Coret", "Strikethrough")} aria-label={tr("Coret", "Strikethrough")} onclick={() => run((c) => c.toggleStrike())}><Strikethrough size={16} /></button>
+      <button class:on={active("subscript")} title={tr("Subskrip", "Subscript")} aria-label={tr("Subskrip", "Subscript")} onclick={() => run((c) => c.toggleSubscript())}><SubIcon size={16} /></button>
+      <button class:on={active("superscript")} title={tr("Superskrip", "Superscript")} aria-label={tr("Superskrip", "Superscript")} onclick={() => run((c) => c.toggleSuperscript())}><SupIcon size={16} /></button>
+      <button class:on={active("code")} title={tr("Huruf kode (dalam kalimat)", "Inline code (within a sentence)")} aria-label={tr("Huruf kode", "Inline code")} onclick={() => run((c) => c.toggleCode())}><Code size={16} /></button>
+    </div>
+    <div class="grp">
+        <ColorPicker
+          class="tb-ico"
+          label={tr("Warna teks", "Text color")}
+          value={attr("textStyle", "color") || "#7e6cf0"}
+          onchange={(v) => run((c) => c.setColor(v))}
+          onclear={() => run((c) => c.unsetColor())}
+        >
+          <span class="aa" style:--c={attr("textStyle", "color") || "var(--text-muted)"}>A</span>
+        </ColorPicker>
+        <ColorPicker
+          class="tb-ico"
+          label={tr("Warna sorot", "Highlight color")}
+          value={attr("highlight", "color") || "#ffe066"}
+          onchange={(v) => run((c) => c.setHighlight({ color: v }))}
+          onclear={() => run((c) => c.unsetHighlight())}
+        >
+          <Highlighter size={16} />
+        </ColorPicker>
+    </div>
+  </div>
+  <div class="row">
+    <div class="grp">
+      <button class:on={aligned("left")} title={tr("Rata kiri", "Align left")} aria-label={tr("Rata kiri", "Align left")} onclick={() => run((c) => c.setTextAlign("left"))}><AlignLeft size={16} /></button>
+      <button class:on={aligned("center")} title={tr("Rata tengah", "Align center")} aria-label={tr("Rata tengah", "Align center")} onclick={() => run((c) => c.setTextAlign("center"))}><AlignCenter size={16} /></button>
+      <button class:on={aligned("right")} title={tr("Rata kanan", "Align right")} aria-label={tr("Rata kanan", "Align right")} onclick={() => run((c) => c.setTextAlign("right"))}><AlignRight size={16} /></button>
+      <button class:on={aligned("justify")} title={tr("Rata kiri-kanan", "Justify")} aria-label={tr("Rata kiri-kanan", "Justify")} onclick={() => run((c) => c.setTextAlign("justify"))}><AlignJustify size={16} /></button>
+      <div class="dd w-line"><Select class="tb-sel" value={attr("textStyle", "lineHeight")} options={LINES} label="Jarak baris" onchange={setLine} /></div>
+    </div>
+    <div class="grp">
+      <button class:on={active("bulletList")} title={tr("Daftar poin", "Bullet list")} aria-label={tr("Daftar poin", "Bullet list")} onclick={() => run((c) => c.toggleBulletList())}><List size={16} /></button>
+      <button class:on={active("orderedList")} title={tr("Daftar bernomor", "Numbered list")} aria-label={tr("Daftar bernomor", "Numbered list")} onclick={() => run((c) => c.toggleOrderedList())}><ListOrdered size={16} /></button>
+      <button class:on={active("taskList")} title={tr("Daftar centang", "Task list")} aria-label={tr("Daftar centang", "Task list")} onclick={() => run((c) => c.toggleTaskList())}><ListChecks size={16} /></button>
+      <button disabled={!canList} title={tr("Kurangi lekukan", "Decrease indent")} aria-label={tr("Kurangi lekukan", "Decrease indent")} onclick={() => indent(-1)}><IndentDecrease size={16} /></button>
+      <button disabled={!canList} title={tr("Tambah lekukan", "Increase indent")} aria-label={tr("Tambah lekukan", "Increase indent")} onclick={() => indent(1)}><IndentIncrease size={16} /></button>
+    </div>
+    <div class="grp">
+      <button class:on={active("link")} title={tr("Tautan", "Link")} aria-label={tr("Tautan", "Link")} onclick={setLink}><LinkIcon size={16} /></button>
+      <button title={tr("Tautan ke halaman", "Link to page")} aria-label={tr("Tautan ke halaman", "Link to page")} onclick={() => run((c) => c.insertContent("[["))}><Link2 size={16} /></button>
+      <button title={tr("Sisipkan kalender", "Insert calendar")} aria-label={tr("Sisipkan kalender", "Insert calendar")} onclick={() => insertBlock("calendarBlock", { range: "week" })}><CalendarDays size={16} /></button>
+      <button title={tr("Sisipkan papan", "Insert board")} aria-label={tr("Sisipkan papan", "Insert board")} onclick={() => insertBlock("boardBlock", { pageId: "" })}><Shapes size={16} /></button>
+      <button title={tr("Tabel", "Table")} aria-label={tr("Sisipkan tabel", "Insert table")} onclick={() => run((c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }))}><TableIcon size={16} /></button>
+      <button class:on={active("blockquote")} title={tr("Kutipan", "Quote")} aria-label={tr("Kutipan", "Quote")} onclick={() => run((c) => c.toggleBlockquote())}><Quote size={16} /></button>
+      <button class:on={active("codeBlock")} title={tr("Kotak kode (beberapa baris)", "Code block (multiple lines)")} aria-label={tr("Kotak kode", "Code block")} onclick={() => run((c) => c.toggleCodeBlock())}><SquareCode size={16} /></button>
+      <button title={tr("Garis pemisah", "Divider")} aria-label={tr("Garis pemisah", "Divider")} onclick={() => run((c) => c.setHorizontalRule())}><Minus size={16} /></button>
+    </div>
+  </div>
 </div>
 {#if inTable}
-  <div class="bar tbl" role="toolbar" aria-label="Tabel">
+  <div class="bar tbl" role="toolbar" aria-label={tr("Tabel", "Table")}>
+    <button class="txt" onclick={selectTable}>Pilih tabel</button>
+    <span class="sep"></span>
     <button class="txt" onclick={() => run((c) => c.addRowBefore())}>Baris di atas</button>
     <button class="txt" onclick={() => run((c) => c.addRowAfter())}>Baris di bawah</button>
     <button class="txt" onclick={() => run((c) => c.addColumnBefore())}>Kolom di kiri</button>
@@ -309,7 +480,18 @@
 
 <!-- Tautan di dalam catatan dibuka di browser (bukan di jendela app). -->
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-<div class="doc" bind:this={element} onclickcapture={openLink}></div>
+<div class="doc" bind:this={element} onclickcapture={openLink} oncontextmenu={onContext}></div>
+
+{#if wiki && wikiItems.length}
+  <div class="slash" role="listbox" aria-label="Tautkan ke halaman" style:left="{wiki.x}px" style:top="{wiki.y}px">
+    {#each wikiItems as item, i (item.id ?? "new")}
+      {@const Icon = kindIcon(item.kind === "new" ? "doc" : item.kind)}
+      <button role="option" aria-selected={i === wikiIndex} class:on={i === wikiIndex} onmousedown={(e) => e.preventDefault()} onmouseenter={() => (wikiIndex = i)} onclick={() => runWiki(item)}>
+        <span class="ic"><Icon size={16} /></span><span><b>{item.id ? item.label : `Buat «${item.label}»`}</b>{#if !item.id}<small>Dokumen baru, langsung ditautkan</small>{/if}</span>
+      </button>
+    {/each}
+  </div>
+{/if}
 
 {#if slash && slashItems.length}
   <div class="slash" role="listbox" aria-label="Sisipkan blok" style:left="{slash.x}px" style:top="{slash.y}px">
@@ -323,37 +505,54 @@
 {/if}
 
 <style>
+  /* Bilah alat: satu kartu dengan dua baris, tiap baris berisi kelompok-kelompok kecil. */
   .bar {
+    position: sticky;
+    top: 8px;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    margin-bottom: var(--space-4);
+    background: var(--surface);
+    border: var(--edge-w) solid var(--edge);
+    border-radius: var(--radius);
+    box-shadow: var(--lift);
+  }
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  .grp {
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 2px;
-    padding: 4px 0 var(--space-3);
-    margin-bottom: var(--space-3);
-    border-bottom: 1px solid var(--border);
-    position: sticky;
-    top: 0;
-    z-index: 5;
-    background: var(--bg);
+    gap: 1px;
+    padding: 2px;
+    background: var(--surface-2);
+    border-radius: 10px;
   }
   button {
     display: grid;
     place-items: center;
-    width: 2em;
-    height: 2em;
+    width: 30px;
+    height: 30px;
     padding: 0;
-    border: none;
+    border: var(--edge-w) solid transparent;
     background: none;
-    border-radius: 6px;
+    border-radius: 8px;
     color: var(--text-muted);
     cursor: pointer;
   }
   button:hover {
-    background: var(--surface-2);
+    background: var(--surface);
     color: var(--text);
   }
   button.on {
     background: var(--accent);
+    border-color: var(--edge);
     color: var(--accent-contrast);
   }
   button:disabled {
@@ -370,16 +569,25 @@
   }
   .bar.tbl {
     position: static;
-    padding-top: 0;
-    margin-top: calc(-1 * var(--space-3));
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 8px;
+    margin-top: calc(-1 * var(--space-2));
+    box-shadow: none;
+    background: var(--surface-2);
+  }
+  .bar.tbl button.txt:hover {
+    background: var(--surface);
   }
   .dd {
     flex: none;
   }
-  .dd.w-block { width: 104px; }
-  .dd.w-font { width: 92px; }
-  .dd.w-size { width: 82px; }
-  .dd.w-line { width: 112px; }
+  .dd.w-block { width: 112px; }
+  .dd.w-font { width: 96px; }
+  .dd.w-size { width: 84px; }
+  .dd.w-line { width: 118px; }
   .dd :global(.tb-sel) {
     padding: 3px 8px;
     font-size: 0.88em;
@@ -387,11 +595,11 @@
     border-color: transparent;
   }
   .dd :global(.tb-sel:hover:not(:disabled)) {
-    background: var(--surface-2);
+    background: var(--surface);
   }
   .bar :global(.tb-ico) {
-    width: 2em;
-    height: 2em;
+    width: 30px;
+    height: 30px;
     padding: 0;
     justify-content: center;
     border-color: transparent;
@@ -399,7 +607,7 @@
     color: var(--text-muted);
   }
   .bar :global(.tb-ico:hover:not(:disabled)) {
-    background: var(--surface-2);
+    background: var(--surface);
     color: var(--text);
   }
   .aa {
@@ -414,6 +622,84 @@
     margin: 0 4px;
     background: var(--border);
   }
+
+  .doc {
+    position: relative;
+  }
+  /* Pegangan pindah blok di sisi kiri, dan garis tempat blok akan jatuh. */
+  .doc :global(.block-handle) {
+    position: absolute;
+    z-index: 4;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    place-items: center;
+    border: none;
+    border-radius: 6px;
+    background: none;
+    color: var(--text-muted);
+    cursor: grab;
+    touch-action: none;
+  }
+  .doc :global(.block-handle:hover),
+  .doc :global(.block-handle.on) {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+  .doc :global(.block-drop) {
+    position: absolute;
+    z-index: 4;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--accent-strong);
+    pointer-events: none;
+  }
+  /* Elemen yang sedang dipilih (blok kalender, tabel, chip tautan): garis putus-putus di pinggirnya. */
+  .doc :global(.ProseMirror-selectednode[data-calendar-block]),
+  .doc :global(.ProseMirror-selectednode[data-board-block]) {
+    cursor: grab;
+  }
+  .doc :global(.ProseMirror-selectednode),
+  .doc :global(.tiptap .tableWrapper.selected),
+  .doc :global(.tiptap table:has(.selectedCell)) {
+    outline: 2px dashed var(--edge);
+    outline-offset: 4px;
+    border-radius: var(--radius-sm);
+  }
+  .doc :global(.tiptap .selectedCell::after) {
+    background: color-mix(in srgb, var(--accent) 28%, transparent);
+  }
+  .doc :global(.note-link) {
+    background: color-mix(in srgb, var(--accent) 45%, transparent);
+    border-radius: 3px;
+    padding: 1px 0;
+  }
+  .doc :global(.page-link) {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 8px;
+    margin: 0 1px;
+    border: var(--edge-w) solid var(--edge);
+    border-radius: 99px;
+    background: var(--accent-soft);
+    font-size: 0.92em;
+    font-weight: 600;
+    line-height: 1.6;
+    cursor: pointer;
+    vertical-align: baseline;
+  }
+  .doc :global(.page-link[data-kind="board"]) { background: var(--tint-2); }
+  .doc :global(.page-link[data-kind="table"]) { background: var(--tint-3); }
+  .doc :global(.page-link[data-kind="folder"]) { background: var(--tint-4); }
+  .doc :global(.page-link.gone) {
+    background: var(--surface-2);
+    color: var(--text-muted);
+    border-style: dashed;
+    cursor: default;
+  }
+  .doc :global(.page-link:hover:not(.gone)) { box-shadow: var(--lift); }
+  .doc :global(.ProseMirror-selectednode.page-link) { box-shadow: var(--lift); }
 
   /* Isi dokumen (elemen dibuat Tiptap, jadi aturannya global di bawah .doc). */
   .doc :global(.tiptap) {
@@ -474,8 +760,16 @@
   }
   .doc :global(.tiptap ul[data-type="taskList"] li > label) {
     flex: none;
-    margin-top: 0.42em;
     display: flex;
+    align-items: center;
+    height: 1lh;
+  }
+  .doc :global(.tiptap ul[data-type="taskList"] li > label input) {
+    border: var(--edge-w) solid var(--edge);
+  }
+  .doc :global(.tiptap ul[data-type="taskList"] li[data-checked="true"] > label input) {
+    background: var(--kind-table);
+    border-color: var(--edge);
   }
   .doc :global(.tiptap ul[data-type="taskList"] li > div > p),
   .doc :global(.tiptap li > p) {

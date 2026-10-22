@@ -24,7 +24,7 @@ describe("color", () => {
   });
 });
 
-describe.each(["light", "dark"] as const)("palet turunan, tema %s", (mode) => {
+describe.each(["light"] as const)("palet turunan, tema %s", (mode) => {
   for (const hue of HUES) {
     for (const sat of SATS) {
       it(`rona ${hue}, saturasi ${sat}`, () => {
@@ -60,18 +60,14 @@ describe("pilihan palet", () => {
   });
   it("warna kustom yang rusak diabaikan", () => {
     expect(paletteSource({ kind: "custom", hex: "merah" })).toBeNull();
-    expect(overrides({ kind: "custom", hex: "#12" }, "dark")).toEqual({});
+    expect(overrides({ kind: "custom", hex: "#12" }, "light")).toEqual({});
   });
   it("warna kustom diubah jadi rona dan saturasi", () => {
     const s = paletteSource({ kind: "custom", hex: "#ff0000" })!;
     expect(s.hue).toBe(0);
     expect(s.sat).toBeCloseTo(1, 1);
   });
-  it("latar terang tetap pastel dan latar gelap tetap gelap lembut", () => {
-    for (const hue of HUES) {
-      expect(contrast(derive(hue, 1, "light").bg, "#ffffff")).toBeLessThan(1.1);
-      const d = derive(hue, 1, "dark").bg;
-      expect(contrast(d, "#000000")).toBeGreaterThan(1.1);
-    }
+  it("latar tetap pastel (hampir putih)", () => {
+    for (const hue of HUES) expect(contrast(derive(hue, 1, "light").bg, "#ffffff")).toBeLessThan(1.1);
   });
 });

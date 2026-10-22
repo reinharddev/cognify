@@ -139,7 +139,7 @@
 		gap: 12px;
 		margin-top: 16px;
 		padding: 10px 14px;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
 	}
@@ -194,7 +194,7 @@
 	input {
 		width: min(480px, 100%);
 		padding: 8px 12px;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: 8px;
 		background: var(--surface);
 		color: var(--text);
@@ -205,7 +205,7 @@
 
 	.seg {
 		display: inline-flex;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: 8px;
 		overflow: hidden;
 		background: var(--surface);
@@ -251,7 +251,7 @@
 		list-style: none;
 		margin: 0;
 		padding: 0;
-		border: 1px solid var(--border);
+		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
 		overflow: hidden;

@@ -1,3 +1,10 @@
+@font-face {
+  font-family: "Bricolage";
+  src: url("/fonts/bricolage.woff2") format("woff2");
+  font-weight: 500 800;
+  font-display: swap;
+}
+
 /*
  * Sistem warna Cognify: pastel yang tenang, datar (tanpa gradasi), dan konsisten.
  * Komponen hanya memakai var(--…); jangan menulis warna langsung. Aturan lengkapnya di docs/DESIGN.md,
@@ -13,65 +20,65 @@
  */
 :root {
   /* Permukaan */
-  --bg: #fbf8ff;
-  --surface: #ffffff;
-  --surface-2: #f4effd;
-  --border: #e7dff6;
-  --border-strong: #d4c8ec;
+  --bg: #f4efe6;
+  --surface: #fffdf8;
+  --surface-2: #ece6da;
+  --border: #e0d8c7;
+  --border-strong: #c7bda8;
 
   /* Teks */
-  --text: #2b2745;
-  --text-muted: #6a6486;
-  --link: #5340c8;
+  --text: #141414;
+  --text-muted: #55524c;
+  --link: #4a3fb5;
 
-  /* Aksen lavender: isian pastel, dan yang lebih tegas untuk garis fokus */
-  --accent: #c8bdff;
-  --accent-hover: #bdb2fc;
-  --accent-contrast: #2b2745;
-  --accent-strong: #6b58e0;
-  --accent-soft: #eae4ff;
+  /* Aksen lavender: isian datar seperti di situs, dan yang lebih tegas untuk garis fokus */
+  --accent: #9d96ff;
+  --accent-hover: #aaa4ff;
+  --accent-contrast: #141414;
+  --accent-strong: #5b52e0;
+  --accent-soft: #e4dfff;
 
   /* Status */
-  --ok: #287554;
-  --ok-soft: #d9f3e6;
+  --ok: #1f6b49;
+  --ok-soft: #cdeedc;
   --warn: #94590a;
-  --warn-soft: #ffefc7;
+  --warn-soft: #ffe7a8;
   --danger: #b0305a;
-  --danger-soft: #ffe0e8;
-  --info: #1f6c94;
-  --info-soft: #d8eefa;
+  --danger-soft: #ffd6cc;
+  --info: #1b6590;
+  --info-soft: #cde6fa;
 
   /* Jenis halaman */
   --kind-doc: #7e6cf0;
   --kind-doc-soft: #eae4ff;
-  --kind-board: #e26336;
+  --kind-board: #d4552a;
   --kind-board-soft: #ffe6dc;
-  --kind-table: #39986c;
+  --kind-table: #2f8a60;
   --kind-folder: #9a6b2e;
   --kind-folder-soft: #f6ead5;
   --kind-table-soft: #d9f3e6;
-  --kind-calendar: #b27f19;
+  --kind-calendar: #a67510;
   --kind-calendar-soft: #fff1c9;
-  --kind-notch: #3592be;
+  --kind-notch: #328ab4;
   --kind-notch-soft: #d8eefa;
 
   /* Latar lembut berganti-ganti untuk kartu yang perlu terasa ceria (templat, pintasan). Teks di atasnya var(--text). */
-  --tint-1: #eae4ff;
-  --tint-2: #ffe6dc;
-  --tint-3: #d9f3e6;
-  --tint-4: #fff1c9;
-  --tint-5: #d8eefa;
-  --tint-6: #ffe0e8;
+  --tint-1: #c9c4ff;
+  --tint-2: #ffc9b5;
+  --tint-3: #b8ecd0;
+  --tint-4: #ffe08a;
+  --tint-5: #a9d8ff;
+  --tint-6: #ffc4d8;
 
   /* Warna kategori (penanda acara, tag). Semuanya terbaca di atas --bg. */
   --cat-0: #7e6cf0;
-  --cat-1: #3592be;
-  --cat-2: #b27f19;
-  --cat-3: #dd5b92;
-  --cat-4: #39986c;
-  --cat-5: #a26cf0;
-  --cat-6: #e26336;
-  --cat-7: #3d9793;
+  --cat-1: #328ab4;
+  --cat-2: #ab7a18;
+  --cat-3: #db508b;
+  --cat-4: #379268;
+  --cat-5: #9c63ef;
+  --cat-6: #df5524;
+  --cat-7: #398e8a;
 
   /* Nama lama yang masih dipakai alat bawaan */
   --text-dim: var(--text-muted);
@@ -90,6 +97,15 @@
   --sidebar-w: 236px;
 
   /* "ui-rounded" (SF Rounded) tersedia di macOS; lainnya memakai font sistem. */
+  /* Sentuhan "soft": garis tinta lembut dan bayangan bergeser kecil. Dihitung dari teks dan latar,
+     jadi otomatis ikut tema terang, gelap, dan palet kustom. */
+  --edge: color-mix(in srgb, var(--text) 72%, var(--bg));
+  --edge-w: 1.5px;
+  --lift: 2px 2px 0 color-mix(in srgb, var(--text) 78%, var(--bg));
+  --lift-lg: 3px 3px 0 color-mix(in srgb, var(--text) 78%, var(--bg));
+  --hop: -1px;
+  --press: 2px;
+  --font-display: "Bricolage", ui-rounded, "SF Pro Rounded", "Segoe UI Variable", system-ui, sans-serif;
   --font: ui-rounded, "SF Pro Rounded", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --fs: 15px;
@@ -107,65 +123,6 @@
   --dur-3: 0.45s;
 
   color-scheme: light;
-}
-
-:root[data-theme="dark"] {
-  /* Tema gelap dipasang lewat atribut data-theme (skrip di app.html dan src/lib/stores/prefs.svelte.ts). */
-  color-scheme: dark;
-
-  --bg: #1c1930;
-  --surface: #252240;
-  --surface-2: #211e38;
-  --border: #3a3560;
-  --border-strong: #4d4780;
-
-  --text: #f0ecff;
-  --text-muted: #aaa4cc;
-  --link: #c9bfff;
-
-  --accent: #bdb1ff;
-  --accent-hover: #cfc6ff;
-  --accent-contrast: #1c1930;
-  --accent-strong: #a99bff;
-  --accent-soft: #34305f;
-
-  --ok: #7fddae;
-  --ok-soft: #1f3d35;
-  --warn: #f3c56a;
-  --warn-soft: #3f3417;
-  --danger: #ff9db8;
-  --danger-soft: #4a2433;
-  --info: #8ad0f0;
-  --info-soft: #1e3a4c;
-
-  --kind-doc: #a99bff;
-  --kind-doc-soft: #34305f;
-  --kind-board: #ff9c7b;
-  --kind-board-soft: #4a2f2f;
-  --kind-table: #6fd3a4;
-  --kind-folder: #e0b673;
-  --kind-folder-soft: #3d3020;
-  --kind-table-soft: #1f3d35;
-  --kind-calendar: #f3c56a;
-  --kind-calendar-soft: #3f3417;
-  --kind-notch: #7cc6ea;
-  --kind-notch-soft: #1e3a4c;
-
-  --tint-1: #34305f;
-  --tint-2: #4a2f2f;
-  --tint-3: #1f3d35;
-  --tint-4: #3f3417;
-  --tint-5: #1e3a4c;
-  --tint-6: #4a2433;
-
-  --cat-0: #a99bff;
-  --cat-1: #7cc6ea;
-  --cat-2: #f3c56a;
-  --cat-3: #ff9db8;
-  --cat-4: #6fd3a4;
-  --cat-5: #c9a6ff;
-  --cat-6: #ff9c7b;
-  --cat-7: #7fe0db;
 }
 
 *,
@@ -353,9 +310,10 @@ a:focus-visible {
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--border);
+  border: var(--edge-w) solid var(--edge);
   border-radius: var(--radius-sm);
   background: var(--surface);
+  box-shadow: var(--lift);
   color: var(--text);
   text-decoration: none; /* <a class="btn"> tampil sama dengan tombol */
   cursor: pointer;
@@ -366,16 +324,16 @@ a:focus-visible {
   cursor: not-allowed;
 }
 
-.btn-primary {
+.btn-primary,
+.btn.primary {
   background: var(--accent);
-  border-color: var(--accent);
   color: var(--accent-contrast);
   font-weight: 600;
 }
 
-.btn-primary:hover:not(:disabled) {
+.btn-primary:hover:not(:disabled),
+.btn.primary:hover:not(:disabled) {
   background: var(--accent-hover);
-  border-color: var(--accent-hover);
 }
 
 .btn-danger {
@@ -384,7 +342,8 @@ a:focus-visible {
 
 .card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--edge-w) solid var(--edge);
+  box-shadow: var(--lift);
   border-radius: var(--radius-lg);
   padding: var(--space-4);
 }
@@ -464,7 +423,7 @@ button:active:not(:disabled),
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    box-shadow: 0 10px 24px -10px rgb(0 0 0 / 0.45);
+    box-shadow: var(--lift-lg);
     opacity: 0;
     transition: opacity var(--dur-2) ease;
     pointer-events: none;
@@ -487,7 +446,8 @@ button:active:not(:disabled),
 
   /* Tombol dan ikon: sedikit terangkat, ikon bergoyang pelan. */
   .btn:hover:not(:disabled) {
-    transform: translateY(-1px);
+    transform: translate(var(--hop), var(--hop));
+    box-shadow: var(--lift-lg);
   }
   .btn svg,
   .starts button svg,
@@ -722,4 +682,55 @@ html.sticky-mode,
 html.sticky-mode body {
   background: transparent !important;
   overflow: hidden;
+}
+
+/* Gaya "normal": tanpa garis tinta tebal, bayangan bergeser, dan huruf judul khusus. */
+:root[data-style="normal"] {
+  --edge: var(--border-strong);
+  --edge-w: 1px;
+  --lift: 0 0 0 0 transparent;
+  --lift-lg: 0 0 0 0 transparent;
+  --hop: 0px;
+  --press: 0px;
+  --font-display: var(--font);
+}
+
+/* Terasa seperti aplikasi, bukan situs web: tampilan aplikasi tidak bisa diblok atau diseret. Teks hanya
+ * bisa dipilih di isi (dokumen, kolom isian, tabel) dan di bagian yang sengaja diberi .selectable. */
+html,
+body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  overscroll-behavior: none;
+  cursor: default;
+}
+input,
+textarea,
+[contenteditable="true"],
+.tiptap,
+.tiptap *,
+.selectable,
+.selectable * {
+  -webkit-user-select: text;
+  user-select: text;
+}
+button,
+a,
+img,
+svg {
+  -webkit-user-drag: none;
+}
+a,
+button,
+[role="button"],
+select,
+summary,
+label:has(input[type="checkbox"], input[type="radio"]) {
+  cursor: pointer;
+}
+input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"]),
+textarea,
+.tiptap {
+  cursor: text;
 }

@@ -1,8 +1,9 @@
 <script lang="ts">
+  import { tr } from "$lib/i18n.svelte";
   import { goto } from "$app/navigation";
   import { Plus } from "@lucide/svelte";
   import { ws } from "$lib/stores/workspace.svelte";
-  import { KIND_LABEL, kindIcon } from "$lib/workspace/kinds";
+  import { kindLabel, kindIcon } from "$lib/workspace/kinds";
   import type { PageKind } from "$lib/workspace/types";
 
   // Isi sebuah folder: halaman di dalamnya (urutan sama dengan sidebar) dan tombol untuk menambah yang baru.
@@ -20,15 +21,15 @@
   const count = (nodeId: string) => ws.nodes.filter((n) => n.parentId === nodeId).length;
 </script>
 
-<div class="add" role="group" aria-label="Tambah ke folder">
+<div class="add" role="group" aria-label={tr("Tambah ke folder", "Add to folder")}>
   {#each ADD as kind (kind)}
     {@const Icon = kindIcon(kind)}
-    <button onclick={() => add(kind)}><Plus size={13} /><Icon size={14} />{KIND_LABEL[kind]}</button>
+    <button onclick={() => add(kind)}><Plus size={13} /><Icon size={14} />{kindLabel(kind)}</button>
   {/each}
 </div>
 
 {#if !items.length}
-  <p class="empty">Folder ini masih kosong. Tambahkan dokumen, papan, tabel, atau folder lain dengan tombol di atas, atau seret halaman dari sidebar ke sini.</p>
+  <p class="empty">{tr("Folder ini masih kosong. Tambahkan dokumen, papan, tabel, atau folder lain dengan tombol di atas, atau seret halaman dari sidebar ke sini.", "This folder is empty. Add a document, board, table, or another folder with the buttons above, or drag a page here from the sidebar.")}</p>
 {:else}
   <ul>
     {#each items as n, i (n.id)}
@@ -36,7 +37,7 @@
       <li style:--i={i}>
         <a href="/p/{n.id}">
           <span class="k k-{n.kind}"><Icon size={16} /></span>
-          <span class="t" class:untitled={!n.title}>{n.title || "Tanpa judul"}</span>
+          <span class="t" class:untitled={!n.title}>{n.title || tr("Tanpa judul", "Untitled")}</span>
           {#if n.kind === "folder" && count(n.id)}<small>{count(n.id)} isi</small>{/if}
         </a>
       </li>

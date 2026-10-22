@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tr } from "$lib/i18n.svelte";
   import { Columns3, Search, Table2 } from "@lucide/svelte";
   import TableBoard from "./TableBoard.svelte";
   import TableGrid from "./TableGrid.svelte";
@@ -21,9 +22,9 @@
 </script>
 
 <div class="bar">
-  <div class="seg" role="group" aria-label="Tampilan">
-    <button class:on={data.view === "table"} onclick={() => commit(setView(data, "table"))}><Table2 size={14} /> Tabel</button>
-    <button class:on={data.view === "board"} disabled={!selects.length} title={selects.length ? "" : "Tambahkan kolom Pilihan untuk memakai papan"} onclick={() => commit(setView(data, "board"))}><Columns3 size={14} /> Papan</button>
+  <div class="seg" role="group" aria-label={tr("Tampilan", "View")}>
+    <button class:on={data.view === "table"} onclick={() => commit(setView(data, "table"))}><Table2 size={14} /> {tr("Tabel", "Table")}</button>
+    <button class:on={data.view === "board"} disabled={!selects.length} title={selects.length ? "" : tr("Tambahkan kolom Pilihan untuk memakai papan", "Add a Select column to use the board")} onclick={() => commit(setView(data, "board"))}><Columns3 size={14} /> {tr("Papan", "Board")}</button>
   </div>
   {#if data.view === "board" && selects.length > 1}
     <label class="group">Kelompokkan
@@ -32,7 +33,7 @@
       </select>
     </label>
   {/if}
-  <label class="search"><Search size={14} /><input type="search" placeholder="Cari di tabel" aria-label="Cari di tabel" bind:value={query} /></label>
+  <label class="search"><Search size={14} /><input type="search" placeholder={tr("Cari di tabel", "Search the table")} aria-label={tr("Cari di tabel", "Search the table")} bind:value={query} /></label>
 </div>
 
 {#key data.view}

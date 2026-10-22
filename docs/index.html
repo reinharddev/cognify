@@ -67,14 +67,24 @@
       <h1 data-en="All your study notes,<br><span class='hl'>kept on your laptop.</span>">Semua catatan belajarmu,<br><span class="hl">tetap di laptopmu.</span></h1>
       <p class="lead" data-en="Cognify is a local workspace for documents, whiteboards, tables, a calendar, and a toolbox. Free, no account, and it works without internet.">Cognify adalah ruang kerja lokal untuk dokumen, papan tulis, tabel, kalender, dan kotak alat. Gratis, tanpa akun, dan bisa dipakai tanpa internet.</p>
       <div class="cta">
-        <a class="btn primary" href="https://github.com/reinharddev/cognify"><i data-lucide="code-xml"></i><span data-en="Source code on GitHub">Kode sumber di GitHub</span></a>
+        <a class="btn primary" href="#unduh"><i data-lucide="download"></i><span data-en="Download the beta">Unduh versi beta</span></a>
         <a class="btn" href="#fitur"><i data-lucide="sparkles"></i><span data-en="See the features">Lihat fitur</span></a>
       </div>
-      <p class="meta" data-en="Free · open source (AGPL-3.0) · macOS first, Windows is being prepared">Gratis · open source (AGPL-3.0) · macOS dulu, Windows sedang dipersiapkan</p>
+      <p class="meta" data-en="Free · open source (AGPL-3.0) · Beta for macOS and Windows">Gratis · open source (AGPL-3.0) · Beta untuk macOS dan Windows</p>
     </div>
 
     <div class="app" aria-hidden="true">
       <div class="app-bar"><i></i><i></i><i></i><b>Cognify</b></div>
+      <div class="spot" aria-hidden="true">
+        <div class="spot-box">
+          <div class="spot-in"><i data-lucide="search"></i><span class="spot-q"></span></div>
+          <div class="spot-res">
+            <div class="row hi" style="--j:0"><span class="k doc"><i data-lucide="file-text"></i></span><span data-en="Chapter 4: Photosynthesis">Bab 4: Fotosintesis</span></div>
+            <div class="row" style="--j:1"><span class="k board"><i data-lucide="shapes"></i></span><span data-en="Photosynthesis map">Peta fotosintesis</span></div>
+            <div class="row" style="--j:2"><span class="k table"><i data-lucide="table-2"></i></span><span data-en="Photosynthesis quiz">Kuis fotosintesis</span></div>
+          </div>
+        </div>
+      </div>
       <div class="app-body">
         <aside class="side">
           <div class="ws"><i>R</i><span data-en="My space">Ruang saya</span></div>
@@ -384,7 +394,7 @@
     <div class="faq">
       <details><summary data-en="Is Cognify free?">Apakah Cognify gratis?</summary><p data-en="Yes. It is free, open source under AGPL-3.0, has no ads, and needs no account.">Ya. Gratis, open source dengan lisensi AGPL-3.0, tanpa iklan, dan tanpa akun.</p></details>
       <details><summary data-en="Does it have AI?">Apakah ada AI-nya?</summary><p data-en="No AI is built in. There is an optional setting, off by default, that lets an AI app you already use read your pages and suggest new ones through a standard called MCP; suggestions wait in a menu until you approve them.">Tidak ada AI yang tertanam. Ada pengaturan opsional, mati bawaan, yang memungkinkan app AI yang sudah kamu pakai membaca halamanmu dan mengusulkan halaman baru lewat standar bernama MCP; usulannya menunggu di sebuah menu sampai kamu menyetujuinya.</p></details>
-      <details><summary data-en="Which computers does it run on?">Jalan di komputer apa saja?</summary><p data-en="macOS comes first. A Windows version is being prepared and is not ready to download yet.">macOS lebih dulu. Versi Windows sedang dipersiapkan dan belum siap diunduh.</p></details>
+      <details><summary data-en="Which computers does it run on?">Jalan di komputer apa saja?</summary><p data-en="macOS and Windows, both in beta. Download them from the Download section.">macOS dan Windows, keduanya masih beta. Unduh lewat bagian Unduh.</p></details>
       <details><summary data-en="Where is my data stored?">Di mana datanya disimpan?</summary><p data-en="In a database file in the app's data folder on your computer. Nothing is uploaded.">Di berkas database dalam folder data app di komputermu. Tidak ada yang diunggah.</p></details>
       <details><summary data-en="Can I use Cognify with Cognify Notch?">Bisa dipakai bersama Cognify Notch?</summary><p data-en="Yes. In the Notch page of Cognify, press Connect. The notch then shows your tasks, agenda, and more. It is optional and can be turned off any time.">Bisa. Di halaman Notch di Cognify, tekan Hubungkan. Notch lalu menampilkan tugas, agenda, dan lainnya. Ini opsional dan bisa diputus kapan saja.</p></details>
       <details><summary data-en="Can I move my notes out later?">Bisakah catatan dibawa keluar nanti?</summary><p data-en="Boards export as PNG images, citations export as BibTeX, RIS, and CSL-JSON, and your data is an open SQLite file on your own disk.">Papan bisa diekspor sebagai gambar PNG, kutipan bisa diekspor sebagai BibTeX, RIS, dan CSL-JSON, dan datamu berupa berkas SQLite terbuka di disk milikmu.</p></details>
@@ -396,13 +406,17 @@
     <div class="get rv">
       <svg class="ear l"><use href="#ear"/></svg><svg class="ear r"><use href="#ear"/></svg>
       <img src="icon.png" alt="" width="84" height="84">
-      <h2 data-en="Coming soon.">Segera hadir.</h2>
-      <p data-en="The download for macOS is on its way, and Windows follows once it is ready. Meanwhile, the code is open and you can build it yourself.">Unduhan untuk macOS sedang disiapkan, dan Windows menyusul setelah selesai dipersiapkan. Sementara itu kodenya terbuka dan bisa kamu bangun sendiri.</p>
+      <h2 data-en="Download the beta.">Unduh versi beta.</h2>
+      <p data-en="Cognify is in beta for macOS and Windows. It works, but some things may still change or break. The code is open, so you can also build it yourself.">Cognify sedang beta untuk macOS dan Windows. Sudah bisa dipakai, tapi beberapa hal masih bisa berubah atau bermasalah. Kodenya terbuka, jadi kamu juga bisa membangunnya sendiri.</p>
       <div class="cta">
-        <a class="btn accent" href="https://github.com/reinharddev/cognify"><i data-lucide="code-xml"></i><span data-en="Source code on GitHub">Kode sumber di GitHub</span></a>
+        <a class="btn accent" href="https://github.com/reinharddev/cognify/releases"><i data-lucide="download"></i><span data-en="macOS (Beta)">macOS (Beta)</span></a>
+        <a class="btn accent" href="https://github.com/reinharddev/cognify/releases"><i data-lucide="download"></i><span data-en="Windows (Beta)">Windows (Beta)</span></a>
+      </div>
+      <div class="cta">
+        <a class="btn" href="https://github.com/reinharddev/cognify"><i data-lucide="code-xml"></i><span data-en="Source code on GitHub">Kode sumber di GitHub</span></a>
         <a class="btn" href="https://reinharddev.github.io/cognify-notch/"><i data-lucide="panel-top"></i><span data-en="Try Cognify Notch now">Coba Cognify Notch sekarang</span></a>
       </div>
-      <p class="meta" style="margin-top:18px" data-en="Free · AGPL-3.0">Gratis · AGPL-3.0</p>
+      <p class="meta" style="margin-top:18px" data-en="Free · Beta · AGPL-3.0">Gratis · Beta · AGPL-3.0</p>
     </div>
   </section>
 
