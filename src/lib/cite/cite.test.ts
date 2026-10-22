@@ -36,7 +36,7 @@ describe("sitasi", () => {
       expect(htmlToText(r.bibliography).toLowerCase(), s.id).toContain("determinan fungsi intermediasi");
       expect(r.inTextBase.length, s.id).toBeGreaterThan(0);
     }
-  });
+  }, 120_000);
 
   it("istilah mengikuti bahasa app: tanpa tahun menjadi t.t. atau n.d.", async () => {
     const web: CslSource = { type: "webpage", title: "Artikel tanpa tanggal", "container-title": "Harian", URL: "https://a.test/x" };

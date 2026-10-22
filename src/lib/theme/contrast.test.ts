@@ -128,7 +128,7 @@ describe("konsistensi", () => {
       for (const name of readdirSync(dir)) {
         const p = join(dir, name);
         if (statSync(p).isDirectory()) walk(p);
-        else if (/\.(svelte|ts)$/.test(name) && !skip.test(p)) {
+        else if (/\.(svelte|ts)$/.test(name) && !skip.test(p.replace(/\\/g, "/"))) {
           const rel = p.slice(SRC.length + 1).replace(/\\/g, "/");
           const found = [...readFileSync(p, "utf8").matchAll(/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b|rgba?\(/g)].map((m) => m[0].toLowerCase());
           for (const hex of found) if (!(allowed[rel] ?? []).includes(hex)) offenders.push(`${rel}: ${hex}`);
