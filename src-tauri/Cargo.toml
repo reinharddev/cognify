@@ -72,5 +72,9 @@ opt-level = 3
 panic = "abort"
 strip = true
 
+[target.'cfg(windows)'.dependencies]
+# Installer Windows (Velopack) memanggil app dengan argumen khusus saat pasang, perbarui, dan hapus.
+velopack = "1.2.161"
+
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

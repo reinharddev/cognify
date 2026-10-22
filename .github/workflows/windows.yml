@@ -1,4 +1,4 @@
-# Membangun Cognify untuk Windows di server GitHub. Berjalan manual (Actions > Run workflow).
+# Membangun installer Windows (Velopack, satu klik) di server GitHub. Berjalan manual (Actions > Run workflow).
 # Hasilnya diunggah sebagai artifact dan dilampirkan ke rilis `tag` (dibuat sebagai pre-release bila belum ada).
 name: Build Windows
 
@@ -27,11 +27,29 @@ jobs:
           workspaces: src-tauri
       - run: npm ci
       - run: npm test
-      - run: npm run tauri -- build --bundles nsis
+      # Hanya exe-nya; installer dibuat Velopack, bukan NSIS bawaan Tauri.
+      - run: npm run tauri -- build --no-bundle
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.x
+      - run: dotnet tool install -g vpk
+      - name: Siapkan folder paket
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force pack | Out-Null
+          Copy-Item src-tauri/target/release/Cognify.exe pack/
+          Copy-Item -Recurse extension pack/extension
+      - name: Bangun installer
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          vpk pack --packId Cognify --packVersion $version --packDir pack --mainExe Cognify.exe `
+            --packTitle "Cognify" --packAuthors "Reinhard Dave Yunardi" `
+            --icon src-tauri/icons/icon.ico --splashImage src-tauri/installer/splash.png --outputDir Releases
       - uses: actions/upload-artifact@v4
         with:
           name: cognify-windows
-          path: src-tauri/target/release/bundle/nsis/*.exe
+          path: Releases/*
           if-no-files-found: error
       - name: Lampirkan ke rilis
         shell: bash
@@ -42,4 +60,4 @@ jobs:
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" --prerelease --title "Cognify $TAG" --notes "Installer Windows (beta). / Windows installer (beta)."
           fi
-          gh release upload "$TAG" src-tauri/target/release/bundle/nsis/*.exe --clobber
+          gh release upload "$TAG" Releases/* --clobber

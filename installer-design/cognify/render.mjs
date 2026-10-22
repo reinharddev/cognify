@@ -8,7 +8,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const BRAVE = '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser';
-const JOBS = [['dmg', 1320, 800], ['sidebar', 328, 628], ['header', 300, 114]];
+const JOBS = [['dmg', 1320, 800], ['sidebar', 328, 628], ['header', 300, 114], ['splash', 600, 400]];
 const PORT = 9500 + Math.floor(Math.random() * 300);
 const profile = mkdtempSync(join(process.env.TMPDIR || tmpdir(), 'inst-brave-'));
 const browser = spawn(BRAVE, ['--headless=new', `--remote-debugging-port=${PORT}`, `--user-data-dir=${profile}`, '--hide-scrollbars', '--force-device-scale-factor=1', '--allow-file-access-from-files', '--no-first-run', '--no-default-browser-check', 'about:blank'], { stdio: 'ignore' });
