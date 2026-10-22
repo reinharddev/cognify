@@ -1,0 +1,189 @@
+{
+  "appName": {
+    "message": "Cognify: save to notes"
+  },
+  "appShort": {
+    "message": "Cognify"
+  },
+  "appDesc": {
+    "message": "Save selected text, links, or whole web pages to Cognify on your computer. Nothing is sent to the internet."
+  },
+  "menuSelection": {
+    "message": "Save selected text to Cognify"
+  },
+  "menuPage": {
+    "message": "Save this page to Cognify"
+  },
+  "menuLink": {
+    "message": "Save link to Cognify"
+  },
+  "cmdSavePage": {
+    "message": "Save this page to Cognify"
+  },
+  "cmdSaveSelection": {
+    "message": "Save selected text to Cognify"
+  },
+  "introUnpaired": {
+    "message": "Connect this extension to Cognify on your computer."
+  },
+  "step1": {
+    "message": "Open Cognify → Settings → Data."
+  },
+  "step2": {
+    "message": "Turn on Browser extension, then press Make code."
+  },
+  "step3": {
+    "message": "Enter the 6-digit code here."
+  },
+  "btnConnect": {
+    "message": "Connect"
+  },
+  "connected": {
+    "message": "Connected to Cognify"
+  },
+  "btnSavePage": {
+    "message": "Save this page"
+  },
+  "btnSaveSelection": {
+    "message": "Save selected text"
+  },
+  "btnSaveLink": {
+    "message": "Save as link"
+  },
+  "hintContext": {
+    "message": "You can also use the right-click menu, or keyboard shortcuts in your browser's extension settings."
+  },
+  "destLabel": {
+    "message": "Save to"
+  },
+  "destNew": {
+    "message": "Web clippings (automatic)"
+  },
+  "destSticky": {
+    "message": "New floating note"
+  },
+  "destAppendGroup": {
+    "message": "Add to page"
+  },
+  "untitled": {
+    "message": "Untitled"
+  },
+  "tagsLabel": {
+    "message": "Tags"
+  },
+  "tagsPlaceholder": {
+    "message": "web, research"
+  },
+  "offlineText": {
+    "message": "Cognify is not connected. Open Cognify and make sure Settings → Data → Browser extension is on."
+  },
+  "btnRetry": {
+    "message": "Try again"
+  },
+  "footer": {
+    "message": "Everything stays on this computer. Nothing is sent to the internet."
+  },
+  "savedSelection": {
+    "message": "Text saved to Cognify."
+  },
+  "savedPage": {
+    "message": "Page saved to Cognify."
+  },
+  "savedLink": {
+    "message": "Link saved to Cognify."
+  },
+  "savedSticky": {
+    "message": "Now a floating note in Cognify."
+  },
+  "savedAppend": {
+    "message": "Added to the page in Cognify."
+  },
+  "paired": {
+    "message": "Connected."
+  },
+  "onlyWeb": {
+    "message": "Only web pages (http/https) can be saved."
+  },
+  "noSelection": {
+    "message": "Select some text on the page first."
+  },
+  "notPaired": {
+    "message": "Pair the extension first: click the Cognify icon in the toolbar."
+  },
+  "pageTooBig": {
+    "message": "This page is too big to save."
+  },
+  "pageEmpty": {
+    "message": "This page has no content to save."
+  },
+  "notConnected": {
+    "message": "Cognify is not connected. Open Cognify and turn on Settings → Data → Browser extension."
+  },
+  "failed": {
+    "message": "Failed ($CODE$)",
+    "placeholders": {
+      "code": {
+        "content": "$1"
+      }
+    }
+  },
+  "err_forbidden_origin": {
+    "message": "This request did not come from the extension."
+  },
+  "err_forbidden_host": {
+    "message": "The bridge address is not recognized."
+  },
+  "err_unauthorized": {
+    "message": "The extension is not paired. Click the Cognify icon to connect."
+  },
+  "err_pair_invalid": {
+    "message": "Wrong code, or none made in Cognify yet."
+  },
+  "err_pair_expired": {
+    "message": "The code has expired. Make a new one in Cognify."
+  },
+  "err_pair_locked": {
+    "message": "Too many wrong tries. Make a new code in Cognify."
+  },
+  "err_exists": {
+    "message": "This page is already saved in Cognify."
+  },
+  "err_not_found": {
+    "message": "The target page no longer exists. Pick another."
+  },
+  "err_invalid": {
+    "message": "That content can't be saved."
+  },
+  "err_db_error": {
+    "message": "Cognify's storage had a problem."
+  },
+  "cmdSaveSticky": {
+    "message": "Make a floating note in Cognify"
+  },
+  "err_too_fast": {
+    "message": "Saving too fast. Wait a moment and try again."
+  },
+  "err_invalid_pdf": {
+    "message": "This PDF can't be read (it may be locked), but highlights can still be saved."
+  },
+  "pdfFailed": {
+    "message": "But the PDF data couldn't be read ($REASON$); complete the source in Cognify.",
+    "placeholders": {
+      "reason": {
+        "content": "$1"
+      }
+    }
+  },
+  "ctxCut": {
+    "message": "Cut"
+  },
+  "ctxCopy": {
+    "message": "Copy"
+  },
+  "ctxPaste": {
+    "message": "Paste"
+  },
+  "ctxSelectAll": {
+    "message": "Select all"
+  }
+}

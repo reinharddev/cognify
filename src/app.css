@@ -1,0 +1,725 @@
+/*
+ * Sistem warna Cognify: pastel yang tenang, datar (tanpa gradasi), dan konsisten.
+ * Komponen hanya memakai var(--…); jangan menulis warna langsung. Aturan lengkapnya di docs/DESIGN.md,
+ * dan kontras tiap pasangan dijaga oleh src/lib/theme/contrast.test.ts.
+ *
+ * Aturan pakai:
+ *   - Latar halaman var(--bg); kartu dan kolom isian var(--surface); sidebar dan hover var(--surface-2).
+ *   - Teks var(--text) atau var(--text-muted). Teks berwarna aksen (tautan) memakai var(--link),
+ *     bukan var(--accent): --accent adalah warna isian pastel untuk tombol dan penanda terpilih.
+ *   - Teks di atas --accent memakai var(--accent-contrast). Garis fokus dan pinggir aktif var(--accent-strong).
+ *   - Status: var(--ok|warn|danger|info) untuk teks dan ikon, var(--…-soft) untuk latar.
+ *   - Jenis halaman: var(--kind-doc|board|table|calendar|notch) untuk ikon, var(--kind-…-soft) untuk latar.
+ */
+:root {
+  /* Permukaan */
+  --bg: #fbf8ff;
+  --surface: #ffffff;
+  --surface-2: #f4effd;
+  --border: #e7dff6;
+  --border-strong: #d4c8ec;
+
+  /* Teks */
+  --text: #2b2745;
+  --text-muted: #6a6486;
+  --link: #5340c8;
+
+  /* Aksen lavender: isian pastel, dan yang lebih tegas untuk garis fokus */
+  --accent: #c8bdff;
+  --accent-hover: #bdb2fc;
+  --accent-contrast: #2b2745;
+  --accent-strong: #6b58e0;
+  --accent-soft: #eae4ff;
+
+  /* Status */
+  --ok: #287554;
+  --ok-soft: #d9f3e6;
+  --warn: #94590a;
+  --warn-soft: #ffefc7;
+  --danger: #b0305a;
+  --danger-soft: #ffe0e8;
+  --info: #1f6c94;
+  --info-soft: #d8eefa;
+
+  /* Jenis halaman */
+  --kind-doc: #7e6cf0;
+  --kind-doc-soft: #eae4ff;
+  --kind-board: #e26336;
+  --kind-board-soft: #ffe6dc;
+  --kind-table: #39986c;
+  --kind-folder: #9a6b2e;
+  --kind-folder-soft: #f6ead5;
+  --kind-table-soft: #d9f3e6;
+  --kind-calendar: #b27f19;
+  --kind-calendar-soft: #fff1c9;
+  --kind-notch: #3592be;
+  --kind-notch-soft: #d8eefa;
+
+  /* Latar lembut berganti-ganti untuk kartu yang perlu terasa ceria (templat, pintasan). Teks di atasnya var(--text). */
+  --tint-1: #eae4ff;
+  --tint-2: #ffe6dc;
+  --tint-3: #d9f3e6;
+  --tint-4: #fff1c9;
+  --tint-5: #d8eefa;
+  --tint-6: #ffe0e8;
+
+  /* Warna kategori (penanda acara, tag). Semuanya terbaca di atas --bg. */
+  --cat-0: #7e6cf0;
+  --cat-1: #3592be;
+  --cat-2: #b27f19;
+  --cat-3: #dd5b92;
+  --cat-4: #39986c;
+  --cat-5: #a26cf0;
+  --cat-6: #e26336;
+  --cat-7: #3d9793;
+
+  /* Nama lama yang masih dipakai alat bawaan */
+  --text-dim: var(--text-muted);
+  --accent-text: var(--accent-contrast);
+  --warn-text: var(--warn);
+
+  --radius: 12px;
+  --radius-sm: 9px;
+  --radius-lg: 18px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --sidebar-w: 236px;
+
+  /* "ui-rounded" (SF Rounded) tersedia di macOS; lainnya memakai font sistem. */
+  --font: ui-rounded, "SF Pro Rounded", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --fs: 15px;
+
+  /* Gerak: pelan di awal, berhenti lembut; "spring" memantul sedikit untuk sentuhan ceria. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Bayangan kartu (catatan melayang); gelap di kedua tema. */
+  --shadow-1: rgb(0 0 0 / 0.14);
+  --shadow-2: rgb(0 0 0 / 0.45);
+  --shadow-3: rgb(0 0 0 / 0.55);
+  --shadow-4: rgb(0 0 0 / 0.18);
+  --dur-1: 0.14s;
+  --dur-2: 0.24s;
+  --dur-3: 0.45s;
+
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  /* Tema gelap dipasang lewat atribut data-theme (skrip di app.html dan src/lib/stores/prefs.svelte.ts). */
+  color-scheme: dark;
+
+  --bg: #1c1930;
+  --surface: #252240;
+  --surface-2: #211e38;
+  --border: #3a3560;
+  --border-strong: #4d4780;
+
+  --text: #f0ecff;
+  --text-muted: #aaa4cc;
+  --link: #c9bfff;
+
+  --accent: #bdb1ff;
+  --accent-hover: #cfc6ff;
+  --accent-contrast: #1c1930;
+  --accent-strong: #a99bff;
+  --accent-soft: #34305f;
+
+  --ok: #7fddae;
+  --ok-soft: #1f3d35;
+  --warn: #f3c56a;
+  --warn-soft: #3f3417;
+  --danger: #ff9db8;
+  --danger-soft: #4a2433;
+  --info: #8ad0f0;
+  --info-soft: #1e3a4c;
+
+  --kind-doc: #a99bff;
+  --kind-doc-soft: #34305f;
+  --kind-board: #ff9c7b;
+  --kind-board-soft: #4a2f2f;
+  --kind-table: #6fd3a4;
+  --kind-folder: #e0b673;
+  --kind-folder-soft: #3d3020;
+  --kind-table-soft: #1f3d35;
+  --kind-calendar: #f3c56a;
+  --kind-calendar-soft: #3f3417;
+  --kind-notch: #7cc6ea;
+  --kind-notch-soft: #1e3a4c;
+
+  --tint-1: #34305f;
+  --tint-2: #4a2f2f;
+  --tint-3: #1f3d35;
+  --tint-4: #3f3417;
+  --tint-5: #1e3a4c;
+  --tint-6: #4a2433;
+
+  --cat-0: #a99bff;
+  --cat-1: #7cc6ea;
+  --cat-2: #f3c56a;
+  --cat-3: #ff9db8;
+  --cat-4: #6fd3a4;
+  --cat-5: #c9a6ff;
+  --cat-6: #ff9c7b;
+  --cat-7: #7fe0db;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font: var(--fs)/1.5 var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  margin: 0;
+  line-height: 1.25;
+}
+
+a {
+  color: var(--link);
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+/* Kontrol formulir digambar sendiri; tidak ada tampilan bawaan webview. */
+input[type="checkbox"],
+input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-grid;
+  place-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  margin: 0;
+  flex: none;
+  background: var(--surface);
+  border: 1.5px solid var(--border-strong);
+  border-radius: 5px;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: background var(--dur-1), border-color var(--dur-1);
+}
+input[type="radio"] {
+  border-radius: 50%;
+}
+input[type="checkbox"]:hover:not(:disabled),
+input[type="radio"]:hover:not(:disabled) {
+  border-color: var(--accent-strong);
+}
+input[type="checkbox"]:checked,
+input[type="radio"]:checked {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+input[type="checkbox"]:checked::after {
+  content: "";
+  width: 10px;
+  height: 10px;
+  background: var(--surface);
+  clip-path: polygon(14% 52%, 0 66%, 38% 100%, 100% 22%, 86% 8%, 38% 72%);
+}
+input[type="radio"]:checked::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--surface);
+}
+input[type="checkbox"]:disabled,
+input[type="radio"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+/* Sakelar */
+input[type="checkbox"][role="switch"] {
+  width: 40px;
+  height: 22px;
+  border-radius: 99px;
+  place-content: center start;
+  background: var(--border-strong);
+  border-color: transparent;
+}
+input[type="checkbox"][role="switch"]::after,
+input[type="checkbox"][role="switch"]:checked::after {
+  content: "";
+  width: 16px;
+  height: 16px;
+  margin-left: 3px;
+  border-radius: 50%;
+  clip-path: none;
+  background: var(--surface);
+  transition: transform var(--dur-1) var(--ease-out);
+}
+input[type="checkbox"][role="switch"]:checked {
+  background: var(--accent-strong);
+}
+input[type="checkbox"][role="switch"]:checked::after {
+  transform: translateX(18px);
+}
+
+input[type="range"] {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 20px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--border-strong);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -5px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  background: var(--accent-strong);
+  box-shadow: 0 1px 4px var(--shadow-1);
+}
+input[type="range"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button,
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none; /* <a class="btn"> tampil sama dengan tombol */
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 600;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.btn-danger {
+  color: var(--danger);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.error-text {
+  color: var(--danger);
+}
+
+/* Alat bawaan: tautan tampil sebagai kartu atau teks biasa, bukan tautan biru bergaris bawah. */
+.pane a,
+a.card,
+a.chip,
+a.back {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ── Gerak ───────────────────────────────────────────────────────────────────
+ * Semua animasi lewat token --ease-* dan --dur-*, dan mati total bila pengguna memilih
+ * "Animasi: mati" di Pengaturan atau sistemnya meminta gerak dikurangi. */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes pop {
+  from { opacity: 0; transform: scale(0.94) translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes tick {
+  0% { transform: scale(0.7); }
+  60% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+button,
+.btn,
+a.card {
+  transition:
+    background-color var(--dur-1) ease,
+    border-color var(--dur-1) ease,
+    color var(--dur-1) ease,
+    transform var(--dur-2) var(--ease-spring);
+}
+button:active:not(:disabled),
+.btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+/* Hover: hanya untuk perangkat dengan penunjuk. Yang dianimasikan cuma transform dan opacity
+ * (jalan di compositor, tanpa layout ulang); bayangan memakai pseudo-element supaya tidak repaint. */
+@media (hover: hover) {
+  a.card,
+  button.card,
+  .starts button {
+    position: relative;
+    transition:
+      transform var(--dur-2) var(--ease-spring),
+      background-color var(--dur-1) ease,
+      border-color var(--dur-1) ease;
+  }
+  a.card::after,
+  button.card::after,
+  .starts button::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 10px 24px -10px rgb(0 0 0 / 0.45);
+    opacity: 0;
+    transition: opacity var(--dur-2) ease;
+    pointer-events: none;
+  }
+  a.card:hover,
+  button.card:hover,
+  .starts button:hover {
+    transform: translateY(-3px);
+  }
+  a.card:hover::after,
+  button.card:hover::after,
+  .starts button:hover::after {
+    opacity: 1;
+  }
+  a.card:active,
+  button.card:active,
+  .starts button:active {
+    transform: translateY(0) scale(0.97);
+  }
+
+  /* Tombol dan ikon: sedikit terangkat, ikon bergoyang pelan. */
+  .btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+  .btn svg,
+  .starts button svg,
+  .tagcloud svg {
+    transition: transform var(--dur-2) var(--ease-spring);
+  }
+
+  /* Baris sidebar dan tag: geser tipis ke kanan saat disorot. */
+  .tagcloud a,
+  .tagcloud button,
+  .fav {
+    transition: transform var(--dur-2) var(--ease-out), background-color var(--dur-1) ease;
+  }
+  .tagcloud a:hover,
+  .tagcloud button:hover,
+  .fav:hover {
+    transform: translateX(3px);
+  }
+}
+
+/* Efek klik: satu cincin yang dipakai ulang di titik sentuh (lihat motion.ts). */
+.click-fx {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 9999;
+  will-change: transform, opacity;
+}
+
+/* Masuk bertahap: anak langsung dari [data-stagger] naik satu per satu (maks. 12). */
+[data-stagger] > * {
+  animation: rise var(--dur-3) var(--ease-out) backwards;
+  animation-delay: calc(var(--n, 0) * 35ms);
+}
+[data-stagger] > :nth-child(1) { --n: 0; }
+[data-stagger] > :nth-child(2) { --n: 1; }
+[data-stagger] > :nth-child(3) { --n: 2; }
+[data-stagger] > :nth-child(4) { --n: 3; }
+[data-stagger] > :nth-child(5) { --n: 4; }
+[data-stagger] > :nth-child(6) { --n: 5; }
+[data-stagger] > :nth-child(7) { --n: 6; }
+[data-stagger] > :nth-child(8) { --n: 7; }
+[data-stagger] > :nth-child(n + 9) { --n: 8; }
+
+/* Perpindahan halaman: hanya area konten (main) yang beranimasi lewat View Transitions; sidebar dan
+ * kerangka tetap diam, jadi tidak terasa menyegarkan seluruh halaman. */
+/* `main` diberi view-transition-name hanya selama transisi (lihat +layout.svelte): nama itu menjadikannya acuan
+ * posisi elemen fixed (menu, dialog), jadi tidak boleh terpasang terus. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-old(content) {
+  animation: fade var(--dur-1) ease reverse both;
+}
+::view-transition-new(content) {
+  animation: rise var(--dur-3) var(--ease-out) both;
+}
+
+/* Ikon: tiap ikon punya gerak sendiri yang sesuai maknanya, sekali putar tiap kali kursor masuk.
+ * motion.ts memberi svg atribut data-anim (peta nama ikon -> gerak). Hampir semuanya transform saja
+ * (compositor); hanya gerak "draw" yang menggambar ulang garis lewat stroke-dashoffset. */
+@keyframes ic-hop { 0%, 100% { transform: translateY(0) scale(1, 1); } 30% { transform: translateY(-4px) scale(0.94, 1.08); } 55% { transform: translateY(0) scale(1.08, 0.9); } 75% { transform: translateY(-1px); } }
+@keyframes ic-swing { 0%, 100% { transform: rotate(-12deg); } 50% { transform: rotate(12deg); } }
+@keyframes ic-scan { 0% { transform: translate(0, 0); } 25% { transform: translate(3px, -2px); } 50% { transform: translate(0, -4px) scale(1.1); } 75% { transform: translate(-3px, -2px); } 100% { transform: translate(0, 0); } }
+@keyframes ic-wrench { 0%, 100% { transform: rotate(-22deg); } 50% { transform: rotate(18deg); } }
+@keyframes ic-spin { to { transform: rotate(360deg); } }
+@keyframes ic-spin-rev { to { transform: rotate(-360deg); } }
+@keyframes ic-plus { 0% { transform: rotate(0) scale(1); } 50% { transform: rotate(90deg) scale(1.22); } 100% { transform: rotate(180deg) scale(1); } }
+@keyframes ic-shake { 0%, 100% { transform: rotate(0); } 15% { transform: rotate(-12deg); } 35% { transform: rotate(10deg); } 55% { transform: rotate(-6deg); } 75% { transform: rotate(3deg); } }
+@keyframes ic-twinkle { 0%, 100% { transform: scale(1) rotate(0); } 50% { transform: scale(1.28) rotate(18deg); } }
+@keyframes ic-nudge-r { 0%, 100% { transform: translateX(-1px); } 50% { transform: translateX(4px); } }
+@keyframes ic-nudge-l { 0%, 100% { transform: translateX(1px); } 50% { transform: translateX(-4px); } }
+@keyframes ic-nudge-d { 0%, 100% { transform: translateY(-2px); } 50% { transform: translateY(4px); } }
+@keyframes ic-nudge-u { 0%, 100% { transform: translateY(2px); } 50% { transform: translateY(-4px); } }
+@keyframes ic-nudge-ne { 0%, 100% { transform: translate(-1px, 1px); } 50% { transform: translate(3px, -3px); } }
+@keyframes ic-pop { 0%, 100% { transform: scale(1) rotate(0); } 40% { transform: scale(1.3) rotate(-10deg); } 70% { transform: scale(0.95) rotate(4deg); } }
+@keyframes ic-squeeze { 0%, 100% { transform: scaleX(1); } 50% { transform: scaleX(0.7); } }
+@keyframes ic-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+@keyframes ic-shrink { 0%, 100% { transform: scale(1); } 50% { transform: scale(0.72); } }
+@keyframes ic-wobble { 0%, 100% { transform: skewX(0) rotate(0); } 25% { transform: skewX(-12deg) rotate(-6deg); } 75% { transform: skewX(12deg) rotate(6deg); } }
+@keyframes ic-snip { 0%, 100% { transform: rotate(0) scaleY(1); } 30% { transform: rotate(-14deg) scaleY(0.86); } 60% { transform: rotate(8deg) scaleY(1.05); } }
+@keyframes ic-sway { 0%, 100% { transform: rotate(-6deg) translateY(0); } 50% { transform: rotate(6deg) translateY(-2px); } }
+@keyframes ic-dot { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-4px); } }
+@keyframes ic-fly { 0% { transform: translate(var(--fx), var(--fy)) scale(0.4); opacity: 0; } 45% { transform: translate(0, 0) scale(1.18); opacity: 1; } 70%, 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+@keyframes ic-draw { 0% { stroke-dashoffset: 0; } 45% { stroke-dashoffset: -1; } 55% { stroke-dashoffset: 1; } 100% { stroke-dashoffset: 0; } }
+
+@keyframes ic-page { 0% { transform: scaleY(1); } 42% { transform: scaleY(0.04); } 100% { transform: scaleY(1); } }
+@keyframes ic-rise { 0% { transform: translateY(10px); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@keyframes ic-line { 0% { stroke-dashoffset: 1; } 100% { stroke-dashoffset: 0; } }
+@keyframes ic-fold { 0% { transform: scale(0); opacity: 0; } 60% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes ic-lid { 0%, 100% { transform: rotate(0); } 20%, 60% { transform: rotate(-34deg); } 82% { transform: rotate(0); } }
+@keyframes ic-drop { 0%, 6% { transform: translateY(-8px); opacity: 0; } 18% { transform: translateY(-5px); opacity: 1; } 52% { transform: translateY(11px) scale(0.75); opacity: 1; } 60%, 100% { transform: translateY(12px) scale(0.6); opacity: 0; } }
+
+/* Objek yang disisipkan motion.ts (mis. benda yang masuk ke tempat sampah) tersembunyi sampai dianimasikan. */
+svg .fx-obj { opacity: 0; }
+
+@media (hover: hover) {
+  :is(button, a, summary, .btn, [role="button"], [role="option"]):not(:disabled):hover {
+    & svg[data-anim] {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: var(--ic, ic-pulse) var(--ic-t, 1.2s) ease-in-out 1;
+    }
+    & svg[data-anim="hop"] { --ic: ic-hop; --ic-t: 1.1s; transform-origin: 50% 100%; }
+    & svg[data-anim="swing"] { --ic: ic-swing; --ic-t: 1.3s; transform-origin: 50% 0%; }
+    & svg[data-anim="scan"] { --ic: ic-scan; --ic-t: 1.2s; }
+    & svg[data-anim="wrench"] { --ic: ic-wrench; --ic-t: 1s; transform-origin: 20% 80%; }
+    & svg[data-anim="spin"] { --ic: ic-spin; --ic-t: 1.4s; }
+    & svg[data-anim="spin-fast"] { --ic: ic-spin; --ic-t: 0.9s; }
+    & svg[data-anim="spin-rev"] { --ic: ic-spin-rev; --ic-t: 0.9s; }
+    & svg[data-anim="plus"] { --ic: ic-plus; --ic-t: 0.9s; }
+    & svg[data-anim="shake"] { --ic: ic-shake; --ic-t: 0.9s; transform-origin: 50% 100%; }
+    & svg[data-anim="twinkle"] { --ic: ic-twinkle; --ic-t: 1s; }
+    & svg[data-anim="nudge-r"] { --ic: ic-nudge-r; --ic-t: 0.8s; }
+    & svg[data-anim="nudge-l"] { --ic: ic-nudge-l; --ic-t: 0.8s; }
+    & svg[data-anim="nudge-d"] { --ic: ic-nudge-d; --ic-t: 0.8s; }
+    & svg[data-anim="nudge-u"] { --ic: ic-nudge-u; --ic-t: 0.8s; }
+    & svg[data-anim="nudge-ne"] { --ic: ic-nudge-ne; --ic-t: 0.9s; }
+    & svg[data-anim="pop"] { --ic: ic-pop; --ic-t: 0.9s; }
+    & svg[data-anim="squeeze"] { --ic: ic-squeeze; --ic-t: 0.9s; }
+    & svg[data-anim="pulse"] { --ic: ic-pulse; --ic-t: 0.9s; }
+    & svg[data-anim="shrink"] { --ic: ic-shrink; --ic-t: 0.9s; }
+    & svg[data-anim="wobble"] { --ic: ic-wobble; --ic-t: 0.9s; }
+    & svg[data-anim="snip"] { --ic: ic-snip; --ic-t: 0.8s; }
+    & svg[data-anim="sway"] { --ic: ic-sway; --ic-t: 1.1s; }
+
+    /* Papan: tiga bentuk datang dari arah berbeda (atas, kiri-bawah, kanan), masing-masing berwarna sendiri. */
+    & svg[data-anim="shapes"] { animation: none; }
+    & svg[data-anim="shapes"] :is(path, rect, circle) { animation: ic-fly 1.4s var(--ease-out) 1 backwards; transform-box: fill-box; transform-origin: center; }
+    & svg[data-anim="shapes"] path { --fx: 0px; --fy: -16px; stroke: var(--cat-6); }
+    & svg[data-anim="shapes"] rect { --fx: -16px; --fy: 12px; stroke: var(--cat-1); animation-delay: 0.15s; }
+    & svg[data-anim="shapes"] circle { --fx: 16px; --fy: 8px; stroke: var(--cat-3); animation-delay: 0.3s; }
+
+    /* Tiga titik: memantul bergantian. */
+    & svg[data-anim="dots"] { animation: none; }
+    & svg[data-anim="dots"] circle { animation: ic-dot 0.7s ease-in-out 1; transform-box: fill-box; transform-origin: center; }
+    & svg[data-anim="dots"] circle:nth-child(2) { animation-delay: 0.1s; }
+    & svg[data-anim="dots"] circle:nth-child(3) { animation-delay: 0.2s; }
+
+    /* Kalender: lembar hari terlipat ke atas dan lembar baru turun, seperti ganti hari. */
+    & svg[data-anim="cal"] { animation: none; }
+    & svg[data-anim="cal"] > :nth-child(n + 3) { transform-box: view-box; transform-origin: 12px 3px; animation: ic-page 1s ease-in-out 1; }
+    & svg[data-anim="cal"] > :nth-child(n + 5) { animation-delay: 0.05s; }
+    & svg[data-anim="cal"] > :nth-child(n + 8) { animation-delay: 0.1s; }
+
+    /* Dokumen: kertas naik dari bawah, baris tertulis satu per satu, lalu ujungnya terlipat. */
+    & svg[data-anim="doc"] { animation: none; }
+    & svg[data-anim="doc"] > :nth-child(1) { animation: ic-rise 0.45s var(--ease-out) 1 backwards; }
+    & svg[data-anim="doc"] > :nth-child(n + 3) { stroke-dasharray: 1; animation: ic-line 0.3s ease-out 1 backwards; }
+    & svg[data-anim="doc"] > :nth-child(3) { animation-delay: 0.45s; }
+    & svg[data-anim="doc"] > :nth-child(4) { animation-delay: 0.62s; }
+    & svg[data-anim="doc"] > :nth-child(5) { animation-delay: 0.79s; }
+    & svg[data-anim="doc"] > :nth-child(2) { transform-box: fill-box; transform-origin: 0% 100%; animation: ic-fold 0.45s var(--ease-spring) 1.05s 1 backwards; }
+
+    /* Tabel: bingkai digambar, lalu garis mendatar, lalu garis tegak. */
+    & svg[data-anim="table"] { animation: none; }
+    & svg[data-anim="table"] > * { stroke-dasharray: 1; animation: ic-line 0.45s ease-out 1 backwards; }
+    & svg[data-anim="table"] > :nth-child(3) { animation-delay: 0s; }
+    & svg[data-anim="table"] > :nth-child(1) { animation-delay: 0.4s; animation-duration: 0.3s; }
+    & svg[data-anim="table"] > :nth-child(2) { animation-delay: 0.65s; animation-duration: 0.3s; }
+
+    /* Sampah: tutup terbuka, benda masuk, tutup menutup lagi. */
+    & svg[data-anim="trash"] { animation: none; }
+    & svg[data-anim="trash"] > :nth-child(n + 4) { transform-box: view-box; transform-origin: 3px 6px; animation: ic-lid 1.3s ease-in-out 1; }
+    & svg[data-anim="trash"] .fx-obj { animation: ic-drop 1.3s ease-in 1; transform-box: fill-box; transform-origin: center; }
+
+    /* Ikon tanpa gerak khusus: garis digambar ulang sekali. */
+    & svg[data-anim="draw"] { animation: none; }
+    & svg[data-anim="draw"] :is(path, line, polyline, polygon, circle, rect, ellipse) { stroke-dasharray: 1; animation: ic-draw 1s ease-in-out 1; }
+
+    /* Notch: sama seperti notch yang dihover, tab hitam melebar dan matanya merenggang. */
+    & svg[data-anim="notch"] { animation: none; }
+  }
+  .lucide-notch .nt,
+  .lucide-notch .eye { transform-box: view-box; transition: transform 0.4s var(--ease-spring); }
+  .lucide-notch .nt { transform-origin: 12px 1px; }
+  :is(button, a, summary, .btn, [role="button"], [role="option"]):not(:disabled):hover .lucide-notch .nt { transform: scale(1.7, 1.12); }
+  :is(button, a, summary, .btn, [role="button"], [role="option"]):not(:disabled):hover .lucide-notch .eye.l { transform: translateX(-2.2px); }
+  :is(button, a, summary, .btn, [role="button"], [role="option"]):not(:disabled):hover .lucide-notch .eye.r { transform: translateX(2.2px); }
+}
+
+html[data-motion="off"] *,
+html[data-motion="off"] *::before,
+html[data-motion="off"] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Seret berbasis pointer (lihat lib/pointerDrag.ts): bayangan mengikuti kursor, teks tidak ikut terpilih. */
+.drag-ghost {
+  position: fixed !important;
+  left: 0;
+  top: 0;
+  margin: 0;
+  z-index: 9998;
+  pointer-events: none !important;
+  opacity: 0.88;
+  transform-origin: center;
+  box-shadow: 0 14px 30px -10px rgb(0 0 0 / 0.5);
+  border-radius: var(--radius);
+  background: var(--surface);
+  animation: none !important;
+}
+html.ptr-drag,
+html.ptr-drag * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  cursor: grabbing !important;
+}
+
+/* Jendela catatan melayang: seluruh jendela transparan, hanya kartunya yang terlihat. */
+html.sticky-mode,
+html.sticky-mode body {
+  background: transparent !important;
+  overflow: hidden;
+}

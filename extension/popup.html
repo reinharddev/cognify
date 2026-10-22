@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cognify</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <img src="icons/32.png" alt="" width="22" height="22" />
+      <strong>Cognify</strong>
+    </header>
+
+    <section id="unpaired" hidden>
+      <p data-i18n="introUnpaired"></p>
+      <ol>
+        <li data-i18n="step1"></li>
+        <li data-i18n="step2"></li>
+        <li data-i18n="step3"></li>
+      </ol>
+      <form id="pair-form">
+        <input id="code" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="123456" autocomplete="off" required />
+        <button data-i18n="btnConnect"></button>
+      </form>
+    </section>
+
+    <section id="paired" hidden>
+      <p class="ok status">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path class="tick" d="M5 12.5l4.5 4.5L19 7.5" pathLength="1" /></svg>
+        <span data-i18n="connected"></span>
+      </p>
+
+      <label class="field">
+        <span data-i18n="destLabel"></span>
+        <div class="dd">
+          <button type="button" id="dest" class="dd-btn" aria-haspopup="listbox" aria-expanded="false">
+            <span id="dest-text"></span>
+            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          </button>
+          <div id="dest-list" class="dd-list" role="listbox" hidden></div>
+        </div>
+      </label>
+      <label class="field">
+        <span data-i18n="tagsLabel"></span>
+        <input id="tags" maxlength="120" autocomplete="off" />
+      </label>
+
+      <div class="actions">
+        <button id="save-page" data-i18n="btnSavePage"></button>
+        <button id="save-selection" class="soft" data-i18n="btnSaveSelection"></button>
+        <button id="save-link" class="soft" data-i18n="btnSaveLink"></button>
+      </div>
+      <p class="muted" data-i18n="hintContext"></p>
+    </section>
+
+    <section id="offline" hidden>
+      <p data-i18n="offlineText"></p>
+      <button id="retry" data-i18n="btnRetry"></button>
+    </section>
+
+    <p id="message" role="status" hidden></p>
+    <footer class="muted" data-i18n="footer"></footer>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

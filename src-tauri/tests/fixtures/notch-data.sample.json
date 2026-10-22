@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "platform": "mac",
+  "appVersion": "1.0.12",
+  "updatedAt": "2026-10-22T08:30:00.000Z",
+  "todos": [
+    { "id": "t1", "title": "Kerjakan PR fisika", "done": false, "dueAt": "2026-10-23T10:00:00.000Z" },
+    { "id": "t2", "title": "Bayar uang kas", "done": true }
+  ],
+  "notes": [{ "id": "n1", "text": "Ide judul skripsi: pengaruh LMS terhadap motivasi", "createdAt": "2026-10-22T07:00:00.000Z" }],
+  "clipboard": [{ "id": "c1", "kind": "link", "text": "https://id.wikipedia.org/wiki/Fotosintesis", "at": "2026-10-22T08:10:00.000Z" }],
+  "tray": [{ "id": "f1", "name": "laporan.pdf", "path": "/Users/x/laporan.pdf", "addedAt": "2026-10-22T06:00:00.000Z" }],
+  "timers": [{ "id": "m1", "title": "Pasta", "durationSec": 600, "endsAt": "2026-10-22T08:40:00.000Z", "running": true }],
+  "water": { "goalMl": 2000, "today": [{ "at": "2026-10-22T07:30:00.000Z", "ml": 250 }], "history": [{ "date": "2026-10-21", "ml": 1750 }] },
+  "agenda": [{ "id": "e1", "title": "Kelas Fisika", "start": "2026-10-22T09:00:00.000Z", "end": "2026-10-22T10:00:00.000Z", "allDay": false, "calendar": "Sekolah" }],
+  "now": {
+    "weather": { "tempC": 29, "summary": "Berawan", "place": "Jakarta" },
+    "playing": { "title": "Ada Selamanya", "artist": "For Revenge" },
+    "battery": { "percent": 80, "charging": false }
+  },
+  "fieldDariVersiBaru": { "diabaikan": true }
+}

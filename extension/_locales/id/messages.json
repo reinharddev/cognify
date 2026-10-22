@@ -1,0 +1,189 @@
+{
+  "appName": {
+    "message": "Cognify: simpan ke catatan"
+  },
+  "appShort": {
+    "message": "Cognify"
+  },
+  "appDesc": {
+    "message": "Simpan teks yang kamu pilih, tautan, atau seluruh halaman web ke Cognify di komputermu. Tidak ada data yang dikirim ke internet."
+  },
+  "menuSelection": {
+    "message": "Simpan teks terpilih ke Cognify"
+  },
+  "menuPage": {
+    "message": "Simpan halaman ini ke Cognify"
+  },
+  "menuLink": {
+    "message": "Simpan tautan ke Cognify"
+  },
+  "cmdSavePage": {
+    "message": "Simpan halaman ini ke Cognify"
+  },
+  "cmdSaveSelection": {
+    "message": "Simpan teks terpilih ke Cognify"
+  },
+  "introUnpaired": {
+    "message": "Sambungkan ekstensi ini dengan Cognify di komputermu."
+  },
+  "step1": {
+    "message": "Buka Cognify → Pengaturan → Data."
+  },
+  "step2": {
+    "message": "Nyalakan Ekstensi browser, lalu tekan Buat kode."
+  },
+  "step3": {
+    "message": "Masukkan kode 6 angkanya di sini."
+  },
+  "btnConnect": {
+    "message": "Sambungkan"
+  },
+  "connected": {
+    "message": "Tersambung ke Cognify"
+  },
+  "btnSavePage": {
+    "message": "Simpan halaman ini"
+  },
+  "btnSaveSelection": {
+    "message": "Simpan teks terpilih"
+  },
+  "btnSaveLink": {
+    "message": "Simpan sebagai tautan"
+  },
+  "hintContext": {
+    "message": "Bisa juga lewat klik kanan, atau pintasan keyboard di pengaturan ekstensi browser."
+  },
+  "destLabel": {
+    "message": "Simpan ke"
+  },
+  "destNew": {
+    "message": "Kliping web (otomatis)"
+  },
+  "destSticky": {
+    "message": "Catatan melayang baru"
+  },
+  "destAppendGroup": {
+    "message": "Tambahkan ke halaman"
+  },
+  "untitled": {
+    "message": "Tanpa judul"
+  },
+  "tagsLabel": {
+    "message": "Tag"
+  },
+  "tagsPlaceholder": {
+    "message": "web, riset"
+  },
+  "offlineText": {
+    "message": "Cognify tidak terhubung. Buka Cognify dan pastikan Pengaturan → Data → Ekstensi browser menyala."
+  },
+  "btnRetry": {
+    "message": "Coba lagi"
+  },
+  "footer": {
+    "message": "Semua disimpan di komputer ini, tidak ada yang dikirim ke internet."
+  },
+  "savedSelection": {
+    "message": "Teks tersimpan di Cognify."
+  },
+  "savedPage": {
+    "message": "Halaman tersimpan di Cognify."
+  },
+  "savedLink": {
+    "message": "Tautan tersimpan di Cognify."
+  },
+  "savedSticky": {
+    "message": "Jadi catatan melayang di Cognify."
+  },
+  "savedAppend": {
+    "message": "Ditambahkan ke halaman di Cognify."
+  },
+  "paired": {
+    "message": "Tersambung."
+  },
+  "onlyWeb": {
+    "message": "Hanya halaman web (http/https) yang bisa disimpan."
+  },
+  "noSelection": {
+    "message": "Pilih teks di halaman dulu."
+  },
+  "notPaired": {
+    "message": "Pasangkan ekstensi dulu: klik ikon Cognify di toolbar."
+  },
+  "pageTooBig": {
+    "message": "Halaman terlalu besar untuk disimpan."
+  },
+  "pageEmpty": {
+    "message": "Halaman ini tidak punya isi yang bisa disimpan."
+  },
+  "notConnected": {
+    "message": "Cognify tidak terhubung. Buka Cognify dan nyalakan Pengaturan → Data → Ekstensi browser."
+  },
+  "failed": {
+    "message": "Gagal ($CODE$)",
+    "placeholders": {
+      "code": {
+        "content": "$1"
+      }
+    }
+  },
+  "err_forbidden_origin": {
+    "message": "Permintaan ini tidak berasal dari ekstensi."
+  },
+  "err_forbidden_host": {
+    "message": "Alamat jembatan tidak dikenali."
+  },
+  "err_unauthorized": {
+    "message": "Ekstensi belum dipasangkan. Klik ikon Cognify untuk menyambungkan."
+  },
+  "err_pair_invalid": {
+    "message": "Kodenya salah, atau belum dibuat di Cognify."
+  },
+  "err_pair_expired": {
+    "message": "Kodenya sudah kedaluwarsa. Buat kode baru di Cognify."
+  },
+  "err_pair_locked": {
+    "message": "Terlalu banyak salah. Buat kode baru di Cognify."
+  },
+  "err_exists": {
+    "message": "Halaman ini sudah tersimpan di Cognify."
+  },
+  "err_not_found": {
+    "message": "Halaman tujuan sudah tidak ada. Pilih tujuan lain."
+  },
+  "err_invalid": {
+    "message": "Isinya tidak bisa disimpan."
+  },
+  "err_db_error": {
+    "message": "Penyimpanan Cognify bermasalah."
+  },
+  "cmdSaveSticky": {
+    "message": "Jadikan catatan melayang di Cognify"
+  },
+  "err_too_fast": {
+    "message": "Terlalu cepat menyimpan. Tunggu sebentar lalu coba lagi."
+  },
+  "err_invalid_pdf": {
+    "message": "PDF ini tidak bisa dibaca (mungkin terkunci), tapi sorotan tetap bisa disimpan."
+  },
+  "pdfFailed": {
+    "message": "Tapi data PDF tidak terbaca ($REASON$); lengkapi sumbernya di Cognify.",
+    "placeholders": {
+      "reason": {
+        "content": "$1"
+      }
+    }
+  },
+  "ctxCut": {
+    "message": "Potong"
+  },
+  "ctxCopy": {
+    "message": "Salin"
+  },
+  "ctxPaste": {
+    "message": "Tempel"
+  },
+  "ctxSelectAll": {
+    "message": "Pilih semua"
+  }
+}

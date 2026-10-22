@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Teks dialog izin macOS saat Cognify pertama kali membaca Apple Notes (Smart Reminder). -->
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Cognify membaca catatan di folder Apple Notes yang kamu pilih untuk membuat pengingat otomatis. Semua diproses di laptop ini dan tidak dikirim ke mana pun.</string>
+	<!-- Teks dialog izin macOS saat pertama kali merekam catatan suara. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Cognify merekam suaramu untuk dijadikan catatan teks. Rekaman diubah jadi teks di laptop ini dan tidak dikirim ke mana pun.</string>
+	<!-- Notch (program cognify-notch dijalankan Cognify, jadi izinnya atas nama Cognify). -->
+	<key>NSCameraUsageDescription</key>
+	<string>Cognify memakai kamera hanya untuk Cermin di notch. Tidak ada yang direkam atau disimpan.</string>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>Cognify memakai suara yang sedang diputar hanya untuk menggerakkan equalizer di notch (tinggi nada per pita). Suara tidak direkam, disimpan, atau dikirim.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Cognify mengubah rekaman suara di notch jadi teks catatan. Pengenalan suara berjalan di Mac ini, tidak dikirim ke internet.</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>Bila sinkron Daftar Tugas dinyalakan, tugas di notch disimpan di daftar Pengingat bawaanmu supaya ikut ke iPhone. Tidak ada yang dikirim ke tempat lain.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>Bila sinkron Daftar Tugas dinyalakan, tugas di notch disimpan di daftar Pengingat bawaanmu supaya ikut ke iPhone. Tidak ada yang dikirim ke tempat lain.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Cognify menampilkan acara hari ini dan besok dari app Kalender di notch. Tidak ada yang dikirim ke mana pun.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Cognify menampilkan acara hari ini dan besok dari app Kalender di notch. Tidak ada yang dikirim ke mana pun.</string>
+</dict>
+</plist>

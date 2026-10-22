@@ -1,0 +1,8 @@
+{
+  "bundle": {
+    "externalBin": ["binaries/ffmpeg", "binaries/ffprobe"],
+    "resources": {
+      "../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md"
+    }
+  }
+}

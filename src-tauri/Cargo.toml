@@ -1,0 +1,76 @@
+[package]
+name = "cognify"
+version = "0.1.0"
+description = "Cognify: manajemen catatan dan alat lokal, offline"
+authors = ["Reinhard"]
+edition = "2024"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "cognify_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+# Nama program = nama di Dock/menu macOS saat `tauri dev` (app terpasang memakai
+# `mainBinaryName` di tauri.conf.json).
+[[bin]]
+name = "Cognify"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png", "macos-private-api"] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.37", features = ["bundled"] }
+tauri-plugin-log = "2"
+log = "0.4"
+uuid = { version = "1", features = ["v4"] }
+tauri-plugin-notification = "2"
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-clipboard-manager = "2"
+tokio = { version = "1.53.3", features = ["process", "io-util", "sync", "macros", "rt", "time", "fs"] }
+lopdf = "0.45.0"
+image = { version = "0.25.10", default-features = false, features = ["bmp", "jpeg", "png", "tiff", "webp"] }
+base64 = "0.23.1"
+reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "stream"] }
+sha2 = "0.11.1"
+futures-util = "0.3.34"
+
+
+# Pemrosesan gambar sangat lambat tanpa optimasi, yang
+# membuat build debug dan tes merangkak.
+[profile.dev.package.png]
+opt-level = 3
+[profile.dev.package.image-webp]
+opt-level = 3
+[profile.dev.package.image]
+opt-level = 3
+[profile.dev.package.zune-jpeg]
+opt-level = 3
+[profile.dev.package.zune-core]
+opt-level = 3
+[profile.dev.package.flate2]
+opt-level = 3
+[profile.dev.package.miniz_oxide]
+opt-level = 3
+[profile.dev.package.lopdf]
+opt-level = 2
+
+# Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

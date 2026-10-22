@@ -1,0 +1,55 @@
+{
+  "manifest_version": 3,
+  "name": "__MSG_appName__",
+  "short_name": "__MSG_appShort__",
+  "version": "0.2.0",
+  "default_locale": "id",
+  "description": "__MSG_appDesc__",
+  "icons": {
+    "16": "icons/16.png",
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "__MSG_appShort__"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "contextMenus",
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:47615/*"
+  ],
+  "commands": {
+    "save-page": {
+      "suggested_key": {
+        "default": "Alt+Shift+S"
+      },
+      "description": "__MSG_cmdSavePage__"
+    },
+    "save-selection": {
+      "suggested_key": {
+        "default": "Alt+Shift+D"
+      },
+      "description": "__MSG_cmdSaveSelection__"
+    },
+    "save-sticky": {
+      "suggested_key": {
+        "default": "Alt+Shift+F"
+      },
+      "description": "__MSG_cmdSaveSticky__"
+    }
+  },
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://*/*"
+  ]
+}

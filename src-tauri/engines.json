@@ -1,0 +1,63 @@
+{
+  "_comment": "Engines the app can download on demand into <app data>/engines. 'sha256' pins a fixed file; without it the hash is looked up in 'sumsUrl' (the release's own checksum list), which is how yt-dlp is installed and updated. Only https URLs belong here.",
+  "engines": [
+    {
+      "id": "yt-dlp",
+      "label": "yt-dlp",
+      "approxMb": 36,
+      "targets": {
+        "macos-aarch64": {
+          "url": "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos",
+          "sumsUrl": "https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS",
+          "asset": "yt-dlp_macos",
+          "file": "yt-dlp"
+        },
+        "macos-x86_64": {
+          "url": "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos",
+          "sumsUrl": "https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS",
+          "asset": "yt-dlp_macos",
+          "file": "yt-dlp"
+        },
+        "linux-x86_64": {
+          "url": "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux",
+          "sumsUrl": "https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS",
+          "asset": "yt-dlp_linux",
+          "file": "yt-dlp"
+        },
+        "linux-aarch64": {
+          "url": "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux_aarch64",
+          "sumsUrl": "https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS",
+          "asset": "yt-dlp_linux_aarch64",
+          "file": "yt-dlp"
+        },
+        "windows-x86_64": {
+          "url": "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe",
+          "sumsUrl": "https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS",
+          "asset": "yt-dlp.exe",
+          "file": "yt-dlp.exe"
+        }
+      }
+    },
+    {
+      "id": "libreoffice",
+      "label": "LibreOffice (for Documents to PDF)",
+      "approxMb": 300,
+      "targets": {
+        "macos-aarch64": {
+          "url": "https://download.documentfoundation.org/libreoffice/stable/26.8.1/mac/aarch64/LibreOffice_26.8.1_MacOS_aarch64.dmg",
+          "sha256": "ca074e0b13571efb30a31fc531c5f95e997030637325e5d5de92d67aefdf0dfc",
+          "file": "LibreOffice.app/Contents/MacOS/soffice",
+          "executable": false,
+          "archive": "dmg-app"
+        },
+        "macos-x86_64": {
+          "url": "https://download.documentfoundation.org/libreoffice/stable/26.8.1/mac/x86_64/LibreOffice_26.8.1_MacOS_x86-64.dmg",
+          "sha256": "4c7464313a529e9074400cbcdc894fc40ac4ef9421ded03b16b5a78d12cb155e",
+          "file": "LibreOffice.app/Contents/MacOS/soffice",
+          "executable": false,
+          "archive": "dmg-app"
+        }
+      }
+    }
+  ]
+}
