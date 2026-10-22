@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cognify: catatan, papan, tabel, kalender, dan alat belajar yang offline</title>
+<meta name="description" content="Cognify adalah ruang kerja lokal untuk dokumen, papan tulis, tabel, kalender, catatan melayang, dan 14 alat PDF, video, serta gambar. Gratis, open source, tanpa akun, dan tanpa AI tertanam.">
+<link rel="canonical" href="https://reinharddev.github.io/cognify/">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="author" content="Reinhard Dave Yunardi">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Cognify">
+<meta property="og:locale" content="id_ID">
+<meta property="og:title" content="Cognify: semua catatan belajarmu, tetap di laptopmu">
+<meta property="og:description" content="Dokumen, papan tulis, tabel, kalender, catatan melayang, ekstensi browser, sitasi otomatis, dan 14 alat. Offline, gratis, open source.">
+<meta property="og:image" content="https://reinharddev.github.io/cognify/og.png">
+<meta property="og:url" content="https://reinharddev.github.io/cognify/">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Cognify","applicationCategory":"EducationalApplication","operatingSystem":"macOS, Windows (dalam persiapan)","description":"Ruang kerja lokal untuk dokumen, papan tulis, tabel, kalender, catatan melayang, dan alat PDF, video, serta gambar. Gratis, open source, tanpa akun.","url":"https://reinharddev.github.io/cognify/","image":"https://reinharddev.github.io/cognify/og.png","inLanguage":["id","en"],"license":"https://www.gnu.org/licenses/agpl-3.0.html","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"author":{"@type":"Person","name":"Reinhard Dave Yunardi"},"codeRepository":"https://github.com/reinharddev/cognify"}</script>
+<meta name="theme-color" content="#f4efe6">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="preload" href="bricolage.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="style.css">
+<script>
+  // Bahasa dipilih sebelum halaman tampil supaya tidak berkedip dari Indonesia ke Inggris.
+  (() => {
+    let lang = new URLSearchParams(location.search).get('lang');
+    if (!lang) { try { lang = localStorage.getItem('lang'); } catch (e) {} }
+    if (lang !== 'id' && lang !== 'en') lang = (navigator.languages || [navigator.language]).some((l) => /^(id|ms)\b/i.test(l)) ? 'id' : 'en';
+    document.documentElement.dataset.lang = lang;
+    document.documentElement.lang = lang;
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('motion');
+  })();
+</script>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="ear" viewBox="0 0 10 10"><path d="M0 0H10V10A10 10 0 0 0 0 0Z"/></symbol>
+</svg>
+
+<header class="nav">
+  <div class="nav-pill left">
+    <svg class="ear l"><use href="#ear"/></svg>
+    <a href="#top"><img src="icon.png" alt="" width="20" height="20"><span>Cognify</span></a>
+    <svg class="ear r"><use href="#ear"/></svg>
+  </div>
+  <div class="nav-pill right">
+    <svg class="ear l"><use href="#ear"/></svg>
+    <a href="#fitur" data-en="Features">Fitur</a>
+    <a href="#alat" data-en="Tools">Alat</a>
+    <a href="#notch">Notch</a>
+    <a href="#data" data-en="Data">Data</a>
+    <a href="#tanya" data-en="FAQ">Tanya jawab</a>
+    <button class="lang" id="langBtn" type="button" aria-label="Switch to English">EN</button>
+    <a class="nav-get" href="#unduh" data-en="Get it">Unduh</a>
+    <svg class="ear r"><use href="#ear"/></svg>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ========== Pembuka ========== -->
+  <section class="hero" data-bg="#f4efe6">
+    <div class="hero-copy">
+      <h1 data-en="All your study notes,<br><span class='hl'>kept on your laptop.</span>">Semua catatan belajarmu,<br><span class="hl">tetap di laptopmu.</span></h1>
+      <p class="lead" data-en="Cognify is a local workspace for documents, whiteboards, tables, a calendar, and a toolbox. Free, no account, and it works without internet.">Cognify adalah ruang kerja lokal untuk dokumen, papan tulis, tabel, kalender, dan kotak alat. Gratis, tanpa akun, dan bisa dipakai tanpa internet.</p>
+      <div class="cta">
+        <a class="btn primary" href="https://github.com/reinharddev/cognify"><i data-lucide="code-xml"></i><span data-en="Source code on GitHub">Kode sumber di GitHub</span></a>
+        <a class="btn" href="#fitur"><i data-lucide="sparkles"></i><span data-en="See the features">Lihat fitur</span></a>
+      </div>
+      <p class="meta" data-en="Free · open source (AGPL-3.0) · macOS first, Windows is being prepared">Gratis · open source (AGPL-3.0) · macOS dulu, Windows sedang dipersiapkan</p>
+    </div>
+
+    <div class="app" aria-hidden="true">
+      <div class="app-bar"><i></i><i></i><i></i><b>Cognify</b></div>
+      <div class="app-body">
+        <aside class="side">
+          <div class="ws"><i>R</i><span data-en="My space">Ruang saya</span></div>
+          <div class="row"><span class="k doc"><i data-lucide="house"></i></span><span data-en="Home">Beranda</span></div>
+          <div class="row"><span class="k cal"><i data-lucide="calendar-days"></i></span><span data-en="Calendar">Kalender</span></div>
+          <div class="row"><span class="k notch"><i data-lucide="panel-top"></i></span>Notch</div>
+          <div class="row"><span class="k doc"><i data-lucide="wrench"></i></span><span data-en="Tools">Alat</span></div>
+          <div class="lbl" data-en="Pages">Halaman</div>
+          <div class="row"><span class="k folder"><i data-lucide="folder-open"></i></span>Biologi XI</div>
+          <div class="row sub on"><span class="k doc"><i data-lucide="file-text"></i></span><span data-en="Chapter 4 summary">Rangkuman bab 4</span></div>
+          <div class="row sub"><span class="k board"><i data-lucide="shapes"></i></span><span data-en="Photosynthesis map">Peta fotosintesis</span></div>
+          <div class="row sub"><span class="k table"><i data-lucide="table-2"></i></span><span data-en="Homework list">Daftar PR</span></div>
+          <div class="row"><span class="k folder"><i data-lucide="folder"></i></span><span data-en="Floating notes">Catatan melayang</span></div>
+        </aside>
+        <div class="main">
+          <div class="crumb"><span>Biologi XI</span><span>/</span><span data-en="Chapter 4 summary">Rangkuman bab 4</span></div>
+          <h4 data-en="Chapter 4: Photosynthesis">Bab 4: Fotosintesis</h4>
+          <div class="tags"><span>biologi</span><span data-en="exam">ulangan</span></div>
+          <span class="ln" style="width:92%"></span><span class="ln" style="width:78%"></span><span class="ln" style="width:85%"></span>
+          <div class="chk done"><i></i><span data-en="Read pages 62 to 70">Baca halaman 62 sampai 70</span></div>
+          <div class="chk"><i></i><span data-en="Make a diagram of the light reactions">Buat diagram reaksi terang</span></div>
+          <table class="mini-table">
+            <tr><th data-en="Stage">Tahap</th><th data-en="Place">Tempat</th><th data-en="Result">Hasil</th></tr>
+            <tr><td data-en="Light reactions">Reaksi terang</td><td>Tilakoid</td><td>ATP, NADPH</td></tr>
+            <tr><td data-en="Calvin cycle">Siklus Calvin</td><td>Stroma</td><td data-en="Glucose">Glukosa</td></tr>
+          </table>
+          <div class="sticky"><b data-en="Hand in tomorrow">Kumpul besok</b><span data-en="Lab report at 10 a.m.">Laporan praktikum jam 10</span></div>
+          <div class="sticky b"><b data-en="Don't forget">Jangan lupa</b><span data-en="Buy a blue folder">Beli map biru</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="try" data-en="This is a sample, not real data.">Ini contoh tampilan, bukan data sungguhan.</p>
+  </section>
+
+  <!-- ========== Fitur ========== -->
+  <section id="fitur" data-bg="#f4efe6">
+    <div class="block" style="padding-bottom:0">
+      <h2 data-en="One workspace.<br>Everything you study with.">Satu ruang kerja.<br>Semua yang kamu pakai belajar.</h2>
+      <p class="lead" data-en="Documents, whiteboards, tables, and folders live in one page tree. Everything is saved on your own computer." style="margin-bottom:0">Dokumen, papan tulis, tabel, dan folder ada dalam satu pohon halaman. Semuanya tersimpan di komputermu sendiri.</p>
+    </div>
+  </section>
+
+  <article class="feat rv" data-bg="#c9c4ff">
+    <div class="feat-text">
+      <span class="tag"><i data-lucide="file-text"></i><span data-en="Documents">Dokumen</span></span>
+      <h3 data-en="Write like in Word, tidy like a book.">Tulis seperti di Word, rapi seperti buku.</h3>
+      <p data-en="A document editor with headings, font type and size, colors, highlight, alignment, checklists, tables, and quotes. Type <span class='kbd'>/</span> to insert a block. Six templates: Homework list, Chapter summary, Cornell notes, Exam schedule, Study journal, and Project plan.">Editor dokumen dengan judul, jenis dan ukuran huruf, warna, sorot, rata teks, daftar centang, tabel, dan kutipan. Ketik <span class="kbd">/</span> untuk menyisipkan blok. Ada enam template: Daftar PR, Rangkuman bab, Catatan Cornell, Jadwal ujian, Jurnal belajar, dan Rencana proyek.</p>
+      <aside class="how"><b data-en="How to use">Cara memakai</b><ol>
+        <li data-en="Click + in the sidebar, then pick New document or a template.">Klik + di sidebar, lalu pilih Dokumen baru atau sebuah template.</li>
+        <li data-en="Type / to insert a list, a table, or a divider.">Ketik / untuk menyisipkan daftar, tabel, atau garis pemisah.</li>
+        <li data-en="Set text styles from the bar above the document. It saves by itself.">Atur gaya teks lewat bilah di atas dokumen. Tersimpan sendiri.</li>
+      </ol></aside>
+    </div>
+    <div class="demo">
+      <div class="demo-bar"><i></i><i></i><i></i><b data-en="Cornell notes">Catatan Cornell</b></div>
+      <div class="demo-in">
+        <div class="chips" style="margin-bottom:16px"><span class="on">B</span><span><em>I</em></span><span><u>U</u></span><span>H1</span><span><i class="sw" style="background:#e26336"></i></span><span><i class="sw" style="background:#ffe08a"></i></span><span data-en="Table">Tabel</span></div>
+        <span class="ln" style="width:60%;height:14px;background:#cfc7b6"></span>
+        <span class="ln" style="width:94%"></span><span class="ln" style="width:82%"></span><span class="ln" style="width:70%"></span>
+        <div class="chk done"><i></i><span data-en="Questions on the left">Pertanyaan di kiri</span></div>
+        <div class="chk"><i></i><span data-en="Summary at the bottom">Ringkasan di bawah</span></div>
+      </div>
+    </div>
+  </article>
+
+  <article class="feat flip rv" data-bg="#ffc9b5">
+    <div class="feat-text">
+      <span class="tag"><i data-lucide="shapes"></i><span data-en="Whiteboard">Papan</span></span>
+      <h3 data-en="A free whiteboard for mind maps.">Papan tulis bebas untuk peta pikiran.</h3>
+      <p data-en="Draw diagrams, concept maps, or formula scribbles on an endless canvas (powered by Excalidraw). Text on a board is searchable, and a board can be exported as a PNG image.">Gambar diagram, peta konsep, atau coretan rumus di kanvas tak terbatas (memakai Excalidraw). Teks di papan ikut bisa dicari, dan papan bisa diekspor menjadi gambar PNG.</p>
+      <aside class="how"><b data-en="How to use">Cara memakai</b><ol>
+        <li data-en="Click + in the sidebar, then pick New board.">Klik + di sidebar, lalu pilih Papan baru.</li>
+        <li data-en="Pick a shape or the pen, then draw.">Pilih bentuk atau pena, lalu gambar.</li>
+        <li data-en="Export a PNG with the button at the top of the page.">Ekspor PNG lewat tombol di bagian atas halaman.</li>
+      </ol></aside>
+    </div>
+    <div class="demo">
+      <div class="demo-bar"><i></i><i></i><i></i><b data-en="Photosynthesis map">Peta fotosintesis</b></div>
+      <div class="canvas">
+        <svg viewBox="0 0 400 270" fill="none" stroke="#141414" stroke-width="2.5" stroke-linecap="round"><path d="M150 70 C 190 60, 210 60, 240 72"/><path d="M232 66l12 6-10 9"/><path d="M110 112 C 108 150, 120 170, 150 190"/><path d="M143 180l9 11-13 1"/><path d="M290 112 C 292 150, 280 170, 250 190"/><path d="M257 181l-9 11 13 1"/></svg>
+        <span class="node" style="left:30px;top:44px;background:#ffe08a" data-en="Sunlight">Cahaya matahari</span>
+        <span class="node" style="left:238px;top:50px;background:#d9f3e6">Klorofil</span>
+        <span class="node" style="left:44px;top:200px;background:#d8eefa">CO₂ + H₂O</span>
+        <span class="node" style="left:230px;top:198px;background:#ffe6dc;transform:rotate(-2deg)" data-en="Glucose + O₂">Glukosa + O₂</span>
+      </div>
+    </div>
+  </article>
+
+  <article class="feat rv" data-bg="#b8ecd0">
+    <div class="feat-text">
+      <span class="tag"><i data-lucide="table-2"></i><span data-en="Tables">Tabel</span></span>
+      <h3 data-en="A table and a status board on one page.">Tabel dan papan status dalam satu halaman.</h3>
+      <p data-en="Keep homework, schedules, or budgets in a table, then switch to a board that groups cards by a choice column. Columns can be text, numbers, dates, checkboxes, or colored choices.">Susun daftar PR, jadwal, atau anggaran dalam tabel, lalu pindah ke papan yang mengelompokkan kartu menurut kolom pilihan. Kolom bisa berupa teks, angka, tanggal, centang, atau pilihan berwarna.</p>
+      <aside class="how"><b data-en="How to use">Cara memakai</b><ol>
+        <li data-en="Click + in the sidebar, then pick New table.">Klik + di sidebar, lalu pilih Tabel baru.</li>
+        <li data-en="Add a Choice column, such as Status.">Tambahkan kolom Pilihan, misalnya Status.</li>
+        <li data-en="Press Board at the top to see the cards grouped by that column.">Tekan Papan di bagian atas untuk melihat kartu terkelompok menurut kolom itu.</li>
+      </ol></aside>
+    </div>
+    <div class="demo">
+      <div class="demo-bar"><i></i><i></i><i></i><b data-en="Homework list">Daftar PR</b></div>
+      <div class="demo-in">
+        <div class="kanban">
+          <div><h6 data-en="To do">Akan</h6><div class="c">Matematika bab 5<small data-en="Due Friday">Jumat</small></div><div class="c">Esai sejarah</div></div>
+          <div><h6 data-en="Doing">Dikerjakan</h6><div class="c">Laporan praktikum<small data-en="Due tomorrow">Besok</small></div></div>
+          <div><h6 data-en="Done">Selesai</h6><div class="c">Kuis bahasa</div><div class="c">Gambar peta</div></div>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <article class="feat flip rv" data-bg="#ffe08a">
+    <div class="feat-text">
+      <span class="tag"><i data-lucide="folder-tree"></i><span data-en="Pages & folders">Halaman & folder</span></span>
+      <h3 data-en="Tidy, and easy to find again.">Rapi, dan mudah ditemukan lagi.</h3>
+      <p data-en="Pages sit in a tree with folders you can open and close. Drag to reorder, add tags, mark favorites, and press <span class='kbd'>Ctrl</span> <span class='kbd'>K</span> (<span class='kbd'>⌘</span> <span class='kbd'>K</span> on Mac) to search. Deleted pages go to the trash first and can be restored.">Halaman tersusun dalam pohon dengan folder yang bisa dibuka-tutup. Seret untuk mengurutkan, beri tag, tandai favorit, dan tekan <span class="kbd">Ctrl</span> <span class="kbd">K</span> (<span class="kbd">⌘</span> <span class="kbd">K</span> di Mac) untuk mencari. Halaman yang dibuang masuk ke sampah dulu dan bisa dipulihkan.</p>
+      <aside class="how"><b data-en="How to use">Cara memakai</b><ol>
+        <li data-en="Right-click a folder to add a document, board, table, or folder inside it.">Klik kanan sebuah folder untuk menambah dokumen, papan, tabel, atau folder di dalamnya.</li>
+        <li data-en="Drag a page onto a folder to move it.">Seret halaman ke sebuah folder untuk memindahkannya.</li>
+        <li data-en="Type a tag under the title, or open the Tags page.">Tulis tag di bawah judul, atau buka halaman Tag.</li>
+      </ol></aside>
+    </div>
+    <div class="demo">
+      <div class="demo-bar"><i></i><i></i><i></i><b data-en="Pages">Halaman</b></div>
+      <div class="demo-in">
+        <div class="row"><span class="k folder"><i data-lucide="folder-open"></i></span><b>Biologi XI</b></div>
+        <div class="row sub"><span class="k doc"><i data-lucide="file-text"></i></span><span data-en="Chapter 4 summary">Rangkuman bab 4</span></div>
+        <div class="row sub"><span class="k board"><i data-lucide="shapes"></i></span><span data-en="Photosynthesis map">Peta fotosintesis</span></div>
+        <div class="row"><span class="k folder"><i data-lucide="folder"></i></span><b data-en="Math">Matematika</b></div>
+        <div class="row"><span class="k table"><i data-lucide="table-2"></i></span><span data-en="Homework list">Daftar PR</span><i data-lucide="star" style="margin-left:auto;color:#e2a100"></i></div>
+        <div class="chips" style="margin-top:14px"><span>#biologi</span><span>#ulangan</span><span>#kelompok</span></div>
+      </div>
+    </div>
+  </article>
+
+  <article class="feat rv" data-bg="#a9d8ff">
+    <div class="feat-text">
+      <span class="tag"><i data-lucide="calendar-days"></i><span data-en="Calendar">Kalender</span></span>
+      <h3 data-en="Your schedule, with reminders.">Jadwalmu, lengkap dengan pengingat.</h3>
+      <p data-en="A monthly calendar for exams, classes, and deadlines. Events can repeat daily, weekly, monthly, or yearly, and a desktop reminder pops up before they start. Add a calendar link (ICS) from Google or Outlook to see those events here too.">Kalender bulanan untuk ulangan, kelas, dan tenggat. Acara bisa berulang harian, mingguan, bulanan, atau tahunan, dan pengingat muncul di desktop sebelum acara mulai. Tambahkan tautan kalender (ICS) dari Google atau Outlook supaya acaranya ikut tampil di sini.</p>
+      <aside class="how"><b data-en="How to use">Cara memakai</b><ol>
+        <li data-en="Open Calendar and click New event, or click a day.">Buka Kalender lalu klik Acara baru, atau klik sebuah hari.</li>
+        <li data-en="Pick the date, time, repeat, and reminder.">Pilih tanggal, jam, pengulangan, dan pengingat.</li>
+        <li data-en="To follow a calendar from elsewhere, paste its ICS link in the calendar sources.">Untuk mengikuti kalender dari tempat lain, tempel tautan ICS-nya di sumber kalender.</li>
+      </ol></aside>
+    </div>
+    <div class="demo">
+      <div class="demo-bar"><i></i><i></i><i></i><b data-en="October 2026">Oktober 2026</b></div>
+      <div class="demo-in">
+        <div class="cal-g"><b data-en="Mon">Sen</b><b data-en="Tue">Sel</b><b data-en="Wed">Rab</b><b data-en="Thu">Kam</b><b data-en="Fri">Jum</b><b data-en="Sat">Sab</b><b data-en="Sun">Min</b>
+          <span>19</span><span>20</span><span class="e" style="--c:#3592be">21</span><span class="t">22</span><span class="e" style="--c:#e26336">23</span><span>24</span><span>25</span>
+          <span>26</span><span class="e">27</span><span>28</span><span>29</span><span class="e" style="--c:#39986c">30</span><span>31</span><span>1</span></div>
+        <div class="evl">
+          <div class="ev" style="--c:#3592be"><span data-en="Physics class">Kelas Fisika</span><small>10.00</small></div>
+          <div class="ev" style="--c:#e26336"><span data-en="Math exam">Ulangan matematika</span><small data-en="Friday 07:30">Jumat 07.30</small></div>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <article class="feat flip rv" data-bg="#ffe08a">
+    <div class="feat-text">
+      <span class="tag"><i data-lucide="sticky-note"></i><span data-en="Floating notes">Catatan melayang</span></span>
+      <h3 data-en="A sticky note that stays on top.">Sticky note yang selalu di atas.</h3>
+      <p data-en="Press <span class='kbd'>Ctrl</span> <span class='kbd'>Alt</span> <span class='kbd'>N</span> (<span class='kbd'>⌘</span> <span class='kbd'>⌥</span> <span class='kbd'>N</span> on Mac) from any app to jot something down. The note floats above your windows, sways when you move it, and is saved as a normal page in the folder Floating notes.">Tekan <span class="kbd">Ctrl</span> <span class="kbd">Alt</span> <span class="kbd">N</span> (<span class="kbd">⌘</span> <span class="kbd">⌥</span> <span class="kbd">N</span> di Mac) dari app mana pun untuk mencatat sesuatu. Catatannya melayang di atas jendela lain, bergoyang saat digeser, dan tersimpan sebagai halaman biasa di folder Catatan melayang.</p>
+      <aside class="how"><b data-en="How to use">Cara memakai</b><ol>
+        <li data-en="Press the shortcut, or right-click a page and choose Make it a floating note.">Tekan pintasannya, atau klik kanan sebuah halaman lalu pilih Jadikan catatan melayang.</li>
+        <li data-en="Type. Use the buttons on the note to change its color or keep it on top.">Ketik. Pakai tombol di catatan untuk mengganti warna atau menahannya di atas.</li>
+        <li data-en="Close it any time. It stays saved.">Tutup kapan saja. Tetap tersimpan.</li>
+      </ol></aside>
+    </div>
+    <div class="demo" style="min-height:330px;background:#e9e2d2">
+      <div class="demo-bar"><i></i><i></i><i></i><b data-en="Any app">App apa pun</b></div>
+      <span class="ln" style="width:70%;margin:26px 22px 10px"></span><span class="ln" style="width:55%;margin:0 22px 10px"></span>
+      <div class="sticky" style="right:36px;top:90px;width:200px"><b data-en="Quiz Thursday">Kuis hari Kamis</b><span data-en="Study chapters 3 and 4">Pelajari bab 3 dan 4</span></div>
+      <div class="sticky b" style="left:30px;right:auto;top:190px;width:180px"><b data-en="Idea">Ide</b><span data-en="Poster in 3 colors">Poster dengan 3 warna</span></div>
+    </div>
+  </article>
+
+  <article class="feat rv" data-bg="#c9c4ff">
+    <div class="feat-text">
+      <span class="tag"><i data-lucide="puzzle"></i><span data-en="Browser extension">Ekstensi browser</span></span>
+      <h3 data-en="Save from the web in one click.">Simpan dari web dalam satu klik.</h3>
+      <p data-en="Save a page, a highlighted passage, a link, or even a PDF opened in your browser. Choose where it goes (a new page, a floating note, or an existing page) and add tags. One address becomes one page, so saving the same site again adds to it instead of making a copy. Works with Chrome, Brave, and Edge; Firefox and Safari need extra steps.">Simpan halaman, kutipan yang kamu sorot, tautan, bahkan PDF yang dibuka di browser. Pilih tujuannya (halaman baru, catatan melayang, atau halaman yang sudah ada) dan tambahkan tag. Satu alamat menjadi satu halaman, jadi menyimpan situs yang sama lagi menambah ke halaman itu, bukan membuat salinan. Cocok untuk Chrome, Brave, dan Edge; Firefox dan Safari butuh langkah tambahan.</p>
+      <aside class="how"><b data-en="How to use">Cara memakai</b><ol>
+        <li data-en="In Cognify, open Settings, then Browser extension, and turn it on.">Di Cognify, buka Pengaturan, lalu Ekstensi browser, dan nyalakan.</li>
+        <li data-en="Follow the three-step guide there: add the extension and enter the 6-digit code.">Ikuti panduan tiga langkah di sana: pasang ekstensi dan masukkan kode 6 angka.</li>
+        <li data-en="Select text on any page, right-click, and choose Save to Cognify.">Sorot teks di halaman mana pun, klik kanan, lalu pilih Simpan ke Cognify.</li>
+      </ol></aside>
+    </div>
+    <div class="demo">
+      <div class="demo-bar"><i></i><i></i><i></i><b data-en="Browser">Browser</b></div>
+      <div class="demo-in">
+        <div class="pop">
+          <b>Cognify</b>
+          <div class="f"><small data-en="Save to">Simpan ke</small><span data-en="Web clips (automatic)">Kliping web (otomatis)</span></div>
+          <div class="f"><small>Tag</small>biologi, jurnal</div>
+          <div class="go" data-en="Save this page">Simpan halaman ini</div>
+          <div class="go soft" data-en="Save selection">Simpan sorotan</div>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <article class="feat flip rv" data-bg="#ffc9b5">
+    <div class="feat-text">
+      <span class="tag"><i data-lucide="quote"></i><span data-en="Citations">Kutipan</span></span>
+      <h3 data-en="A bibliography without the headache.">Daftar pustaka tanpa pusing.</h3>
+      <p data-en="Pages saved from the web or a PDF remember their source: title, authors, date, journal, and DOI. The Cite button then writes it in APA 7, MLA 9, Chicago, Harvard, IEEE, Vancouver, or ISO 690, and exports BibTeX, RIS, or CSL-JSON. Missing details can be filled in by hand.">Halaman yang disimpan dari web atau PDF mengingat sumbernya: judul, penulis, tanggal, jurnal, dan DOI. Tombol Kutip lalu menuliskannya dalam gaya APA 7, MLA 9, Chicago, Harvard, IEEE, Vancouver, atau ISO 690, dan mengekspor BibTeX, RIS, atau CSL-JSON. Data yang belum ada bisa dilengkapi sendiri.</p>
+      <aside class="how"><b data-en="How to use">Cara memakai</b><ol>
+        <li data-en="Save a page or a PDF with the browser extension.">Simpan halaman atau PDF dengan ekstensi browser.</li>
+        <li data-en="Open the page in Cognify and click the quote button at the top right.">Buka halamannya di Cognify dan klik tombol kutipan di kanan atas.</li>
+        <li data-en="Pick a style, fill in anything missing, and copy.">Pilih gaya, lengkapi yang kosong, lalu salin.</li>
+      </ol></aside>
+    </div>
+    <div class="demo">
+      <div class="demo-bar"><i></i><i></i><i></i><b data-en="Cite">Kutip</b></div>
+      <div class="demo-in">
+        <div class="chips"><span class="on">APA 7</span><span>MLA 9</span><span>Chicago</span><span>Harvard</span><span>IEEE</span><span>Vancouver</span><span>ISO 690</span></div>
+        <div class="cite">Putri, F. S., &amp; Falianty, T. A. (2026). Determinan fungsi intermediasi bank KBMI 4 di Indonesia. <em>Jurnal Ekonomi dan Pembangunan Indonesia, 26</em>(2), 143–158. https://doi.org/10.7454/jepi.v26i2.1636<small data-en="In text: (Putri & Falianty, 2026, p. 14)">Dalam teks: (Putri &amp; Falianty, 2026, hlm. 14)</small></div>
+        <div class="chips"><span>BibTeX</span><span>RIS</span><span>CSL-JSON</span></div>
+      </div>
+    </div>
+  </article>
+
+  <!-- ========== Alat ========== -->
+  <section id="alat" class="block" data-bg="#2a2559">
+    <h2 data-en="14 tools,<br>all on your computer.">14 alat,<br>semuanya di komputermu.</h2>
+    <p class="lead" data-en="Convert, shrink, and edit files without uploading them anywhere. Open the Tools menu in the sidebar and pick one." style="max-width:700px">Ubah, kecilkan, dan edit file tanpa mengunggahnya ke mana pun. Buka menu Alat di sidebar lalu pilih salah satu.</p>
+    <div class="tools rv" style="margin-top:34px">
+      <div><i data-lucide="film"></i><span data-en="Convert video">Konversi video</span></div>
+      <div><i data-lucide="music"></i><span data-en="Convert audio">Konversi audio</span></div>
+      <div><i data-lucide="image"></i><span data-en="Convert images">Konversi gambar</span></div>
+      <div><i data-lucide="minimize-2"></i><span data-en="Compress video">Kompres video</span></div>
+      <div><i data-lucide="scissors"></i><span data-en="Trim & join video">Potong & gabung video</span></div>
+      <div><i data-lucide="image-down"></i><span data-en="Compress images">Kompres gambar</span></div>
+      <div><i data-lucide="files"></i><span data-en="Merge PDF">Gabung PDF</span></div>
+      <div><i data-lucide="split"></i><span data-en="Split PDF">Pisah PDF</span></div>
+      <div><i data-lucide="file-down"></i><span data-en="Compress PDF">Kompres PDF</span></div>
+      <div><i data-lucide="file-output"></i><span data-en="Documents to PDF">Dokumen ke PDF</span></div>
+      <div><i data-lucide="text-cursor-input"></i><span data-en="Bulk rename">Rename massal</span></div>
+      <div><i data-lucide="download"></i><span data-en="Download media">Unduh media</span></div>
+      <div><i data-lucide="braces"></i><span data-en="JSON formatter">Format JSON</span></div>
+      <div><i data-lucide="qr-code"></i><span>QR Code</span></div>
+    </div>
+    <p style="margin:26px 0 0;max-width:720px;opacity:.75;font-size:15px" data-en="Video and audio tools use ffmpeg, and Documents to PDF uses LibreOffice. If one is missing, Cognify offers to download it once from the official source, checks it, and keeps it in its own folder, with no admin password.">Alat video dan audio memakai ffmpeg, dan Dokumen ke PDF memakai LibreOffice. Bila salah satunya belum ada, Cognify menawarkan mengunduhnya sekali dari sumber resminya, memeriksanya, dan menyimpannya di folder sendiri, tanpa kata sandi admin.</p>
+  </section>
+
+  <!-- ========== Tampilan ========== -->
+  <section class="block" data-bg="#f4efe6" style="padding-bottom:0">
+    <h2 data-en="Make it yours.">Buat jadi punyamu.</h2>
+    <p class="lead" data-en="Light and dark themes, six ready-made palettes, or one color of your own. Text colors adjust themselves so they stay easy to read." style="max-width:700px">Tema terang dan gelap, enam palet siap pakai, atau satu warna buatanmu sendiri. Warna teks menyesuaikan diri supaya tetap enak dibaca.</p>
+    <div class="pal rv">
+      <span style="--c:#938cff"><i></i>Lavender</span><span style="--c:#ffab91"><i></i>Persik</span><span style="--c:#ffd98a"><i></i>Mentega</span><span style="--c:#9fe3bf"><i></i>Mint</span><span style="--c:#9bd3f5"><i></i>Langit</span><span style="--c:#f7a8c6"><i></i>Mawar</span><span style="--c:#c9c9d4"><i></i>Grafit</span><span style="--c:linear-gradient(135deg,#938cff,#ffab91,#9fe3bf)"><i></i><b data-en="Custom">Kustom</b></span>
+    </div>
+  </section>
+
+  <!-- ========== Notch ========== -->
+  <section id="notch" class="notch-offer" data-bg="#eae4ff">
+    <div class="notch-card rv">
+      <svg class="ear l"><use href="#ear"/></svg><svg class="ear r"><use href="#ear"/></svg>
+      <div>
+        <span class="tag" style="background:#fff;color:#000"><i data-lucide="panel-top"></i>Cognify Notch</span>
+        <h2 data-en="Want it on your screen, too?">Mau tampil juga di layarmu?</h2>
+        <p data-en="Cognify Notch is a free companion app for Mac and Windows. A small notch at the top of your screen shows your agenda, tasks, quick notes, timers, music, and more, and it can connect to Cognify.">Cognify Notch adalah app pendamping gratis untuk Mac dan Windows. Notch kecil di tepi atas layar menampilkan agenda, tugas, catatan cepat, timer, lagu, dan lainnya, dan bisa dihubungkan ke Cognify.</p>
+        <ul>
+          <li><i data-lucide="check"></i><span data-en="Your Cognify calendar and tasks, one glance away">Kalender dan tugas Cognify, cukup sekali lirik</span></li>
+          <li><i data-lucide="check"></i><span data-en="Study timer, stopwatch, and drink reminders that ring">Timer belajar, stopwatch, dan pengingat minum yang berbunyi</span></li>
+          <li><i data-lucide="check"></i><span data-en="Works without an account, and the connection stays on your computer">Tanpa akun, dan hubungannya hanya lewat berkas di komputermu</span></li>
+        </ul>
+        <div class="cta" style="justify-content:flex-start">
+          <a class="btn accent" href="https://reinharddev.github.io/cognify-notch/"><i data-lucide="panel-top"></i><span data-en="See Cognify Notch">Lihat Cognify Notch</span></a>
+          <a class="btn" href="https://github.com/reinharddev/cognify-notch/releases/latest"><i data-lucide="download"></i>Mac</a>
+          <a class="btn" href="https://github.com/reinharddev/cognify-notch-windows/releases/latest"><i data-lucide="download"></i>Windows (Beta)</a>
+        </div>
+      </div>
+      <div class="pill-demo" aria-hidden="true">
+        <div class="top"><span data-en="Home">Beranda</span><span data-en="Thu 22 Oct 19.03">Kam 22 Okt 19.03</span></div>
+        <div class="ag"><i style="--c:#3592be"></i><span data-en="Physics class">Kelas Fisika</span><small data-en="in 24 min">24 menit lagi</small></div>
+        <div class="ag"><i style="--c:#e26336"></i><span data-en="Lab report">Laporan praktikum</span><small data-en="in 4 h">4 jam lagi</small></div>
+        <div class="tm"><span style="font-size:26px;font-family:var(--display);font-weight:800;color:#fff">24:59</span><span data-en="Focus">Fokus</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== Data ========== -->
+  <section id="data" class="block" data-bg="#f4efe6">
+    <h2 data-en="Your data stays<br>on your computer.">Datamu tetap<br>di komputermu.</h2>
+    <p class="lead" data-en="No account, no cloud, no analytics. Pages, boards, tables, and events are kept in a database on your own disk." style="max-width:700px">Tanpa akun, tanpa cloud, tanpa analitik. Halaman, papan, tabel, dan acara tersimpan dalam database di disk milikmu sendiri.</p>
+    <ul class="local rv">
+      <li><i data-lucide="hard-drive"></i><span><b data-en="Saved locally">Tersimpan lokal</b><span data-en="One database file in the app's data folder.">Satu berkas database di folder data app.</span></span></li>
+      <li><i data-lucide="wifi-off"></i><span><b data-en="Works offline">Jalan tanpa internet</b><span data-en="Writing, drawing, tables, and the calendar need no connection.">Menulis, menggambar, tabel, dan kalender tidak butuh koneksi.</span></span></li>
+      <li><i data-lucide="user-x"></i><span><b data-en="No account">Tanpa akun</b><span data-en="Nothing to sign up for, and nothing is sent to the developer.">Tidak ada yang perlu didaftarkan, dan tidak ada yang dikirim ke pengembang.</span></span></li>
+    </ul>
+    <h3 style="font-size:26px;margin:56px 0 0" data-en="The few things that do use the internet">Hal-hal yang memakai internet</h3>
+    <div class="net rv">
+      <div><b data-en="Calendar links">Tautan kalender</b><p data-en="Only if you add an ICS link. Cognify fetches that address to read the events.">Hanya bila kamu menambah tautan ICS. Cognify mengambil alamat itu untuk membaca acaranya.</p></div>
+      <div><b data-en="Download media">Unduh media</b><p data-en="The tool downloads from the link you paste.">Alat ini mengunduh dari tautan yang kamu tempel.</p></div>
+      <div><b data-en="Tool engines">Mesin alat</b><p data-en="ffmpeg or LibreOffice, downloaded once from the official source and checked, only when you use a tool that needs them.">ffmpeg atau LibreOffice, diunduh sekali dari sumber resminya dan diperiksa, hanya saat kamu memakai alat yang membutuhkannya.</p></div>
+      <div><b data-en="Browser extension">Ekstensi browser</b><p data-en="Talks only to Cognify on your own computer (localhost), after you pair it with a 6-digit code.">Hanya berbicara dengan Cognify di komputermu sendiri (localhost), setelah dipasangkan dengan kode 6 angka.</p></div>
+    </div>
+  </section>
+
+  <!-- ========== Tanya jawab ========== -->
+  <section id="tanya" class="block" data-bg="#f4efe6" style="padding-top:60px">
+    <h2 data-en="FAQ">Tanya jawab</h2>
+    <div class="faq">
+      <details><summary data-en="Is Cognify free?">Apakah Cognify gratis?</summary><p data-en="Yes. It is free, open source under AGPL-3.0, has no ads, and needs no account.">Ya. Gratis, open source dengan lisensi AGPL-3.0, tanpa iklan, dan tanpa akun.</p></details>
+      <details><summary data-en="Does it have AI?">Apakah ada AI-nya?</summary><p data-en="No AI is built in. There is an optional setting, off by default, that lets an AI app you already use read your pages and suggest new ones through a standard called MCP; suggestions wait in a menu until you approve them.">Tidak ada AI yang tertanam. Ada pengaturan opsional, mati bawaan, yang memungkinkan app AI yang sudah kamu pakai membaca halamanmu dan mengusulkan halaman baru lewat standar bernama MCP; usulannya menunggu di sebuah menu sampai kamu menyetujuinya.</p></details>
+      <details><summary data-en="Which computers does it run on?">Jalan di komputer apa saja?</summary><p data-en="macOS comes first. A Windows version is being prepared and is not ready to download yet.">macOS lebih dulu. Versi Windows sedang dipersiapkan dan belum siap diunduh.</p></details>
+      <details><summary data-en="Where is my data stored?">Di mana datanya disimpan?</summary><p data-en="In a database file in the app's data folder on your computer. Nothing is uploaded.">Di berkas database dalam folder data app di komputermu. Tidak ada yang diunggah.</p></details>
+      <details><summary data-en="Can I use Cognify with Cognify Notch?">Bisa dipakai bersama Cognify Notch?</summary><p data-en="Yes. In the Notch page of Cognify, press Connect. The notch then shows your tasks, agenda, and more. It is optional and can be turned off any time.">Bisa. Di halaman Notch di Cognify, tekan Hubungkan. Notch lalu menampilkan tugas, agenda, dan lainnya. Ini opsional dan bisa diputus kapan saja.</p></details>
+      <details><summary data-en="Can I move my notes out later?">Bisakah catatan dibawa keluar nanti?</summary><p data-en="Boards export as PNG images, citations export as BibTeX, RIS, and CSL-JSON, and your data is an open SQLite file on your own disk.">Papan bisa diekspor sebagai gambar PNG, kutipan bisa diekspor sebagai BibTeX, RIS, dan CSL-JSON, dan datamu berupa berkas SQLite terbuka di disk milikmu.</p></details>
+    </div>
+  </section>
+
+  <!-- ========== Unduh ========== -->
+  <section id="unduh" class="get-wrap" data-bg="#c9c4ff">
+    <div class="get rv">
+      <svg class="ear l"><use href="#ear"/></svg><svg class="ear r"><use href="#ear"/></svg>
+      <img src="icon.png" alt="" width="84" height="84">
+      <h2 data-en="Coming soon.">Segera hadir.</h2>
+      <p data-en="The download for macOS is on its way, and Windows follows once it is ready. Meanwhile, the code is open and you can build it yourself.">Unduhan untuk macOS sedang disiapkan, dan Windows menyusul setelah selesai dipersiapkan. Sementara itu kodenya terbuka dan bisa kamu bangun sendiri.</p>
+      <div class="cta">
+        <a class="btn accent" href="https://github.com/reinharddev/cognify"><i data-lucide="code-xml"></i><span data-en="Source code on GitHub">Kode sumber di GitHub</span></a>
+        <a class="btn" href="https://reinharddev.github.io/cognify-notch/"><i data-lucide="panel-top"></i><span data-en="Try Cognify Notch now">Coba Cognify Notch sekarang</span></a>
+      </div>
+      <p class="meta" style="margin-top:18px" data-en="Free · AGPL-3.0">Gratis · AGPL-3.0</p>
+    </div>
+  </section>
+
+</main>
+
+<footer data-bg="#c9c4ff">
+  <span>© 2026 Reinhard Dave Yunardi</span>
+  <span><a href="https://github.com/reinharddev/cognify">GitHub</a> · <a href="https://reinharddev.github.io/cognify-notch/">Cognify Notch</a> · <span data-en="Open source (AGPL-3.0)">Open source (AGPL-3.0)</span></span>
+</footer>
+
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
