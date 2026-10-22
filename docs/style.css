@@ -226,6 +226,8 @@ body.dark .block h2 { color: var(--paper); }
 .net > div { background: var(--card); border: 2px solid var(--ink); border-radius: 22px; padding: 20px 22px; box-shadow: 6px 6px 0 var(--ink); font-size: 15px; }
 .net b { display: block; font-family: var(--display); font-size: 22px; margin-bottom: 4px; }
 .net p { margin: 0; color: var(--muted); }
+.convrt { color: var(--accent); font-weight: 700; font-size: 15px; margin-top: 6px; display: inline-block; }
+.cnvrt-i {color: var(--ink); font-weight: 700; font-size: 15px; margin-top: 6px; display: inline-block; }
 
 /* Tanya jawab */
 .faq { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; align-items: start; margin-top: 40px; }
