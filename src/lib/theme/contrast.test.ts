@@ -129,7 +129,7 @@ describe("konsistensi", () => {
         const p = join(dir, name);
         if (statSync(p).isDirectory()) walk(p);
         else if (/\.(svelte|ts)$/.test(name) && !skip.test(p)) {
-          const rel = p.slice(SRC.length + 1);
+          const rel = p.slice(SRC.length + 1).replace(/\\/g, "/");
           const found = [...readFileSync(p, "utf8").matchAll(/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b|rgba?\(/g)].map((m) => m[0].toLowerCase());
           for (const hex of found) if (!(allowed[rel] ?? []).includes(hex)) offenders.push(`${rel}: ${hex}`);
         }
