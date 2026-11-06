@@ -146,10 +146,10 @@
     flex: 1;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-2);
     background: none;
     border: 0;
-    padding: 8px 10px;
+    padding: var(--space-2) var(--space-3);
     cursor: pointer;
     text-align: left;
     font-weight: 600;
@@ -176,7 +176,7 @@
     height: 28px;
     border: 0;
     background: none;
-    border-radius: 6px;
+    border-radius: var(--radius-2);
     color: var(--text-muted);
     cursor: pointer;
     padding: 0;
@@ -212,18 +212,18 @@
   }
   .menu label {
     display: grid;
-    gap: 4px;
+    gap: var(--space-1);
     color: var(--text-muted);
     font-size: 0.85em;
   }
   .opts {
     display: grid;
-    gap: 6px;
+    gap: var(--space-2);
   }
   .opt {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-2);
   }
   .opt input {
     flex: 1;
@@ -241,11 +241,11 @@
   .danger {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-2);
     background: none;
     border: 1px solid var(--border-strong);
-    border-radius: 99px;
-    padding: 6px 12px;
+    border-radius: var(--radius-pill);
+    padding: var(--space-2) var(--space-3);
     color: var(--danger);
     cursor: pointer;
     justify-self: start;
@@ -263,12 +263,12 @@
     margin-top: var(--space-3);
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-2);
     background: var(--accent);
     color: var(--accent-contrast);
     border: 0;
-    border-radius: 99px;
-    padding: 7px 16px;
+    border-radius: var(--radius-pill);
+    padding: var(--space-2) var(--space-4);
     cursor: pointer;
     font-weight: 600;
   }

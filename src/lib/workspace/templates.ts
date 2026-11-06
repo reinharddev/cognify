@@ -27,7 +27,8 @@ export interface Template {
 const buildTemplates = (): Record<string, Template> => ({
   pr: {
     id: "pr", name: tr("Daftar PR", "Homework list"), hint: tr("Tugas yang harus dikerjakan", "Tasks to get done"), title: tr("Daftar PR", "Homework list"),
-    doc: doc(heading(tr("PR minggu ini", "Homework this week")), todos([tr("Matematika: soal halaman 12", "Math: exercises on page 12"), tr("Bahasa Indonesia: baca bab 2", "Language arts: read chapter 2")]), para()),
+    // Bagian atas terisi otomatis dari Moodle (bila tersambung); bagian bawah untuk PR yang ditambahkan sendiri.
+    doc: doc(heading(tr("PR minggu ini", "Homework this week")), { type: "moodleTasks" }, heading(tr("Tambahan dariku", "Added by me"), 3), todos([tr("Matematika: soal halaman 12", "Math: exercises on page 12"), tr("Bahasa Indonesia: baca bab 2", "Language arts: read chapter 2")]), para()),
   },
   rangkuman: {
     id: "rangkuman", name: tr("Rangkuman bab", "Chapter summary"), hint: tr("Poin penting dan contoh", "Key points and examples"), title: tr("Rangkuman bab", "Chapter summary"),

@@ -18,6 +18,7 @@
   import { prefs } from "$lib/stores/prefs.svelte";
   import { proposals } from "$lib/stores/proposals.svelte";
   import { startAgendaShare } from "$lib/stores/agendaShare.svelte";
+  import { moodle } from "$lib/stores/moodle.svelte";
   import { onNavigate } from "$app/navigation";
   import { listen } from "@tauri-apps/api/event";
   import { isTauri } from "@tauri-apps/api/core";
@@ -50,6 +51,7 @@
     }
     void notchLink.init();
     void calendar.init();
+    void moodle.init();
     void (async () => {
       await Promise.all([prefs.init(), ws.init()]);
       // Halaman awal "terakhir dibuka": hanya bila aplikasi dibuka di Beranda dan halamannya masih ada.
@@ -220,7 +222,7 @@
     flex: 1;
     min-width: 0;
     overflow-y: auto;
-    padding: var(--space-6) var(--space-8);
+    padding: var(--space-4) var(--space-5);
   }
   .side {
     display: contents;
@@ -271,7 +273,7 @@
       cursor: pointer;
     }
     main {
-      padding: 58px var(--space-4) var(--space-6);
+      padding: var(--space-6) var(--space-4) var(--space-4);
     }
   }
   .fail {

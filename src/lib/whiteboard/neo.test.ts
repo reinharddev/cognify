@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { neoStyle, SHADOW, type El } from "./neo";
+import { neoStyle, syncShadows, SHADOW, type El } from "./neo";
 
-const rect = (id: string, extra: Partial<El> = {}): El => ({ id, type: "rectangle", x: 10, y: 20, groupIds: [], version: 1, versionNonce: 1, roughness: 1, ...extra });
+const rect = (id: string, extra: Partial<El> = {}): El => ({ id, type: "rectangle", x: 10, y: 20, groupIds: [], version: 1, versionNonce: 1, roughness: 1, width: 100, height: 50, angle: 0, ...extra });
 
 describe("neoStyle", () => {
   it("tidak melakukan apa-apa bila tidak ada yang terpilih", () => {
@@ -34,5 +34,39 @@ describe("neoStyle", () => {
     const out = neoStyle([{ ...rect("l"), type: "arrow" }], { l: true })!;
     expect(out).toHaveLength(1);
     expect(out[0].roughness).toBe(0);
+  });
+});
+
+describe("syncShadows", () => {
+  const made = () => neoStyle([rect("a")], { a: true })!;
+
+  it("tidak mengubah apa pun bila bayangan masih menempel", () => {
+    expect(syncShadows(made())).toBeNull();
+  });
+
+  it("mengembalikan bayangan yang digeser sendiri", () => {
+    const els = made().map((e) => (e.customData?.neoShadowOf ? { ...e, x: 300, y: 300 } : e));
+    const fixed = syncShadows(els)!;
+    const shadow = fixed.find((e) => e.customData?.neoShadowOf)!;
+    expect(shadow.x).toBe(10 + SHADOW);
+    expect(shadow.y).toBe(20 + SHADOW);
+    expect(syncShadows(fixed)).toBeNull();
+  });
+
+  it("mengikuti ukuran dan putaran bentuk, dan grup yang dilepas", () => {
+    const els = made().map((e) => (e.id === "a" ? { ...e, width: 200, angle: 1, groupIds: [] } : { ...e, groupIds: [] }));
+    const fixed = syncShadows(els)!;
+    const shadow = fixed.find((e) => e.customData?.neoShadowOf)!;
+    const shape = fixed.find((e) => e.id === "a")!;
+    expect(shadow.width).toBe(200);
+    expect(shadow.angle).toBe(1);
+    expect(shape.groupIds).toHaveLength(1);
+    expect(shadow.groupIds).toEqual(shape.groupIds);
+  });
+
+  it("menghapus bayangan bila bentuknya terhapus", () => {
+    const els = made().map((e) => (e.id === "a" ? { ...e, isDeleted: true } : e));
+    const fixed = syncShadows(els)!;
+    expect(fixed.find((e) => e.customData?.neoShadowOf)!.isDeleted).toBe(true);
   });
 });

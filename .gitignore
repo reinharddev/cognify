@@ -9,21 +9,8 @@ node_modules
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
-# sidecar Python
-sidecar/.venv
-sidecar/.venv-build
-sidecar/.devdata
-sidecar/build
-sidecar/dist
 __pycache__/
 .pytest_cache/
 
 # Disalin dari node_modules oleh scripts/excalidraw-assets.mjs
 /static/excalidraw
-
-# Tauri
-src-tauri/target
-src-tauri/gen
-src-tauri/binaries
-.svelte-kit
-.DS_Store

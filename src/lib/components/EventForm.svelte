@@ -205,7 +205,7 @@
     padding: var(--space-4);
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: var(--radius-3);
   }
   form {
     display: flex;
@@ -227,7 +227,7 @@
     height: 2em;
     border: none;
     background: none;
-    border-radius: 6px;
+    border-radius: var(--radius-2);
     color: var(--text-muted);
     cursor: pointer;
   }
@@ -242,7 +242,7 @@
   .fld {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--space-1);
     font-size: 0.9em;
     color: var(--text-muted);
     flex: 1;
@@ -250,7 +250,7 @@
   .check {
     flex-direction: row;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
     color: var(--text);
   }
   .check input {
@@ -262,7 +262,7 @@
   }
   .colors {
     display: flex;
-    gap: 8px;
+    gap: var(--space-2);
   }
   .swatch {
     width: 1.6em;
@@ -297,7 +297,7 @@
     flex: 1;
   }
   footer button {
-    padding: 6px 14px;
+    padding: var(--space-2) var(--space-3);
     background: var(--surface-2);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);

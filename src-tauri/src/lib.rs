@@ -3,6 +3,7 @@ mod clipboard;
 mod notch;
 mod ics_fetch;
 mod link;
+mod moodle;
 mod pdfmeta;
 mod mcp;
 mod store;
@@ -83,7 +84,23 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            store::commands::backend_info,
+            moodle::moodle_status,
+            moodle::moodle_set_enabled,
+            moodle::moodle_connect,
+            moodle::moodle_sync,
+            moodle::moodle_disconnect,
+            moodle::moodle_items,
+            moodle::moodle_courses,
+            moodle::moodle_files,
+            moodle::moodle_links,
+            moodle::moodle_refresh_course,
+            moodle::moodle_download,
+            moodle::moodle_cancel,
+            moodle::moodle_delete_local,
+            moodle::moodle_resume,
+            store::images::image_dir,
+            store::images::image_save,
+            store::images::image_import,
             store::commands::page_create,
             store::commands::page_get,
             store::commands::page_tree,
@@ -164,7 +181,16 @@ pub fn run() {
             toolbox::video_edit::join_plan,
             toolbox::video_edit::join_videos,
             toolbox::video_edit::video_frame,
+            toolbox::video_editor::audio_info,
+            toolbox::video_editor::export_video_project,
             toolbox::pdf::pdf_merge,
+            toolbox::webpdf::webpdf_open,
+            toolbox::webpdf::webpdf_print,
+            toolbox::webpdf::webpdf_close,
+            toolbox::webpdf::print_page,
+            toolbox::pdf_tools::images_to_pdf_cmd,
+            toolbox::pdf_tools::pdf_organize,
+            toolbox::pdf_tools::pdf_text,
             toolbox::pdf::pdf_split
         ])
         .build(tauri::generate_context!())

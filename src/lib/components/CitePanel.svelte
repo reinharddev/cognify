@@ -300,20 +300,20 @@
 </div>
 
 <style>
-  .overlay { position: fixed; inset: 0; z-index: 60; display: grid; place-items: start center; padding: var(--space-6) var(--space-4); background: color-mix(in srgb, var(--text) 35%, transparent); overflow-y: auto; animation: fade var(--dur-2) ease; }
+  .overlay { position: fixed; inset: 0; z-index: 60; display: grid; place-items: start center; padding: var(--space-4) var(--space-4); background: color-mix(in srgb, var(--text) 35%, transparent); overflow-y: auto; animation: fade var(--dur-2) ease; }
   .panel { width: min(680px, 100%); background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-4) var(--space-4) var(--space-3); box-shadow: 0 18px 50px var(--shadow-2); animation: rise var(--dur-3) var(--ease-out) backwards; }
   header { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
   h2 { margin: 0; font-size: 1.2em; flex: 1; }
   h3 { margin: var(--space-4) 0 var(--space-2); font-size: 0.85em; font-weight: 600; color: var(--text-muted); }
   .style { display: flex; align-items: center; gap: var(--space-2); color: var(--text-muted); font-size: 0.9em; }
-  select, input { padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font: inherit; min-width: 0; }
+  select, input { padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font: inherit; min-width: 0; }
   select:focus-visible, input:focus-visible { outline: none; border-color: var(--accent-strong); box-shadow: 0 0 0 3px var(--accent-soft); }
-  .x { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; background: none; border: 0; border-radius: 99px; color: var(--text-muted); cursor: pointer; }
+  .x { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; background: none; border: 0; border-radius: var(--radius-pill); color: var(--text-muted); cursor: pointer; }
   .x:hover { background: var(--surface-2); }
   .status { background: var(--warn-soft); border-radius: var(--radius); padding: var(--space-2) var(--space-3); font-size: 0.9em; }
-  .status p { margin: 2px 0; }
+  .status p { margin: var(--space-0) 0; }
   .out { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-3); line-height: 1.55; user-select: text; overflow-wrap: anywhere; }
-  .copy { display: inline-flex; align-items: center; gap: 5px; margin-top: var(--space-2); padding: 5px 12px; background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); border-radius: 99px; cursor: pointer; font: inherit; font-size: 0.9em; }
+  .copy { display: inline-flex; align-items: center; gap: var(--space-1); margin-top: var(--space-2); padding: var(--space-1) var(--space-3); background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius-pill); cursor: pointer; font: inherit; font-size: 0.9em; }
   .copy:hover { background: var(--accent-soft); }
   .intext { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
   .intext li, .intext.one { display: grid; grid-template-columns: 1fr auto; gap: var(--space-1) var(--space-3); align-items: center; padding: var(--space-2) var(--space-3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
@@ -323,7 +323,7 @@
   .intext .copy { margin: 0; }
   .toggle { background: none; border: 0; padding: 0; color: var(--link); cursor: pointer; font: inherit; text-decoration: underline; margin-top: var(--space-3); }
   .fields { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-top: var(--space-3); }
-  .fields label, .fields .authors, .fields .date { display: grid; gap: 4px; align-content: start; }
+  .fields label, .fields .authors, .fields .date { display: grid; gap: var(--space-1); align-content: start; }
   .fields .wide { grid-column: 1 / -1; }
   .fields span { color: var(--text-muted); font-size: 0.85em; }
   .row { display: flex; gap: var(--space-2); align-items: center; }

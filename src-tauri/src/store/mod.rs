@@ -4,7 +4,9 @@
 
 pub mod calendar;
 pub mod commands;
+pub mod images;
 pub mod markdown;
+pub mod moodle;
 pub mod pages;
 pub mod proposals;
 pub mod schema;

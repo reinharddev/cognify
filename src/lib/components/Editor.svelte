@@ -17,13 +17,16 @@
   import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
   import {
     AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, Code, SquareCode, Heading1, Heading2, Heading3, Highlighter, IndentDecrease,
-    IndentIncrease, CalendarDays, Shapes, Italic, Link as LinkIcon, Link2, StickyNote, Unlink, List, ListChecks, ListOrdered, Minus, Quote, Redo2, RemoveFormatting,
+    IndentIncrease, CalendarDays, GraduationCap, Image as ImageIcon, Shapes, Italic, Link as LinkIcon, Link2, StickyNote, Unlink, List, ListChecks, ListOrdered, Minus, Quote, Redo2, RemoveFormatting,
     Strikethrough, Subscript as SubIcon, Superscript as SupIcon, Table as TableIcon, Underline as UnderlineIcon, Undo2,
   } from "@lucide/svelte";
+  import { getCurrentWebview } from "@tauri-apps/api/webview";
+  import { ImageNode, importImagePath, isImageFile, saveImageFile } from "$lib/editor/image";
   import { BlockMove } from "$lib/editor/blockMove";
   import { NoteLink } from "$lib/editor/noteLink";
   import { BoardBlockNode } from "$lib/editor/boardBlock.svelte";
   import { CalendarBlockNode } from "$lib/editor/calendarBlock.svelte";
+  import { MoodleTasksNode } from "$lib/editor/moodleTasks.svelte";
   import { PageLink, refreshPageLinks } from "$lib/editor/pageLink";
   import { ws } from "$lib/stores/workspace.svelte";
   import { contextMenu } from "$lib/stores/contextmenu.svelte";
@@ -54,6 +57,8 @@
     { label: tr("Garis pemisah", "Divider"), hint: tr("Garis mendatar", "Horizontal line"), keys: "garis pemisah divider hr divider line hr", icon: Minus, run: (c) => c.setHorizontalRule() },
     { label: tr("Tautan ke halaman", "Link to page"), hint: tr("Hubungkan ke dokumen, papan, atau tabel lain", "Connect to another document, board, or table"), keys: "tautan link halaman wiki dokumen link page wiki document", icon: Link2, run: (c) => c.insertContent("[[") },
     { label: tr("Kalender", "Calendar"), hint: tr("Acara untuk rentang waktu pilihanmu", "Events for a time range you choose"), keys: "kalender calendar agenda acara jadwal calendar agenda event schedule", icon: CalendarDays, run: (c) => c.insertContent({ type: "calendarBlock", attrs: { range: "week" } }) },
+    { label: tr("Gambar", "Image"), hint: tr("Sisipkan gambar dari komputer", "Insert an image from this computer"), keys: "gambar foto image picture photo img", icon: ImageIcon, run: (c) => { queueMicrotask(pickImage); return c; } },
+    { label: tr("Tugas Moodle", "Moodle tasks"), hint: tr("Tugas sekolah yang belum dikumpulkan, otomatis dari Moodle", "Unsubmitted school tasks, filled in automatically from Moodle"), keys: "moodle tugas pr deadline sekolah tenggat moodle tasks homework deadline", icon: GraduationCap, run: (c) => c.insertContent({ type: "moodleTasks" }) },
     { label: tr("Papan", "Board"), hint: tr("Tampilkan gambar dari papan (hanya baca)", "Show the drawing from a board (read only)"), keys: "papan board gambar whiteboard board whiteboard drawing", icon: Shapes, run: (c) => c.insertContent({ type: "boardBlock", attrs: { pageId: "" } }) },
     { label: tr("Tabel", "Table"), hint: tr("Tabel 3 × 3", "3 × 3 table"), keys: "tabel table kolom baris table column row", icon: TableIcon, run: (c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }) },
   ]);
@@ -169,7 +174,55 @@
     return false;
   }
 
-  const editorProps = () => ({ attributes: { spellcheck: String(spellcheck) }, handleKeyDown: (_view: unknown, event: KeyboardEvent) => wikiKey(event) || slashKey(event) });
+  const editorProps = () => ({
+    attributes: { spellcheck: String(spellcheck) },
+    handleKeyDown: (_view: unknown, event: KeyboardEvent) => wikiKey(event) || slashKey(event),
+    // Gambar yang ditempel (tangkapan layar, gambar yang disalin) disimpan sebagai berkas.
+    handlePaste: (_view: unknown, event: ClipboardEvent) => {
+      const files = [...(event.clipboardData?.files ?? [])].filter(isImageFile);
+      if (!files.length) return false;
+      event.preventDefault();
+      void addImages(files);
+      return true;
+    },
+    // Di browser biasa; di app Tauri seretan berkas ditangani lewat onDragDropEvent.
+    handleDrop: (view: import("@tiptap/pm/view").EditorView, event: DragEvent) => {
+      const files = [...(event.dataTransfer?.files ?? [])].filter(isImageFile);
+      if (!files.length) return false;
+      event.preventDefault();
+      const at = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
+      void addImages(files, at);
+      return true;
+    },
+  });
+
+  let picker: HTMLInputElement | undefined = $state();
+  const pickImage = () => picker?.click();
+
+  /** Sisipkan gambar sebagai blok, di posisi seretan bila ada, atau di bawah paragraf yang sedang dipakai. */
+  async function addImages(items: (File | string)[], at?: number) {
+    if (!editor || locked) return;
+    for (const item of items) {
+      try {
+        const src = typeof item === "string" ? await importImagePath(item) : await saveImageFile(item);
+        if (!editor) return;
+        if (at != null) {
+          // Gambar adalah blok: letakkan sesudah blok tempat seretan dilepas, bukan di tengah kalimat.
+          const rp = editor.state.doc.resolve(Math.min(at, editor.state.doc.content.size));
+          editor.chain().focus().insertContentAt(rp.depth >= 1 ? rp.after(1) : rp.pos, { type: "image", attrs: { src } }).run();
+        } else insertBlock("image", { src });
+      } catch (e) {
+        void dialog.confirm(e instanceof Error ? e.message : typeof e === "string" ? e : tr("Gambar tidak bisa dimasukkan.", "The image could not be added."), { okLabel: "OK" });
+      }
+    }
+  }
+
+  async function onPick(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const files = [...(input.files ?? [])].filter(isImageFile);
+    input.value = "";
+    if (files.length) await addImages(files);
+  }
 
   function parse(raw: string): object | string {
     if (!raw.trim()) return "";
@@ -189,6 +242,8 @@
         NoteLink,
         CalendarBlockNode,
         BoardBlockNode,
+        MoodleTasksNode,
+        ImageNode,
         PageLink.configure({ open: (id) => void goto(`/p/${id}`) }),
         TextStyleKit,
         Highlight.configure({ multicolor: true }),
@@ -216,7 +271,23 @@
       onUpdate: ({ editor: e }) => onchange(JSON.stringify(e.getJSON()), e.getText({ blockSeparator: "\n" })),
     });
     editor = instance;
-    return () => instance.destroy();
+    // Tauri menahan seretan berkas ke webview, jadi posisi dan jalur berkas datang dari onDragDropEvent.
+    const unlisten = isTauri()
+      ? getCurrentWebview().onDragDropEvent((e) => {
+          if (e.payload.type !== "drop") return;
+          const r = element.getBoundingClientRect();
+          const x = e.payload.position.x / devicePixelRatio;
+          const y = e.payload.position.y / devicePixelRatio;
+          if (x < r.left || x > r.right || y < r.top || y > r.bottom) return;
+          const paths = e.payload.paths.filter((p) => isImageFile({ type: "", name: p }));
+          if (!paths.length) return;
+          void addImages(paths, instance.view.posAtCoords({ left: x, top: y })?.pos);
+        })
+      : null;
+    return () => {
+      void unlisten?.then((fn) => fn());
+      instance.destroy();
+    };
   });
 
   $effect(() => {
@@ -392,7 +463,7 @@
 </script>
 
 {#if toolbar}
-<div class="bar" role="toolbar" aria-label="Format teks">
+<div class="bar" role="toolbar" aria-label="Format teks" data-noprint>
   <div class="row">
     <div class="grp">
       <button title={tr("Urungkan (⌘Z)", "Undo (⌘Z)")} aria-label={tr("Urungkan", "Undo")} onclick={() => run((c) => c.undo())}><Undo2 size={16} /></button>
@@ -454,6 +525,7 @@
       <button title={tr("Tautan ke halaman", "Link to page")} aria-label={tr("Tautan ke halaman", "Link to page")} onclick={() => run((c) => c.insertContent("[["))}><Link2 size={16} /></button>
       <button title={tr("Sisipkan kalender", "Insert calendar")} aria-label={tr("Sisipkan kalender", "Insert calendar")} onclick={() => insertBlock("calendarBlock", { range: "week" })}><CalendarDays size={16} /></button>
       <button title={tr("Sisipkan papan", "Insert board")} aria-label={tr("Sisipkan papan", "Insert board")} onclick={() => insertBlock("boardBlock", { pageId: "" })}><Shapes size={16} /></button>
+      <button title={tr("Gambar", "Image")} aria-label={tr("Sisipkan gambar", "Insert image")} onclick={pickImage}><ImageIcon size={16} /></button>
       <button title={tr("Tabel", "Table")} aria-label={tr("Sisipkan tabel", "Insert table")} onclick={() => run((c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }))}><TableIcon size={16} /></button>
       <button class:on={active("blockquote")} title={tr("Kutipan", "Quote")} aria-label={tr("Kutipan", "Quote")} onclick={() => run((c) => c.toggleBlockquote())}><Quote size={16} /></button>
       <button class:on={active("codeBlock")} title={tr("Kotak kode (beberapa baris)", "Code block (multiple lines)")} aria-label={tr("Kotak kode", "Code block")} onclick={() => run((c) => c.toggleCodeBlock())}><SquareCode size={16} /></button>
@@ -462,7 +534,7 @@
   </div>
 </div>
 {#if inTable}
-  <div class="bar tbl" role="toolbar" aria-label={tr("Tabel", "Table")}>
+  <div class="bar tbl" role="toolbar" data-noprint aria-label={tr("Tabel", "Table")}>
     <button class="txt" onclick={selectTable}>Pilih tabel</button>
     <span class="sep"></span>
     <button class="txt" onclick={() => run((c) => c.addRowBefore())}>Baris di atas</button>
@@ -478,6 +550,7 @@
 {/if}
 {/if}
 
+<input bind:this={picker} type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden onchange={onPick} />
 <!-- Tautan di dalam catatan dibuka di browser (bukan di jendela app). -->
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 <div class="doc" bind:this={element} onclickcapture={openLink} oncontextmenu={onContext}></div>
@@ -512,27 +585,32 @@
     z-index: 5;
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding: 8px;
+    gap: var(--space-2);
+    /* Radius bersarang konsentris: bar 20, jarak 8 → grup 12; grup 12, jarak 4 → tombol 8 (rumus di app.css). */
+    --r-bar: var(--radius-4);
+    --pad-bar: var(--space-2);
+    padding: var(--pad-bar);
     margin-bottom: var(--space-4);
     background: var(--surface);
     border: var(--edge-w) solid var(--edge);
-    border-radius: var(--radius);
+    border-radius: var(--r-bar);
     box-shadow: var(--lift);
   }
   .row {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-2);
   }
   .grp {
     display: flex;
     align-items: center;
     gap: 1px;
-    padding: 2px;
+    --r-grp: max(calc(var(--r-bar) - var(--pad-bar)), var(--radius-1));
+    --pad-grp: var(--space-1);
+    padding: var(--pad-grp);
     background: var(--surface-2);
-    border-radius: 10px;
+    border-radius: var(--r-grp);
   }
   button {
     display: grid;
@@ -542,7 +620,7 @@
     padding: 0;
     border: var(--edge-w) solid transparent;
     background: none;
-    border-radius: 8px;
+    border-radius: max(calc(var(--r-grp, var(--radius-3)) - var(--pad-grp, var(--space-1))), var(--radius-1));
     color: var(--text-muted);
     cursor: pointer;
   }
@@ -561,7 +639,7 @@
   }
   button.txt {
     width: auto;
-    padding: 0 10px;
+    padding: 0 var(--space-3);
     font-size: 0.85em;
   }
   button.txt.danger {
@@ -572,8 +650,8 @@
     flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
-    gap: 2px;
-    padding: 6px 8px;
+    gap: var(--space-0);
+    padding: var(--space-2) var(--space-2);
     margin-top: calc(-1 * var(--space-2));
     box-shadow: none;
     background: var(--surface-2);
@@ -589,7 +667,7 @@
   .dd.w-size { width: 84px; }
   .dd.w-line { width: 118px; }
   .dd :global(.tb-sel) {
-    padding: 3px 8px;
+    padding: var(--space-1) var(--space-2);
     font-size: 0.88em;
     background: transparent;
     border-color: transparent;
@@ -614,12 +692,12 @@
     font-weight: 700;
     border-bottom: 3px solid var(--c);
     line-height: 1;
-    padding: 0 2px;
+    padding: 0 var(--space-0);
   }
   .sep {
     width: 1px;
     height: 1.2em;
-    margin: 0 4px;
+    margin: 0 var(--space-1);
     background: var(--border);
   }
 
@@ -627,6 +705,17 @@
     position: relative;
   }
   /* Pegangan pindah blok di sisi kiri, dan garis tempat blok akan jatuh. */
+  .doc :global(img) {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 0.5rem 0;
+    border-radius: var(--radius-sm);
+  }
+  .doc :global(img.ProseMirror-selectednode) {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 2px;
+  }
   .doc :global(.block-handle) {
     position: absolute;
     z-index: 4;
@@ -635,7 +724,7 @@
     padding: 0;
     place-items: center;
     border: none;
-    border-radius: 6px;
+    border-radius: var(--radius-2);
     background: none;
     color: var(--text-muted);
     cursor: grab;
@@ -650,7 +739,7 @@
     position: absolute;
     z-index: 4;
     height: 3px;
-    border-radius: 2px;
+    border-radius: var(--radius-1);
     background: var(--accent-strong);
     pointer-events: none;
   }
@@ -671,17 +760,17 @@
   }
   .doc :global(.note-link) {
     background: color-mix(in srgb, var(--accent) 45%, transparent);
-    border-radius: 3px;
+    border-radius: var(--radius-1);
     padding: 1px 0;
   }
   .doc :global(.page-link) {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 0 8px;
+    gap: var(--space-1);
+    padding: 0 var(--space-2);
     margin: 0 1px;
     border: var(--edge-w) solid var(--edge);
-    border-radius: 99px;
+    border-radius: var(--radius-pill);
     background: var(--accent-soft);
     font-size: 0.92em;
     font-weight: 600;
@@ -802,9 +891,9 @@
     font-family: var(--font-mono);
   }
   .doc :global(.tiptap code) {
-    padding: 1px 5px;
+    padding: 1px var(--space-1);
     background: var(--surface-2);
-    border-radius: 4px;
+    border-radius: var(--radius-1);
     font-family: var(--font-mono);
     font-size: 0.92em;
   }
@@ -813,8 +902,8 @@
     background: none;
   }
   .doc :global(.tiptap mark) {
-    padding: 0 2px;
-    border-radius: 3px;
+    padding: 0 var(--space-0);
+    border-radius: var(--radius-1);
     color: inherit;
   }
   .doc :global(.tiptap u) {
@@ -833,7 +922,7 @@
   .doc :global(.tiptap td) {
     position: relative;
     min-width: 3em;
-    padding: 6px 10px;
+    padding: var(--space-2) var(--space-3);
     border: 1px solid var(--border-strong);
     vertical-align: top;
     text-align: left;
@@ -872,7 +961,7 @@
     width: 260px;
     max-height: 320px;
     overflow: auto;
-    padding: 4px;
+    padding: var(--space-1);
     background: var(--surface);
     border: 1px solid var(--border-strong);
     border-radius: var(--radius);
@@ -882,14 +971,14 @@
   .slash button {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--space-3);
     width: 100%;
     height: auto;
     text-align: left;
     background: none;
     border: 0;
     border-radius: var(--radius-sm);
-    padding: 6px 8px;
+    padding: var(--space-2) var(--space-2);
     cursor: pointer;
   }
   .slash button.on {
@@ -900,7 +989,7 @@
     place-items: center;
     width: 30px;
     height: 30px;
-    border-radius: 8px;
+    border-radius: var(--radius-2);
     background: var(--surface-2);
     color: var(--link);
     flex: none;

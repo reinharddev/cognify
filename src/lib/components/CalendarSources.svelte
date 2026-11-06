@@ -127,7 +127,7 @@
 <style>
   .pick { width: 100%; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; background: var(--surface); color: var(--text); border: var(--edge-w) dashed var(--edge); cursor: pointer; }
   .sources {
-    margin-top: var(--space-8);
+    margin-top: var(--space-5);
     padding-top: var(--space-4);
     border-top: var(--edge-w) solid var(--edge);
   }
@@ -152,7 +152,7 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    padding: 6px 0;
+    padding: var(--space-2) 0;
     border-bottom: 1px solid var(--border);
   }
   .on input {
@@ -174,7 +174,7 @@
     padding: 0;
     border: none;
     background: none;
-    border-radius: 6px;
+    border-radius: var(--radius-2);
     color: var(--text-muted);
     cursor: pointer;
   }
@@ -188,9 +188,9 @@
   .import {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-2);
     margin-top: var(--space-2);
-    padding: 6px 14px;
+    padding: var(--space-2) var(--space-3);
     background: var(--accent);
     color: var(--accent-contrast);
     font-weight: 600;
@@ -246,7 +246,7 @@
     padding: 0;
     border: none;
     background: none;
-    border-radius: 6px;
+    border-radius: var(--radius-2);
     color: var(--text-muted);
     cursor: pointer;
   }
@@ -256,17 +256,17 @@
   }
   .tabs {
     display: flex;
-    gap: 2px;
-    padding: 3px;
+    gap: var(--space-0);
+    padding: var(--space-1);
     background: var(--surface-2);
     border: var(--edge-w) solid var(--edge);
-    border-radius: 99px;
+    border-radius: var(--radius-pill);
   }
   .tabs button {
     flex: 1;
-    padding: 6px 12px;
+    padding: var(--space-2) var(--space-3);
     border: none;
-    border-radius: 99px;
+    border-radius: var(--radius-pill);
     background: none;
     color: var(--text-muted);
     cursor: pointer;
@@ -293,7 +293,7 @@
   }
   .go {
     align-self: flex-end;
-    padding: 6px 14px;
+    padding: var(--space-2) var(--space-3);
     background: var(--accent);
     color: var(--accent-contrast);
     font-weight: 600;

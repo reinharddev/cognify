@@ -284,9 +284,9 @@
 <style>
 	.notice {
 		display: flex;
-		gap: 12px;
-		padding: 12px 14px;
-		margin-bottom: 16px;
+		gap: var(--space-3);
+		padding: var(--space-3) var(--space-3);
+		margin-bottom: var(--space-4);
 		border: 1px solid var(--danger);
 		border-radius: var(--radius);
 		color: var(--danger);
@@ -299,15 +299,15 @@
 	.options {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 22px 32px;
-		margin: 22px 0;
+		gap: var(--space-4) var(--space-5);
+		margin: var(--space-4) 0;
 	}
 
 	.field {
 		display: flex;
 		flex-direction: column;
 		align-items: flex-start;
-		gap: 8px;
+		gap: var(--space-2);
 		max-width: 420px;
 	}
 
@@ -323,19 +323,19 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 12px;
+		gap: var(--space-3);
 	}
 
 	.seg {
 		display: inline-flex;
 		border: var(--edge-w) solid var(--edge);
-		border-radius: 8px;
+		border-radius: var(--radius-2);
 		overflow: hidden;
 		background: var(--surface);
 	}
 
 	.seg button {
-		padding: 7px 12px;
+		padding: var(--space-2) var(--space-3);
 		border: 0;
 		border-right: 1px solid var(--border);
 		background: transparent;
@@ -353,14 +353,14 @@
 	.custom {
 		display: inline-flex;
 		align-items: center;
-		gap: 6px;
+		gap: var(--space-2);
 	}
 
 	input[type='number'] {
 		width: 80px;
-		padding: 6px 8px;
+		padding: var(--space-2) var(--space-2);
 		border: var(--edge-w) solid var(--edge);
-		border-radius: 8px;
+		border-radius: var(--radius-2);
 		background: var(--surface);
 		color: var(--text);
 		font: inherit;
@@ -369,9 +369,9 @@
 	}
 
 	select {
-		padding: 7px 10px;
+		padding: var(--space-2) var(--space-3);
 		border: var(--edge-w) solid var(--edge);
-		border-radius: 8px;
+		border-radius: var(--radius-2);
 		background: var(--surface);
 		color: var(--text);
 		font: inherit;
@@ -388,7 +388,7 @@
 
 	.list {
 		list-style: none;
-		margin: 0 0 18px;
+		margin: 0 0 var(--space-4);
 		padding: 0;
 		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
@@ -397,7 +397,7 @@
 	}
 
 	li {
-		padding: 10px 14px;
+		padding: var(--space-3) var(--space-3);
 		border-bottom: 1px solid var(--border);
 	}
 
@@ -408,7 +408,7 @@
 	.row {
 		display: flex;
 		align-items: center;
-		gap: 10px;
+		gap: var(--space-3);
 	}
 
 	.status-icon {
@@ -444,11 +444,11 @@
 
 	.gain {
 		color: var(--ok);
-		margin-left: 4px;
+		margin-left: var(--space-1);
 	}
 
 	.plan {
-		margin: 4px 0 0 26px;
+		margin: var(--space-1) 0 0 var(--space-5);
 		color: var(--text-dim);
 		font-size: 12.5px;
 	}
@@ -468,9 +468,9 @@
 	.icon-btn {
 		display: inline-grid;
 		place-items: center;
-		padding: 3px;
+		padding: var(--space-1);
 		border: 0;
-		border-radius: 5px;
+		border-radius: var(--radius-1);
 		background: none;
 		color: var(--text-dim);
 	}
@@ -481,8 +481,8 @@
 
 	.bar {
 		height: 4px;
-		margin-top: 8px;
-		border-radius: 2px;
+		margin-top: var(--space-2);
+		border-radius: var(--radius-1);
 		background: var(--surface-2);
 		overflow: hidden;
 	}
@@ -509,13 +509,13 @@
 
 	.actions {
 		display: flex;
-		gap: 10px;
+		gap: var(--space-3);
 	}
 
 	.error {
-		margin: 8px 0 0;
-		padding: 8px 10px;
-		border-radius: 6px;
+		margin: var(--space-2) 0 0;
+		padding: var(--space-2) var(--space-3);
+		border-radius: var(--radius-2);
 		background: var(--surface-2);
 		color: var(--danger);
 		font-size: 12px;

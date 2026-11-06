@@ -199,9 +199,9 @@
 	.file {
 		display: flex;
 		align-items: center;
-		gap: 12px;
-		margin-top: 16px;
-		padding: 10px 14px;
+		gap: var(--space-3);
+		margin-top: var(--space-4);
+		padding: var(--space-3) var(--space-3);
 		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
@@ -224,7 +224,7 @@
 	.err {
 		display: inline-flex;
 		align-items: center;
-		gap: 4px;
+		gap: var(--space-1);
 		color: var(--danger);
 		font-size: 12px;
 	}
@@ -232,14 +232,14 @@
 	.times {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 20px;
-		margin-top: 20px;
+		gap: var(--space-4);
+		margin-top: var(--space-4);
 	}
 
 	.time {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
+		gap: var(--space-2);
 	}
 
 	.label {
@@ -252,9 +252,9 @@
 
 	input {
 		width: 140px;
-		padding: 8px 10px;
+		padding: var(--space-2) var(--space-3);
 		border: var(--edge-w) solid var(--edge);
-		border-radius: 8px;
+		border-radius: var(--radius-2);
 		background: var(--surface);
 		color: var(--text);
 		font: inherit;
@@ -273,7 +273,7 @@
 		width: 240px;
 		aspect-ratio: 16 / 9;
 		border: var(--edge-w) solid var(--edge);
-		border-radius: 8px;
+		border-radius: var(--radius-2);
 		background: var(--surface-2);
 		overflow: hidden;
 		color: var(--text-dim);
@@ -287,7 +287,7 @@
 	}
 
 	.hint {
-		margin: 12px 0 0;
+		margin: var(--space-3) 0 0;
 		color: var(--text-dim);
 		font-size: 13px;
 	}
@@ -299,14 +299,14 @@
 	.options {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 22px 28px;
-		margin: 20px 0;
+		gap: var(--space-4) var(--space-5);
+		margin: var(--space-4) 0;
 	}
 
 	.field {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
+		gap: var(--space-2);
 	}
 
 	.field.wide {
@@ -316,14 +316,14 @@
 	.modes {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-		gap: 10px;
+		gap: var(--space-3);
 	}
 
 	.mode {
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
-		padding: 12px 14px;
+		gap: var(--space-1);
+		padding: var(--space-3) var(--space-3);
 		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
@@ -343,13 +343,13 @@
 	.actions {
 		display: flex;
 		align-items: center;
-		gap: 12px;
+		gap: var(--space-3);
 	}
 
 	.bar {
 		height: 4px;
-		margin-top: 12px;
-		border-radius: 2px;
+		margin-top: var(--space-3);
+		border-radius: var(--radius-1);
 		background: var(--surface-2);
 		overflow: hidden;
 	}
@@ -363,8 +363,8 @@
 	.result {
 		display: flex;
 		align-items: center;
-		gap: 8px;
-		margin-top: 16px;
+		gap: var(--space-2);
+		margin-top: var(--space-4);
 		color: var(--ok);
 	}
 
@@ -385,9 +385,9 @@
 	}
 
 	.error {
-		margin: 12px 0 0;
-		padding: 8px 10px;
-		border-radius: 6px;
+		margin: var(--space-3) 0 0;
+		padding: var(--space-2) var(--space-3);
+		border-radius: var(--radius-2);
 		background: var(--surface-2);
 		color: var(--danger);
 		font-size: 12px;

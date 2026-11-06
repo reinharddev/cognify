@@ -57,7 +57,7 @@ export interface Occurrence {
   start: number;
   end: number | null;
   allDay: boolean;
-  origin: "local" | "ics" | "notch";
+  origin: "local" | "ics" | "notch" | "moodle";
   /** Nama kalender (langganan atau "Notch"); kosong untuk acara Cognify. */
   calendar: string | null;
   color: string | null;

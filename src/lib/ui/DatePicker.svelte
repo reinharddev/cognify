@@ -100,7 +100,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: var(--space-2);
     width: 100%;
     min-width: 0;
     padding: var(--space-2) var(--space-3);
@@ -122,24 +122,24 @@
     position: fixed;
     z-index: 191;
     width: 264px;
-    padding: 10px;
+    padding: var(--space-3);
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: var(--radius-3);
     box-shadow: 0 8px 28px var(--shadow-4);
     animation: pop var(--dur-2) var(--ease-out) both;
     outline: none;
   }
-  .bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; text-transform: capitalize; }
-  .nav { display: grid; place-items: center; width: 28px; height: 28px; border: none; border-radius: 8px; background: none; color: var(--text); cursor: pointer; }
+  .bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-2); text-transform: capitalize; }
+  .nav { display: grid; place-items: center; width: 28px; height: 28px; border: none; border-radius: var(--radius-2); background: none; color: var(--text); cursor: pointer; }
   .nav:hover { background: var(--surface-2); }
-  .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
-  .head { padding: 4px 0; font-size: 0.75em; color: var(--text-muted); }
-  .day { height: 32px; border: none; border-radius: 8px; background: none; color: var(--text); font: inherit; cursor: pointer; }
+  .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--space-0); text-align: center; }
+  .head { padding: var(--space-1) 0; font-size: 0.75em; color: var(--text-muted); }
+  .day { height: 32px; border: none; border-radius: var(--radius-2); background: none; color: var(--text); font: inherit; cursor: pointer; }
   .day:hover { background: var(--surface-2); }
   .day.today { box-shadow: inset 0 0 0 1px var(--accent-strong); }
   .day.sel { background: var(--accent); color: var(--accent-contrast); font-weight: 600; }
-  .foot { display: flex; justify-content: center; margin-top: 6px; }
-  .link { border: none; background: none; color: var(--link); font: inherit; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+  .foot { display: flex; justify-content: center; margin-top: var(--space-2); }
+  .link { border: none; background: none; color: var(--link); font: inherit; cursor: pointer; padding: var(--space-1) var(--space-2); border-radius: var(--radius-2); }
   .link:hover { background: var(--surface-2); }
 </style>

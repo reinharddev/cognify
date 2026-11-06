@@ -6,7 +6,7 @@ use tauri::State;
 use super::calendar::{self, Event, EventInput, Source, SourceInput};
 use super::proposals::{self, Proposal};
 use super::pages::{self, NewPage, Page, PageNode, PageUpdate, SearchHit, TrashItem};
-use super::{Error, Store, schema, settings};
+use super::{Error, Store, settings};
 
 type Res<T> = Result<T, Error>;
 
@@ -107,23 +107,6 @@ pub fn setting_get(store: State<'_, Store>, key: String) -> Res<Option<String>> 
 #[tauri::command]
 pub fn setting_set(store: State<'_, Store>, key: String, value: String) -> Res<()> {
     store.with(|c| settings::set(c, &key, &value))
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct BackendInfo {
-    status: serde_json::Value,
-    base_url: Option<String>,
-    token: String,
-    schema_version: u32,
-}
-
-/// Kompatibel dengan `getBackendInfo()` lama di frontend: penyimpanan lokal selalu "siap" bila app
-/// sudah berjalan (kegagalan membuka database menghentikan app sejak awal).
-#[tauri::command]
-pub fn backend_info(store: State<'_, Store>) -> Res<BackendInfo> {
-    let schema_version = store.with(|c| schema::version(c))?;
-    Ok(BackendInfo { status: serde_json::json!({"state": "ready", "port": 0}), base_url: None, token: String::new(), schema_version })
 }
 
 // ── kalender ────────────────────────────────────────────────────────────────

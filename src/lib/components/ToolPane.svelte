@@ -42,15 +42,15 @@
 	.back {
 		display: inline-flex;
 		align-items: center;
-		gap: 6px;
-		margin-bottom: 16px;
+		gap: var(--space-2);
+		margin-bottom: var(--space-4);
 	}
 
 	header {
 		display: flex;
 		align-items: center;
-		gap: 14px;
-		margin-bottom: 24px;
+		gap: var(--space-3);
+		margin-bottom: var(--space-4);
 	}
 
 	.icon {
@@ -59,7 +59,7 @@
 		width: 44px;
 		height: 44px;
 		border: var(--edge-w) solid var(--edge);
-		border-radius: 11px;
+		border-radius: var(--radius-3);
 		background: var(--tint-1);
 		box-shadow: var(--lift);
 		color: var(--text);

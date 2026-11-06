@@ -237,7 +237,7 @@
 
 <style>
 	.hint {
-		margin: 12px 0 0;
+		margin: var(--space-3) 0 0;
 		color: var(--text-dim);
 		font-size: 13px;
 	}
@@ -245,23 +245,23 @@
 	.rules {
 		display: flex;
 		flex-direction: column;
-		gap: 12px;
-		margin-top: 18px;
+		gap: var(--space-3);
+		margin-top: var(--space-4);
 	}
 
 	fieldset {
 		display: flex;
 		flex-direction: column;
-		gap: 10px;
+		gap: var(--space-3);
 		margin: 0;
-		padding: 12px 14px;
+		padding: var(--space-3) var(--space-3);
 		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
 	}
 
 	legend {
-		padding: 0 6px;
+		padding: 0 var(--space-2);
 		font-size: 12px;
 		font-weight: 600;
 		text-transform: uppercase;
@@ -272,26 +272,26 @@
 	.grid {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
-		gap: 10px;
+		gap: var(--space-3);
 	}
 
 	.line {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 10px 18px;
+		gap: var(--space-3) var(--space-4);
 	}
 
 	label {
 		display: inline-flex;
 		align-items: center;
-		gap: 6px;
+		gap: var(--space-2);
 	}
 
 	input:not([type]) {
-		padding: 7px 10px;
+		padding: var(--space-2) var(--space-3);
 		border: var(--edge-w) solid var(--edge);
-		border-radius: 8px;
+		border-radius: var(--radius-2);
 		background: var(--surface);
 		color: var(--text);
 		font: inherit;
@@ -305,18 +305,18 @@
 
 	.num {
 		width: 64px;
-		padding: 6px 8px;
+		padding: var(--space-2) var(--space-2);
 		border: var(--edge-w) solid var(--edge);
-		border-radius: 8px;
+		border-radius: var(--radius-2);
 		background: var(--surface);
 		color: var(--text);
 		font: inherit;
 	}
 
 	.chip {
-		padding: 3px 10px;
+		padding: var(--space-1) var(--space-3);
 		border: var(--edge-w) solid var(--edge);
-		border-radius: 999px;
+		border-radius: var(--radius-pill);
 		background: var(--surface-2);
 		font: 12.5px ui-monospace, Menlo, monospace;
 	}
@@ -333,8 +333,8 @@
 	.bar {
 		display: flex;
 		align-items: center;
-		gap: 16px;
-		margin: 22px 0 8px;
+		gap: var(--space-4);
+		margin: var(--space-4) 0 var(--space-2);
 	}
 
 	h2 {
@@ -352,7 +352,7 @@
 
 	.list {
 		list-style: none;
-		margin: 0 0 16px;
+		margin: 0 0 var(--space-4);
 		padding: 0;
 		max-height: 340px;
 		overflow-y: auto;
@@ -364,8 +364,8 @@
 	li {
 		display: flex;
 		align-items: center;
-		gap: 10px;
-		padding: 7px 12px;
+		gap: var(--space-3);
+		padding: var(--space-2) var(--space-3);
 		border-bottom: 1px solid var(--border);
 		font-size: 13px;
 	}
@@ -401,28 +401,28 @@
 	.bad {
 		display: inline-flex;
 		align-items: center;
-		gap: 5px;
+		gap: var(--space-1);
 		color: var(--danger);
 		font-size: 12.5px;
 	}
 
 	p.bad {
-		margin: 6px 0 0;
+		margin: var(--space-2) 0 0;
 	}
 
 	.ok {
 		display: inline-flex;
 		align-items: center;
-		gap: 6px;
+		gap: var(--space-2);
 		color: var(--ok);
 	}
 
 	.icon-btn {
 		display: inline-grid;
 		place-items: center;
-		padding: 3px;
+		padding: var(--space-1);
 		border: 0;
-		border-radius: 5px;
+		border-radius: var(--radius-1);
 		background: none;
 		color: var(--text-dim);
 	}
@@ -434,6 +434,6 @@
 	.actions {
 		display: flex;
 		align-items: center;
-		gap: 12px;
+		gap: var(--space-3);
 	}
 </style>

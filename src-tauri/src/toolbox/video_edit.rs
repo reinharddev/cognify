@@ -24,11 +24,11 @@ use crate::toolbox::{
     fsutil,
 };
 
-fn os(items: &[&str]) -> Vec<OsString> {
+pub(crate) fn os(items: &[&str]) -> Vec<OsString> {
     items.iter().map(OsString::from).collect()
 }
 
-fn check_out_dir(dir: &Option<String>) -> Result<(), String> {
+pub(crate) fn check_out_dir(dir: &Option<String>) -> Result<(), String> {
     match dir {
         Some(d) if !Path::new(d).is_dir() => Err(format!("Folder tujuan tidak ada: {d}")),
         _ => Ok(()),
@@ -63,7 +63,7 @@ fn to_dto(info: &MediaInfo) -> Option<VideoInfo> {
     })
 }
 
-async fn probe_video(app: &AppHandle, path: &Path) -> Result<MediaInfo, String> {
+pub(crate) async fn probe_video(app: &AppHandle, path: &Path) -> Result<MediaInfo, String> {
     if !path.is_file() {
         return Err(format!("File tidak ditemukan: {}", path.display()));
     }
@@ -233,7 +233,7 @@ pub fn incompatibilities(infos: &[MediaInfo]) -> Vec<&'static str> {
     reasons
 }
 
-fn even(v: u32) -> u32 {
+pub(crate) fn even(v: u32) -> u32 {
     (v & !1).max(2)
 }
 

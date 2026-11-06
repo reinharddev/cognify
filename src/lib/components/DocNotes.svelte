@@ -73,11 +73,11 @@
   .note {
     position: absolute;
     width: 200px;
-    padding: 0 12px 10px;
+    padding: 0 var(--space-3) var(--space-3);
     background: var(--c);
     color: var(--text);
     border: var(--edge-w) solid var(--edge);
-    border-radius: 10px 10px 18px 10px;
+    border-radius: var(--radius-3) var(--radius-3) var(--radius-4) var(--radius-3);
     box-shadow: var(--lift-lg);
     transform: rotate(var(--rot));
     pointer-events: auto;
@@ -99,9 +99,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: var(--space-1);
     height: 26px;
-    margin: 0 -12px 4px;
+    margin: 0 calc(var(--space-3) * -1) var(--space-1);
     cursor: grab;
   }
   .grip i {
@@ -131,7 +131,7 @@
     font-family: var(--font-display);
     font-weight: 700;
     font-size: 1em;
-    margin-bottom: 4px;
+    margin-bottom: var(--space-1);
   }
   textarea {
     font-size: 0.9em;
@@ -144,9 +144,9 @@
   .bar {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: var(--space-1);
     min-height: 26px;
-    margin-top: 4px;
+    margin-top: var(--space-1);
     opacity: 0;
     transition: opacity var(--dur-1);
   }
@@ -173,7 +173,7 @@
     height: 22px;
     padding: 0;
     border: none;
-    border-radius: 6px;
+    border-radius: var(--radius-2);
     background: none;
     color: var(--text);
     cursor: pointer;

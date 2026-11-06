@@ -158,8 +158,8 @@
   }
   .tag {
     background: color-mix(in srgb, var(--c) 26%, var(--surface));
-    border-radius: 99px;
-    padding: 2px 12px;
+    border-radius: var(--radius-pill);
+    padding: var(--space-0) var(--space-3);
     font-weight: 600;
   }
   small {
@@ -172,24 +172,25 @@
   }
   .gap {
     height: 0;
-    border-radius: 99px;
+    border-radius: var(--radius-pill);
     background: var(--accent-strong);
     transition: height var(--dur-1) ease, margin var(--dur-1) ease;
   }
   .gap.show {
     height: 3px;
-    margin: 3px 0;
+    margin: var(--space-1) 0;
   }
   .card {
     display: grid;
-    gap: 6px;
+    gap: var(--space-2);
     text-align: left;
     width: 100%;
-    margin: 3px 0;
+    margin: var(--space-1) 0;
     padding: var(--space-3);
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    /* Konsentris dengan lajur: lajur 20 − jarak 12 = 8 */
+    border-radius: max(calc(var(--radius-4) - var(--space-3)), var(--radius-1));
     cursor: grab;
     animation: rise var(--dur-3) var(--ease-out) backwards;
     animation-delay: calc(var(--i, 0) * 35ms);
@@ -205,25 +206,25 @@
   .meta {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: var(--space-1);
   }
   .meta i {
     font-style: normal;
     font-size: 0.8em;
     color: var(--text-muted);
     background: var(--surface-2);
-    border-radius: 99px;
-    padding: 1px 8px;
+    border-radius: var(--radius-pill);
+    padding: 1px var(--space-2);
   }
   .add {
     margin-top: var(--space-2);
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: var(--space-1);
     background: none;
     border: 0;
     color: var(--text-muted);
-    padding: 6px 8px;
+    padding: var(--space-2) var(--space-2);
     border-radius: var(--radius-sm);
     cursor: pointer;
   }
@@ -264,7 +265,7 @@
     height: 30px;
     border: 0;
     background: none;
-    border-radius: 6px;
+    border-radius: var(--radius-2);
     cursor: pointer;
     color: var(--text-muted);
   }
@@ -285,11 +286,11 @@
     justify-self: start;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-2);
     background: none;
     border: 1px solid var(--border-strong);
-    border-radius: 99px;
-    padding: 6px 12px;
+    border-radius: var(--radius-pill);
+    padding: var(--space-2) var(--space-3);
     color: var(--danger);
     cursor: pointer;
   }

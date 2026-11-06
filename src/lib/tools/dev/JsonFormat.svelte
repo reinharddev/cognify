@@ -143,20 +143,20 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 14px 22px;
-		margin-bottom: 16px;
+		gap: var(--space-3) var(--space-4);
+		margin-bottom: var(--space-4);
 	}
 
 	.seg {
 		display: inline-flex;
 		border: var(--edge-w) solid var(--edge);
-		border-radius: 8px;
+		border-radius: var(--radius-2);
 		overflow: hidden;
 		background: var(--surface);
 	}
 
 	.seg button {
-		padding: 7px 16px;
+		padding: var(--space-2) var(--space-4);
 		border: 0;
 		border-right: 1px solid var(--border);
 		background: transparent;
@@ -174,14 +174,14 @@
 	.inline {
 		display: inline-flex;
 		align-items: center;
-		gap: 8px;
+		gap: var(--space-2);
 	}
 
 
 	.panes {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
-		gap: 14px;
+		gap: var(--space-3);
 	}
 
 	@media (max-width: 1100px) {
@@ -193,7 +193,7 @@
 	section {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
+		gap: var(--space-2);
 		min-width: 0;
 	}
 
@@ -213,7 +213,7 @@
 
 	.tools {
 		display: inline-flex;
-		gap: 14px;
+		gap: var(--space-3);
 	}
 
 	.link {
@@ -226,7 +226,7 @@
 
 	textarea {
 		height: 340px;
-		padding: 10px 12px;
+		padding: var(--space-3) var(--space-3);
 		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
@@ -240,17 +240,17 @@
 	}
 
 	.status {
-		margin-top: 14px;
+		margin-top: var(--space-3);
 		display: flex;
 		flex-direction: column;
-		gap: 6px;
+		gap: var(--space-2);
 	}
 
 	.status p {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 6px;
+		gap: var(--space-2);
 		margin: 0;
 	}
 
@@ -269,8 +269,8 @@
 
 	.excerpt {
 		margin: 0;
-		padding: 8px 12px;
-		border-radius: 6px;
+		padding: var(--space-2) var(--space-3);
+		border-radius: var(--radius-2);
 		background: var(--surface-2);
 		color: var(--text);
 		font: 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;

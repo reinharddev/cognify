@@ -7,6 +7,7 @@ import { expandEvent } from "$lib/calendar/expand";
 import { parseIcs } from "$lib/calendar/ics";
 import type { CalEvent, CalSource, EventInput, Occurrence, SourceInput } from "$lib/calendar/types";
 import { notchLink } from "./link.svelte";
+import { moodle } from "./moodle.svelte";
 
 const REFRESH_MS = 30 * 60_000;
 
@@ -116,6 +117,18 @@ class CalendarStore {
         key: `notch:${a.id}`, title: a.title, start, end: end !== null && !Number.isNaN(end) ? end : null, allDay: a.allDay,
         origin: "notch", calendar: a.calendar ? `Notch, ${a.calendar}` : "Notch", color: null, eventId: null, meeting: null, notes: "", remindMin: null,
       });
+    }
+    // Tugas Moodle yang belum dikumpulkan (hanya bila fitur dinyalakan dan tersambung).
+    if (moodle.active) {
+      for (const it of moodle.items) {
+        const start = Date.parse(it.due);
+        if (it.submitted || Number.isNaN(start) || start < from || start > to) continue;
+        out.push({
+          key: `moodle:${it.id}`, title: it.title, start, end: null, allDay: false, origin: "moodle",
+          calendar: it.course ? `Moodle, ${it.course}` : "Moodle", color: null, eventId: null, meeting: null,
+          notes: it.url ?? "", remindMin: moodle.remindMin,
+        });
+      }
     }
     return out.sort((x, y) => x.start - y.start || x.title.localeCompare(y.title));
   }

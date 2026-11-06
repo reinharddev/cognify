@@ -37,7 +37,11 @@ pub fn validate_url(url: &str) -> Result<&str, &'static str> {
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum Mode {
+    /// Video dengan suaranya, digabung menjadi satu berkas.
     Video,
+    /// Video saja: tanpa aliran suara sama sekali.
+    VideoOnly,
+    /// Suara saja: tanpa gambar.
     Audio,
 }
 
@@ -107,6 +111,14 @@ pub fn download_args(spec: &DownloadSpec, url: &str, out_dir: &Path, ffmpeg_dir:
             };
             // biggest picture that fits, H.264/AAC when the sizes tie (plays everywhere)
             a.extend([s("-f"), format, s("-S"), s("res,vcodec:h264,acodec:aac"), s("--merge-output-format"), s("mp4")]);
+        }
+        Mode::VideoOnly => {
+            // Hanya aliran gambar. Bila situs hanya punya berkas gabungan, suaranya dibuang sesudah unduhan (`strip_audio`).
+            let format = match spec.max_height {
+                Some(h) => format!("bv*[height<={h}]/b[height<={h}]/bv*/b"),
+                None => s("bv*/b"),
+            };
+            a.extend([s("-f"), format, s("-S"), s("res,vcodec:h264")]);
         }
         Mode::Audio => {
             a.extend([s("-f"), s("ba/b"), s("-x"), s("--audio-format"), s(spec.audio_format.name())]);
@@ -400,6 +412,40 @@ pub struct DownloadResult {
     pub files: Vec<String>,
 }
 
+/// Membuang aliran suara dari video hasil unduhan (mode "video saja"). Gambar disalin apa adanya, tanpa dikodekan ulang.
+/// Berkas tanpa suara dibiarkan. Hasil ditulis ke berkas sementara lalu menggantikan aslinya.
+async fn strip_audio_with(ffmpeg: &Path, ffprobe: &Path, path: &Path) -> Result<(), String> {
+    let Some(info) = crate::toolbox::ffmpeg::probe(ffprobe, path).await else { return Ok(()) };
+    if !info.has_audio {
+        return Ok(());
+    }
+    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("mp4");
+    let tmp = path.with_file_name(format!(".cognify-tanpa-suara-{}.{ext}", std::process::id()));
+    let out = Command::new(ffmpeg)
+        .args(["-y", "-hide_banner", "-loglevel", "error", "-i"])
+        .arg(path)
+        .args(["-map", "0:v:0", "-c", "copy"])
+        .arg(&tmp)
+        .stdin(Stdio::null())
+        .output()
+        .await
+        .map_err(|e| format!("failed|Suara tidak bisa dibuang: {e}"))?;
+    if !out.status.success() {
+        let _ = tokio::fs::remove_file(&tmp).await;
+        return Err(format!("failed|Suara tidak bisa dibuang|{}", tail(&String::from_utf8_lossy(&out.stderr), 4)));
+    }
+    tokio::fs::rename(&tmp, path).await.map_err(|e| {
+        format!("failed|Berkas tanpa suara tidak bisa disimpan: {e}")
+    })
+}
+
+async fn strip_audio(app: &AppHandle, path: &Path) -> Result<(), String> {
+    match (engine::resolve(app, "ffmpeg"), engine::resolve(app, "ffprobe")) {
+        (Some(ffmpeg), Some(ffprobe)) => strip_audio_with(&ffmpeg, &ffprobe, path).await,
+        _ => Err("failed|ffmpeg tidak ditemukan, jadi suara tidak bisa dibuang".into()),
+    }
+}
+
 /// Runs one yt-dlp download and reports progress as `media-progress` events.
 async fn run_download(app: &AppHandle, jobs: &Jobs, job_id: &str, url: &str, out_dir: &Path, spec: &DownloadSpec) -> Result<Vec<String>, String> {
     let bin = ytdlp_bin(app)?;
@@ -430,6 +476,12 @@ async fn run_download(app: &AppHandle, jobs: &Jobs, job_id: &str, url: &str, out
     .await;
     jobs.finish(job_id);
     result.map_err(error_message)?;
+    if spec.mode == Mode::VideoOnly {
+        emit(None, None, None, "process", stream);
+        for f in &files {
+            strip_audio(app, Path::new(f)).await?;
+        }
+    }
     Ok(files)
 }
 
@@ -498,6 +550,61 @@ mod tests {
         let none = download_args(&DownloadSpec { max_height: None, ..spec(Mode::Video) }, "https://x/y", Path::new("/o"), None);
         assert_eq!(none[pos(&none, "-f") + 1], "bv*+ba/b");
         assert!(!none.contains(&"--ffmpeg-location".to_string()));
+    }
+
+    #[test]
+    fn video_only_arguments_never_ask_for_a_separate_audio_stream() {
+        let a = download_args(&spec(Mode::VideoOnly), "https://x/y", Path::new("/o"), None);
+        let f = &a[pos(&a, "-f") + 1];
+        assert_eq!(f, "bv*[height<=720]/b[height<=720]/bv*/b");
+        assert!(!f.contains("+ba"), "no audio stream is merged in: {f}");
+        assert!(!a.contains(&"-x".to_string()) && !a.contains(&"--merge-output-format".to_string()));
+        assert_eq!(a[pos(&a, "-S") + 1], "res,vcodec:h264");
+        let none = download_args(&DownloadSpec { max_height: None, ..spec(Mode::VideoOnly) }, "https://x/y", Path::new("/o"), None);
+        assert_eq!(none[pos(&none, "-f") + 1], "bv*/b");
+    }
+
+    #[test]
+    fn the_three_modes_ask_for_different_things() {
+        let f = |m| {
+            let a = download_args(&spec(m), "https://x/y", Path::new("/o"), None);
+            a[pos(&a, "-f") + 1].clone()
+        };
+        let (video, only, audio) = (f(Mode::Video), f(Mode::VideoOnly), f(Mode::Audio));
+        assert!(video.contains("+ba"), "video + sound merges both streams");
+        assert!(!only.contains("ba"), "video only must not mention audio");
+        assert_eq!(audio, "ba/b");
+        assert!(serde_json::from_str::<Mode>("\"videoOnly\"").is_ok(), "front end sends camelCase");
+    }
+
+    /// Needs ffmpeg and ffprobe on this machine; run with:
+    ///   cargo test strips_the_sound -- --ignored --nocapture
+    #[cfg(unix)]
+    #[tokio::test]
+    #[ignore]
+    async fn strips_the_sound_but_keeps_the_picture() {
+        use crate::toolbox::ffmpeg::{self, testutil};
+        let (ffmpeg_bin, ffprobe) = testutil::engines().expect("no ffmpeg");
+        let dir = std::env::temp_dir().join(format!("toolbox-strip-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let clip = dir.join("clip.mp4");
+        let made = std::process::Command::new(&ffmpeg_bin)
+            .args(["-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "testsrc2=duration=2:size=320x180:rate=24", "-f", "lavfi", "-i", "sine=duration=2", "-shortest", "-c:v", "libx264", "-c:a", "aac"])
+            .arg(&clip)
+            .status()
+            .unwrap();
+        assert!(made.success());
+        assert!(ffmpeg::probe(&ffprobe, &clip).await.unwrap().has_audio);
+        strip_audio_with(&ffmpeg_bin, &ffprobe, &clip).await.unwrap();
+        let after = ffmpeg::probe(&ffprobe, &clip).await.unwrap();
+        assert!(!after.has_audio, "sound is gone");
+        assert_eq!(after.width, Some(320), "picture kept");
+        // berkas tanpa suara dibiarkan
+        strip_audio_with(&ffmpeg_bin, &ffprobe, &clip).await.unwrap();
+        assert_eq!(ffmpeg::probe(&ffprobe, &clip).await.unwrap().width, Some(320));
+        assert!(std::fs::read_dir(&dir).unwrap().all(|e| !e.unwrap().file_name().to_string_lossy().starts_with(".cognify-tanpa-suara")), "no temp file left");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

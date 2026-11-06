@@ -128,7 +128,7 @@
 
 <style>
 	.hint {
-		margin: 12px 0 0;
+		margin: var(--space-3) 0 0;
 		color: var(--text-dim);
 		font-size: 13px;
 	}
@@ -136,9 +136,9 @@
 	.file {
 		display: flex;
 		align-items: center;
-		gap: 12px;
-		margin-top: 16px;
-		padding: 10px 14px;
+		gap: var(--space-3);
+		margin-top: var(--space-4);
+		padding: var(--space-3) var(--space-3);
 		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
@@ -160,7 +160,7 @@
 	.err {
 		display: inline-flex;
 		align-items: center;
-		gap: 4px;
+		gap: var(--space-1);
 		color: var(--danger);
 		font-size: 12px;
 	}
@@ -168,15 +168,15 @@
 	.options {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 24px 28px;
-		margin: 20px 0;
+		gap: var(--space-4) var(--space-5);
+		margin: var(--space-4) 0;
 	}
 
 	.field {
 		display: flex;
 		flex-direction: column;
 		align-items: flex-start;
-		gap: 8px;
+		gap: var(--space-2);
 	}
 
 	.field.wide {
@@ -193,9 +193,9 @@
 
 	input {
 		width: min(480px, 100%);
-		padding: 8px 12px;
+		padding: var(--space-2) var(--space-3);
 		border: var(--edge-w) solid var(--edge);
-		border-radius: 8px;
+		border-radius: var(--radius-2);
 		background: var(--surface);
 		color: var(--text);
 		font: inherit;
@@ -206,13 +206,13 @@
 	.seg {
 		display: inline-flex;
 		border: var(--edge-w) solid var(--edge);
-		border-radius: 8px;
+		border-radius: var(--radius-2);
 		overflow: hidden;
 		background: var(--surface);
 	}
 
 	.seg button {
-		padding: 7px 16px;
+		padding: var(--space-2) var(--space-4);
 		border: 0;
 		border-right: 1px solid var(--border);
 		background: transparent;
@@ -236,15 +236,15 @@
 	}
 
 	.results {
-		margin-top: 18px;
+		margin-top: var(--space-4);
 	}
 
 	.ok {
 		display: flex;
 		align-items: center;
-		gap: 8px;
+		gap: var(--space-2);
 		color: var(--ok);
-		margin-bottom: 8px;
+		margin-bottom: var(--space-2);
 	}
 
 	.results ul {
@@ -260,8 +260,8 @@
 	.results li {
 		display: flex;
 		align-items: center;
-		gap: 10px;
-		padding: 8px 12px;
+		gap: var(--space-3);
+		padding: var(--space-2) var(--space-3);
 		border-bottom: 1px solid var(--border);
 	}
 
@@ -270,9 +270,9 @@
 	}
 
 	.error {
-		margin: 12px 0 0;
-		padding: 8px 10px;
-		border-radius: 6px;
+		margin: var(--space-3) 0 0;
+		padding: var(--space-2) var(--space-3);
+		border-radius: var(--radius-2);
 		background: var(--surface-2);
 		color: var(--danger);
 		font-size: 12px;

@@ -167,14 +167,14 @@
 	.options {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 24px 28px;
-		margin: 22px 0;
+		gap: var(--space-4) var(--space-5);
+		margin: var(--space-4) 0;
 	}
 
 	.field {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
+		gap: var(--space-2);
 	}
 
 	.field.wide {
@@ -192,14 +192,14 @@
 	.levels {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-		gap: 10px;
+		gap: var(--space-3);
 	}
 
 	.level {
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
-		padding: 12px 14px;
+		gap: var(--space-1);
+		padding: var(--space-3) var(--space-3);
 		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
@@ -223,7 +223,7 @@
 
 	.list {
 		list-style: none;
-		margin: 0 0 18px;
+		margin: 0 0 var(--space-4);
 		padding: 0;
 		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
@@ -232,7 +232,7 @@
 	}
 
 	li {
-		padding: 10px 14px;
+		padding: var(--space-3) var(--space-3);
 		border-bottom: 1px solid var(--border);
 	}
 
@@ -243,7 +243,7 @@
 	.row {
 		display: flex;
 		align-items: center;
-		gap: 10px;
+		gap: var(--space-3);
 	}
 
 	.status-icon {
@@ -279,11 +279,11 @@
 
 	.gain {
 		color: var(--ok);
-		margin-left: 4px;
+		margin-left: var(--space-1);
 	}
 
 	.note {
-		margin: 4px 0 0 26px;
+		margin: var(--space-1) 0 0 var(--space-5);
 		color: var(--text-dim);
 		font-size: 12px;
 	}
@@ -299,9 +299,9 @@
 	.icon-btn {
 		display: inline-grid;
 		place-items: center;
-		padding: 3px;
+		padding: var(--space-1);
 		border: 0;
-		border-radius: 5px;
+		border-radius: var(--radius-1);
 		background: none;
 		color: var(--text-dim);
 	}
@@ -313,19 +313,19 @@
 	.actions {
 		display: flex;
 		align-items: center;
-		gap: 10px;
+		gap: var(--space-3);
 	}
 
 	.total {
-		margin-left: 6px;
+		margin-left: var(--space-2);
 		color: var(--ok);
 		font-weight: 550;
 	}
 
 	.error {
-		margin: 8px 0 0;
-		padding: 8px 10px;
-		border-radius: 6px;
+		margin: var(--space-2) 0 0;
+		padding: var(--space-2) var(--space-3);
+		border-radius: var(--radius-2);
 		background: var(--surface-2);
 		color: var(--danger);
 		font-size: 12px;

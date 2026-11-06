@@ -142,7 +142,7 @@
     margin-bottom: var(--space-3);
   }
   section {
-    margin-bottom: var(--space-8);
+    margin-bottom: var(--space-5);
   }
   .home > * {
     animation: rise var(--dur-3) var(--ease-out) backwards;
@@ -154,7 +154,7 @@
   .card {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--space-1);
     padding: var(--space-4);
     background: var(--tint);
     color: var(--text);
@@ -186,11 +186,11 @@
   .starts button {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 14px;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
     background: var(--surface);
     border: var(--edge-w) solid var(--edge);
-    border-radius: 99px;
+    border-radius: var(--radius-pill);
     font-weight: 600;
     cursor: pointer;
     transition: transform var(--dur-1), box-shadow var(--dur-1);
@@ -223,11 +223,11 @@
   .fromnotch {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: var(--space-2);
     padding: var(--space-4);
     background: var(--surface);
     border: var(--edge-w) solid var(--edge);
-    border-radius: 14px;
+    border-radius: var(--radius-3);
     box-shadow: var(--lift);
   }
   .when {
@@ -237,13 +237,13 @@
     font-variant-numeric: tabular-nums;
   }
   .fromnotch a {
-    margin-top: 4px;
+    margin-top: var(--space-1);
     color: var(--link);
     text-decoration: none;
   }
   .hint {
     color: var(--text-muted);
-    margin: calc(-1 * var(--space-4)) 0 var(--space-6);
+    margin: calc(-1 * var(--space-4)) 0 var(--space-4);
   }
   .hint a {
     color: var(--link);
@@ -256,8 +256,8 @@
   .recent a {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 8px;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-2);
     border-radius: var(--radius-sm);
     color: var(--text);
     text-decoration: none;

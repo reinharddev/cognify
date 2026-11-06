@@ -292,7 +292,7 @@
     position: fixed;
     inset: 0;
     /* Ruang di sekeliling kartu supaya kartu yang berayun tidak terpotong tepi jendela. */
-    padding: 30px 40px 60px;
+    padding: var(--space-5) var(--space-5) var(--space-6);
     display: flex;
   }
   .card {
@@ -304,7 +304,7 @@
     background: var(--paper);
     color: var(--text);
     border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
-    border-radius: 10px;
+    border-radius: var(--radius-3);
     box-shadow: 0 8px 16px -8px var(--shadow-2), 0 2px 4px var(--shadow-1);
     /* Bergantung pada titik tengah tepi atas, seperti ditempel dengan satu peniti. */
     transform-origin: 50% 0;
@@ -318,8 +318,8 @@
   header {
     display: flex;
     align-items: center;
-    gap: 2px;
-    padding: 4px 6px;
+    gap: var(--space-0);
+    padding: var(--space-1) var(--space-2);
     cursor: grab;
     border-bottom: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
     user-select: none;
@@ -336,7 +336,7 @@
     height: 26px;
     padding: 0;
     border: 0;
-    border-radius: 7px;
+    border-radius: var(--radius-2);
     background: none;
     color: var(--text-muted);
     cursor: pointer;
@@ -352,7 +352,7 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    padding: 6px 12px 14px;
+    padding: var(--space-2) var(--space-3) var(--space-3);
   }
   .body :global(.tiptap) {
     outline: none;
@@ -367,7 +367,7 @@
   .msg.warn {
     color: var(--danger);
     font-size: 0.85em;
-    padding: 0 12px 8px;
+    padding: 0 var(--space-3) var(--space-2);
   }
   .grip {
     position: absolute;
@@ -377,6 +377,6 @@
     height: 18px;
     cursor: nwse-resize;
     background: linear-gradient(135deg, transparent 55%, color-mix(in srgb, var(--text) 30%, transparent) 55%, color-mix(in srgb, var(--text) 30%, transparent) 62%, transparent 62%, transparent 74%, color-mix(in srgb, var(--text) 30%, transparent) 74%, color-mix(in srgb, var(--text) 30%, transparent) 81%, transparent 81%);
-    border-bottom-right-radius: 10px;
+    border-bottom-right-radius: var(--radius-3);
   }
 </style>

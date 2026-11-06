@@ -62,22 +62,22 @@
     position: fixed;
     z-index: 91;
     min-width: 12em;
-    padding: 4px;
+    padding: var(--space-1);
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: var(--radius-3);
     transform-origin: top left;
     animation: pop var(--dur-2) var(--ease-out) both;
   }
   button {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
     width: 100%;
-    padding: 6px 10px;
+    padding: var(--space-2) var(--space-3);
     border: none;
     background: none;
-    border-radius: 6px;
+    border-radius: var(--radius-2);
     text-align: left;
     cursor: pointer;
   }
@@ -101,7 +101,7 @@
     flex: none;
   }
   hr {
-    margin: 4px 6px;
+    margin: var(--space-1) var(--space-2);
     border: none;
     border-top: 1px solid var(--border);
   }

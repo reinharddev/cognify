@@ -47,16 +47,16 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-2);
     margin: 0 0 var(--space-3);
   }
   .tag {
     display: inline-flex;
     align-items: center;
-    gap: 2px;
+    gap: var(--space-0);
     background: color-mix(in srgb, var(--c) 22%, var(--surface));
-    border-radius: 99px;
-    padding: 1px 4px 1px 10px;
+    border-radius: var(--radius-pill);
+    padding: 1px var(--space-1) 1px var(--space-3);
     font-size: 0.88em;
     animation: pop var(--dur-2) var(--ease-spring) both;
   }
@@ -85,7 +85,7 @@
     width: 8em;
     border: 0;
     background: none;
-    padding: 3px 4px;
+    padding: var(--space-1) var(--space-1);
     color: var(--text);
   }
   input:focus-visible {

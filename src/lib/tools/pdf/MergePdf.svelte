@@ -132,14 +132,14 @@
 
 <style>
 	.hint {
-		margin: 12px 0 0;
+		margin: var(--space-3) 0 0;
 		color: var(--text-dim);
 		font-size: 13px;
 	}
 
 	.list {
 		list-style: none;
-		margin: 12px 0 0;
+		margin: var(--space-3) 0 0;
 		padding: 0;
 		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
@@ -150,8 +150,8 @@
 	li {
 		display: flex;
 		align-items: center;
-		gap: 10px;
-		padding: 8px 12px;
+		gap: var(--space-3);
+		padding: var(--space-2) var(--space-3);
 		border-bottom: 1px solid var(--border);
 	}
 
@@ -181,7 +181,7 @@
 	.err {
 		display: inline-flex;
 		align-items: center;
-		gap: 4px;
+		gap: var(--space-1);
 		max-width: 45%;
 		overflow: hidden;
 		white-space: nowrap;
@@ -193,9 +193,9 @@
 	.icon-btn {
 		display: inline-grid;
 		place-items: center;
-		padding: 4px;
+		padding: var(--space-1);
 		border: 0;
-		border-radius: 5px;
+		border-radius: var(--radius-1);
 		background: none;
 		color: var(--text-dim);
 	}
@@ -205,20 +205,20 @@
 	}
 
 	.options {
-		margin: 20px 0;
+		margin: var(--space-4) 0;
 	}
 
 	.actions {
 		display: flex;
 		align-items: center;
-		gap: 12px;
+		gap: var(--space-3);
 	}
 
 	.result {
 		display: flex;
 		align-items: center;
-		gap: 8px;
-		margin-top: 16px;
+		gap: var(--space-2);
+		margin-top: var(--space-4);
 		color: var(--ok);
 	}
 
@@ -231,9 +231,9 @@
 	}
 
 	.error {
-		margin: 12px 0 0;
-		padding: 8px 10px;
-		border-radius: 6px;
+		margin: var(--space-3) 0 0;
+		padding: var(--space-2) var(--space-3);
+		border-radius: var(--radius-2);
 		background: var(--surface-2);
 		color: var(--danger);
 		font-size: 12px;

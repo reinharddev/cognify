@@ -71,7 +71,7 @@
   i {
     flex: none;
     width: 5px;
-    border-radius: 3px;
+    border-radius: var(--radius-1);
     background: var(--c);
   }
   .t {
@@ -104,7 +104,7 @@
     display: inline-flex;
     align-items: center;
     align-self: center;
-    gap: 4px;
+    gap: var(--space-1);
     padding: 0;
     border: none;
     background: none;

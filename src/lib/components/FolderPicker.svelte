@@ -37,7 +37,7 @@
 	.field {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
+		gap: var(--space-2);
 	}
 
 	.label {
@@ -51,7 +51,7 @@
 	.row {
 		display: flex;
 		align-items: center;
-		gap: 10px;
+		gap: var(--space-3);
 	}
 
 	.dim {

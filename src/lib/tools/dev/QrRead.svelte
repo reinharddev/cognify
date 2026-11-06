@@ -114,7 +114,7 @@
 
 <style>
 	.dim {
-		margin-top: 16px;
+		margin-top: var(--space-4);
 		color: var(--text-dim);
 		font-size: 13px;
 	}
@@ -122,21 +122,21 @@
 	.warn {
 		display: flex;
 		align-items: flex-start;
-		gap: 6px;
-		margin: 16px 0 0;
+		gap: var(--space-2);
+		margin: var(--space-4) 0 0;
 		color: var(--danger);
 		font-size: 13px;
 	}
 
 	.result {
-		margin-top: 18px;
+		margin-top: var(--space-4);
 	}
 
 	.head {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		margin-bottom: 8px;
+		margin-bottom: var(--space-2);
 	}
 
 	.label {
@@ -157,7 +157,7 @@
 
 	pre {
 		margin: 0;
-		padding: 12px 14px;
+		padding: var(--space-3) var(--space-3);
 		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);

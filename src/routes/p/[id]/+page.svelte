@@ -4,7 +4,7 @@
   import { page as route } from "$app/state";
   import { onDestroy } from "svelte";
   import { invoke, isTauri } from "@tauri-apps/api/core";
-  import { Download, Lock, LockOpen, Quote, Star, StickyNote, Trash2 } from "@lucide/svelte";
+  import { Download, FileDown, Lock, LockOpen, Quote, Star, StickyNote, Trash2 } from "@lucide/svelte";
   import CitePanel from "$lib/components/CitePanel.svelte";
   import FolderView from "$lib/components/FolderView.svelte";
   import { kindLabel, kindIcon } from "$lib/workspace/kinds";
@@ -200,6 +200,16 @@
     }
   }
 
+  /** Ekspor ke PDF lewat pengatur cetak sistem ("Simpan sebagai PDF"); menu samping dan toolbar disembunyikan oleh gaya cetak. */
+  async function exportPdf() {
+    try {
+      if (isTauri()) await invoke("print_page");
+      else window.print();
+    } catch (e) {
+      notice = e instanceof Error ? e.message : String(e);
+    }
+  }
+
   async function remove() {
     await flush();
     await ws.trash(id);
@@ -218,7 +228,7 @@
   <div class="stage" bind:this={stage}>
   {#if current.kind === "doc"}<NoteArrows {notes} {stage} />{/if}
   <div class="page" class:wide={current.kind === "board" || current.kind === "table"}>
-    <header>
+    <header data-noprint>
       <span class="kind">
         <HeaderIcon size={15} /> {kindLabel(current.kind)}
       </span>
@@ -231,6 +241,7 @@
       {#if current.kind === "doc"}
         <button class="icon" aria-label={tr("Catatan melayang", "Floating notes")} title={tr("Tambah catatan melayang", "Add a floating note")} onclick={addNote}><StickyNote size={16} /></button>
         <button class="icon" class:on={locked} aria-label={locked ? tr("Buka kunci objek", "Unlock objects") : tr("Kunci objek", "Lock objects")} title={locked ? tr("Objek terkunci: blok dan catatan tidak bisa bergeser. Klik untuk membuka.", "Objects locked: blocks and notes cannot move. Click to unlock.") : tr("Kunci objek supaya tidak tergeser tanpa sengaja", "Lock objects so they do not move by accident")} onclick={toggleLock}>{#if locked}<Lock size={16} />{:else}<LockOpen size={16} />{/if}</button>
+        <button class="icon" aria-label={tr("Ekspor PDF", "Export PDF")} title={tr("Ekspor sebagai PDF (pilih Simpan sebagai PDF di jendela cetak)", "Export as PDF (choose Save as PDF in the print window)")} onclick={exportPdf}><FileDown size={16} /></button>
         <button class="icon" aria-label={tr("Kutip", "Cite")} title={tr("Kutip", "Cite")} onclick={() => (citeOpen = true)}><Quote size={16} /></button>
       {/if}
       <button class="icon" class:on={current.favorite} aria-label={current.favorite ? tr("Hapus dari favorit", "Remove from favorites") : tr("Jadikan favorit", "Add to favorites")} title={tr("Favorit", "Favorite")} onclick={favorite}><Star size={16} /></button>
@@ -240,7 +251,9 @@
     <input class="title" value={current.title} placeholder={tr("Tanpa judul", "Untitled")} aria-label={tr("Judul halaman", "Page title")} oninput={onTitle} />
 
     {#if current.kind !== "folder"}
+    <div data-noprint>
     <TagEditor tags={current.tags} onchange={(tags) => { if (current) current.tags = tags; queue({ tags }); }} />
+    </div>
     {/if}
 
     {#if notice}<p class="notice">{notice}</p>{/if}
@@ -264,7 +277,7 @@
     {/if}
   </div>
   {#if current.kind === "doc" && backlinks.length}
-    <section class="back">
+    <section class="back" data-noprint>
       <h2>{tr("Tertaut dari", "Linked from")}</h2>
       <div>
         {#each backlinks as b (b.id)}
@@ -297,7 +310,7 @@
   }
   .back {
     max-width: 780px;
-    margin: var(--space-8) auto 0;
+    margin: var(--space-5) auto 0;
     padding-top: var(--space-4);
     border-top: var(--edge-w) solid var(--edge);
   }
@@ -315,9 +328,9 @@
     gap: var(--space-2);
   }
   .back a {
-    padding: 2px 10px;
+    padding: var(--space-0) var(--space-3);
     border: var(--edge-w) solid var(--edge);
-    border-radius: 99px;
+    border-radius: var(--radius-pill);
     background: var(--accent-soft);
     color: var(--text);
     font-size: 0.9em;
@@ -343,7 +356,7 @@
   .kind {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-2);
     margin-right: auto;
   }
   .state.err {
@@ -357,7 +370,7 @@
     padding: 0;
     border: none;
     background: none;
-    border-radius: 6px;
+    border-radius: var(--radius-2);
     color: var(--text-muted);
     cursor: pointer;
   }

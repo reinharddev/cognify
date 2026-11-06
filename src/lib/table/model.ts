@@ -1,4 +1,5 @@
 import { tr } from "$lib/i18n.svelte";
+import { courseName, short } from "$lib/moodle/format";
 // Model halaman Tabel: kolom bertipe, baris, tampilan tabel atau papan (kanban), urutan, dan pengelompokan.
 // Semua fungsi murni dan tidak mengubah masukannya; isi disimpan sebagai JSON di kolom `content` halaman.
 
@@ -21,9 +22,33 @@ export interface Column {
 
 export type CellValue = string | number | boolean | null;
 
+export type MoodleState = "todo" | "draft" | "submitted";
+
+/** Penanda baris yang berasal dari Moodle: id tugas, status terakhir yang dilihat, dan tenggat terakhir (ISO UTC). */
+export interface RowMoodle {
+  id: string;
+  state: MoodleState;
+  due: string;
+}
+
 export interface Row {
   id: string;
   cells: Record<string, CellValue>;
+  /** Ada bila baris ini diisi otomatis dari Moodle. */
+  moodle?: RowMoodle;
+}
+
+/** Pengaturan tabel yang diisi otomatis dari Moodle (mis. Tabel PR). Kolom dipetakan lewat id supaya tetap jalan bila diganti nama. */
+export interface MoodleSync {
+  on: boolean;
+  title: string | null;
+  course: string | null;
+  due: string | null;
+  status: string | null;
+  /** Id pilihan status untuk tiap tingkat: belum, sedang dikerjakan (konsep), selesai (dikumpulkan). */
+  states: Record<MoodleState, string | null>;
+  /** Tugas yang barisnya dihapus pengguna; tidak ditambahkan lagi. */
+  hidden: string[];
 }
 
 export interface Sort {
@@ -39,6 +64,7 @@ export interface TableData {
   /** Kolom pilihan yang menjadi lajur papan. */
   groupBy: string | null;
   sort: Sort | null;
+  moodle?: MoodleSync;
 }
 
 export const MAX_COLUMNS = 30;
@@ -144,14 +170,39 @@ export function parseTable(raw: string): TableData {
       const cv = coerce(col, given[col.id]);
       if (cv !== null && !(col.type === "checkbox" && cv === false)) cells[col.id] = cv;
     }
-    rows.push({ id, cells });
+    const mr = r.moodle as Record<string, unknown> | undefined;
+    const moodle: RowMoodle | undefined =
+      mr && typeof mr.id === "string" && mr.id && (mr.state === "todo" || mr.state === "draft" || mr.state === "submitted")
+        ? { id: mr.id, state: mr.state, due: typeof mr.due === "string" ? mr.due : "" }
+        : undefined;
+    rows.push(moodle ? { id, cells, moodle } : { id, cells });
   }
 
   const groupBy = columns.some((c) => c.id === src.groupBy && c.type === "select") ? (src.groupBy as string) : (columns.find((c) => c.type === "select")?.id ?? null);
   const sortRaw = src.sort as Sort | null | undefined;
   const sort = sortRaw && columns.some((c) => c.id === sortRaw.col) && (sortRaw.dir === "asc" || sortRaw.dir === "desc") ? { col: sortRaw.col, dir: sortRaw.dir } : null;
   const view = src.view === "board" && groupBy ? "board" : "table";
-  return { version: 1, columns, rows, view, groupBy, sort };
+  const moodle = cleanMoodle(src.moodle, columns);
+  return moodle ? { version: 1, columns, rows, view, groupBy, sort, moodle } : { version: 1, columns, rows, view, groupBy, sort };
+}
+
+function cleanMoodle(raw: unknown, columns: Column[]): MoodleSync | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const r = raw as Record<string, unknown>;
+  const colId = (v: unknown, type?: ColType) => (typeof v === "string" && columns.some((c) => c.id === v && (!type || c.type === type)) ? v : null);
+  const status = colId(r.status, "select");
+  const options = columns.find((c) => c.id === status)?.options ?? [];
+  const optId = (v: unknown) => (typeof v === "string" && options.some((o) => o.id === v) ? v : null);
+  const st = (r.states && typeof r.states === "object" ? r.states : {}) as Record<string, unknown>;
+  return {
+    on: r.on === true,
+    title: colId(r.title, "text"),
+    course: colId(r.course, "select"),
+    due: colId(r.due, "date"),
+    status,
+    states: { todo: optId(st.todo), draft: optId(st.draft), submitted: optId(st.submitted) },
+    hidden: (Array.isArray(r.hidden) ? r.hidden : []).filter((x): x is string => typeof x === "string").slice(-MAX_ROWS),
+  };
 }
 
 export const serialize = (t: TableData): string => JSON.stringify(t);
@@ -260,7 +311,111 @@ export function addRow(t: TableData, init: Record<string, unknown> = {}): TableD
 }
 
 export function removeRow(t: TableData, id: string): TableData {
-  return { ...t, rows: t.rows.filter((r) => r.id !== id) };
+  const row = t.rows.find((r) => r.id === id);
+  const rows = t.rows.filter((r) => r.id !== id);
+  // Baris dari Moodle yang dihapus pengguna diingat, supaya tidak muncul lagi saat sinkron berikutnya.
+  if (row?.moodle && t.moodle && !t.moodle.hidden.includes(row.moodle.id)) {
+    return { ...t, rows, moodle: { ...t.moodle, hidden: [...t.moodle.hidden, row.moodle.id].slice(-MAX_ROWS) } };
+  }
+  return { ...t, rows };
+}
+
+// ── Isi otomatis dari Moodle ────────────────────────────────────────────────
+
+export interface MoodleTask {
+  id: string;
+  course: string;
+  title: string;
+  /** Tenggat, ISO UTC. */
+  due: string;
+  state: MoodleState;
+}
+
+/** Tanggal lokal "YYYY-MM-DD" dari waktu ISO; null bila tidak terbaca. */
+export function localDate(iso: string): string | null {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+export function setMoodleOn(t: TableData, on: boolean): TableData {
+  return t.moodle && t.moodle.on !== on ? { ...t, moodle: { ...t.moodle, on } } : t;
+}
+
+/** Izinkan lagi tugas yang barisnya pernah dihapus. */
+export function clearMoodleHidden(t: TableData): TableData {
+  return t.moodle && t.moodle.hidden.length ? { ...t, moodle: { ...t.moodle, hidden: [] } } : t;
+}
+
+/**
+ * Gabungkan tugas Moodle ke tabel. Baris baru ditambahkan untuk tugas yang belum ada (kecuali yang pernah dihapus pengguna).
+ * Untuk baris yang sudah ada, status mengikuti Moodle HANYA saat status di Moodle berubah, jadi pilihan manual pengguna
+ * dihormati sampai ada kabar baru; tenggat ikut berubah bila guru menggantinya. Judul dan mapel tidak ditimpa. Hasilnya
+ * tabel yang sama (identik) bila tidak ada yang berubah, sehingga aman dipanggil berulang.
+ */
+export function mergeMoodle(t: TableData, tasks: MoodleTask[]): TableData {
+  const m = t.moodle;
+  if (!m || !m.on || !tasks.length) return t;
+  const hidden = new Set(m.hidden);
+  const has = (id: string | null, type: ColType) => !!id && t.columns.some((c) => c.id === id && c.type === type);
+  const statusOk = has(m.status, "select");
+  const optionOf = (state: MoodleState) => (statusOk ? m.states[state] : null);
+
+  let columns = t.columns;
+  /** Pilihan mapel untuk nama mapel Moodle; dibuat bila belum ada (maksimal MAX_OPTIONS). */
+  const courseOption = (name: string): string | null => {
+    if (!has(m.course, "select")) return null;
+    const c = columns.find((x) => x.id === m.course)!;
+    const found = c.options?.find((o) => o.label.toLowerCase() === name.toLowerCase());
+    if (found) return found.id;
+    if ((c.options?.length ?? 0) >= MAX_OPTIONS) return null;
+    const o: Option = { id: newId(), label: clampName(name) || "Mapel", color: (c.options?.length ?? 0) % 8 };
+    columns = columns.map((x) => (x.id === c.id ? { ...c, options: [...(c.options ?? []), o] } : x));
+    return o.id;
+  };
+
+  const rows = [...t.rows];
+  const index = new Map<string, number>();
+  rows.forEach((r, i) => r.moodle && index.set(r.moodle.id, i));
+  let changed = false;
+
+  for (const task of tasks) {
+    if (hidden.has(task.id)) continue;
+    const date = localDate(task.due);
+    const at = index.get(task.id);
+    if (at === undefined) {
+      if (rows.length >= MAX_ROWS) break;
+      const cells: Record<string, CellValue> = {};
+      if (has(m.title, "text")) cells[m.title!] = short(task.title).slice(0, MAX_TEXT);
+      const course = courseName(task.course);
+      const co = course ? courseOption(course) : null;
+      if (co) cells[m.course!] = co;
+      if (date && has(m.due, "date")) cells[m.due!] = date;
+      const so = optionOf(task.state);
+      if (so) cells[m.status!] = so;
+      rows.push({ id: newId(), cells, moodle: { id: task.id, state: task.state, due: task.due } });
+      changed = true;
+      continue;
+    }
+    const row = rows[at];
+    let cells = row.cells;
+    let moodle = row.moodle!;
+    if (moodle.state !== task.state) {
+      const so = optionOf(task.state);
+      if (so) cells = { ...cells, [m.status!]: so };
+      moodle = { ...moodle, state: task.state };
+    }
+    if (moodle.due !== task.due) {
+      if (date && has(m.due, "date")) cells = { ...cells, [m.due!]: date };
+      moodle = { ...moodle, due: task.due };
+    }
+    if (cells !== row.cells || moodle !== row.moodle) {
+      rows[at] = { ...row, cells, moodle };
+      changed = true;
+    }
+  }
+  return changed ? { ...t, columns, rows } : t;
 }
 
 export function setCell(t: TableData, rowId: string, colId: string, value: unknown): TableData {
@@ -382,8 +537,13 @@ const opts = (labels: [string, number][]): Option[] => labels.map(([label, color
 export function prTemplate(): TableData {
   const mapel: Column = { id: newId(), name: tr("Mapel", "Subject"), type: "select", options: opts([[tr("Matematika", "Math"), 0], [tr("IPA", "Science"), 4], [tr("Bahasa", "Language"), 3], [tr("Lainnya", "Other"), 1]]) };
   const status: Column = { id: newId(), name: "Status", type: "select", options: opts([[tr("Belum", "To do"), 3], [tr("Dikerjakan", "In progress"), 2], [tr("Selesai", "Done"), 4]]) };
-  const columns: Column[] = [{ id: newId(), name: tr("PR", "Homework"), type: "text" }, mapel, { id: newId(), name: tr("Tenggat", "Due date"), type: "date" }, status];
-  return { version: 1, columns, rows: [], view: "board", groupBy: status.id, sort: null };
+  const title: Column = { id: newId(), name: tr("PR", "Homework"), type: "text" };
+  const due: Column = { id: newId(), name: tr("Tenggat", "Due date"), type: "date" };
+  const columns: Column[] = [title, mapel, due, status];
+  const [todo, draft, done] = status.options!;
+  // Terisi otomatis dari Moodle bila tersambung: belum → Belum, konsep disimpan → Dikerjakan, dikumpulkan → Selesai.
+  const moodle: MoodleSync = { on: true, title: title.id, course: mapel.id, due: due.id, status: status.id, states: { todo: todo.id, draft: draft.id, submitted: done.id }, hidden: [] };
+  return { version: 1, columns, rows: [], view: "board", groupBy: status.id, sort: null, moodle };
 }
 
 /** Jadwal pelajaran: hari, jam, mapel, ruang. */

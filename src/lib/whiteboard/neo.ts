@@ -11,7 +11,10 @@ export type El = {
   isDeleted?: boolean;
   version: number;
   versionNonce: number;
-  customData?: { neoShadowOf?: string } & Record<string, unknown>;
+  customData?: { neoShadowOf?: string; neoGroup?: string } & Record<string, unknown>;
+  width: number;
+  height: number;
+  angle: number;
   [key: string]: unknown;
 };
 
@@ -77,6 +80,8 @@ export function neoStyle(elements: readonly El[], selected: Record<string, boole
     if (shape) {
       out.push({
         ...styled,
+        width: e.width,
+        height: e.height,
         id: rid(),
         x: e.x + SHADOW,
         y: e.y + SHADOW,
@@ -84,7 +89,7 @@ export function neoStyle(elements: readonly El[], selected: Record<string, boole
         strokeColor: INK,
         boundElements: null,
         link: null,
-        customData: { neoShadowOf: e.id },
+        customData: { neoShadowOf: e.id, neoGroup: group },
         seed: rand(),
         version: 1,
         versionNonce: rand(),
@@ -122,6 +127,52 @@ export function plainAll(elements: readonly El[]): El[] {
       versionNonce: rand(),
     };
   });
+}
+
+/**
+ * Jaga bayangan tetap menempel pada bentuknya. Excalidraw membolehkan elemen dalam grup digeser, diubah ukurannya,
+ * atau di-ungroup sendiri-sendiri; di sini bayangan selalu dikembalikan ke posisi, ukuran, putaran, dan grup
+ * bentuknya, dan dihapus bila bentuknya terhapus. Mengembalikan daftar baru bila ada yang dikoreksi, selain itu null.
+ */
+export function syncShadows(elements: readonly El[]): El[] | null {
+  const byId = new Map(elements.map((e) => [e.id, e]));
+  let changed = false;
+  const out: El[] = [];
+  const patches = new Map<string, Partial<El>>();
+  for (const e of elements) {
+    const of = e.customData?.neoShadowOf;
+    if (!of || e.isDeleted) continue;
+    const parent = byId.get(of);
+    if (!parent || parent.isDeleted) {
+      patches.set(e.id, { isDeleted: true });
+      continue;
+    }
+    // Grup bayangan: tersimpan di customData; isi lama tanpa catatan memakai grup terakhir bayangan.
+    const g = (e.customData?.neoGroup as string | undefined) ?? e.groupIds[e.groupIds.length - 1] ?? parent.groupIds[parent.groupIds.length - 1];
+    const parentGroups = g && !parent.groupIds.includes(g) ? [...parent.groupIds, g] : parent.groupIds;
+    if (g && !parent.groupIds.includes(g)) patches.set(parent.id, { groupIds: parentGroups });
+    const want = {
+      x: parent.x + SHADOW,
+      y: parent.y + SHADOW,
+      width: parent.width,
+      height: parent.height,
+      angle: parent.angle,
+      groupIds: parentGroups,
+    } as Record<string, unknown>;
+    const diff = Object.keys(want).some((k) => JSON.stringify(e[k]) !== JSON.stringify(want[k]));
+    if (diff) patches.set(e.id, { ...want, customData: { ...e.customData, neoGroup: g } } as Partial<El>);
+  }
+  if (!patches.size) return null;
+  for (const e of elements) {
+    const p = patches.get(e.id);
+    if (!p) {
+      out.push(e);
+      continue;
+    }
+    changed = true;
+    out.push({ ...e, ...p, version: e.version + 1, versionNonce: rand() });
+  }
+  return changed ? out : null;
 }
 
 /** Gaya yang tampaknya dipakai papan: ada bayangan neo = neo. */

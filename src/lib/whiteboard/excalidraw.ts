@@ -11,7 +11,7 @@ import { Excalidraw, MainMenu, exportToBlob, exportToSvg } from "@excalidraw/exc
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import "@excalidraw/excalidraw/index.css";
 import type { WhiteboardScene } from "$lib/workspace/types";
-import { NEO_DEFAULTS, detectStyle, neoAll, neoStyle, plainAll, type El } from "./neo";
+import { NEO_DEFAULTS, detectStyle, neoAll, neoStyle, plainAll, syncShadows, type El } from "./neo";
 
 /** Nilai awal bawaan Excalidraw, dipakai saat gaya aplikasi "normal". */
 const PLAIN_DEFAULTS = {
@@ -150,6 +150,7 @@ export function mountWhiteboard(container: HTMLElement, opts: MountOptions): Whi
           onChange: (elements, appState, files) => {
             rememberView(appState as unknown as Record<string, unknown>);
             autoNeo(elements as unknown as El[], appState as unknown as Record<string, unknown>);
+            keepShadows(elements as unknown as El[]);
             const sig = signature(elements, appState, files);
             if (lastSig === null) {
               lastSig = sig; // render pertama = isi yang baru dimuat, bukan perubahan
@@ -230,6 +231,13 @@ export function mountWhiteboard(container: HTMLElement, opts: MountOptions): Whi
     if (!Object.keys(fresh).length) return;
     const next = neoStyle(elements, fresh);
     if (next) for (const e of next) seen.add(e.id);
+    if (next) queueMicrotask(() => api?.updateScene({ elements: next as never }));
+  }
+
+  /** Bayangan tidak boleh terpisah dari bentuknya (digeser, diubah ukurannya, atau di-ungroup sendiri): kembalikan. */
+  function keepShadows(elements: readonly El[]) {
+    if (!api || lastSig === null) return;
+    const next = syncShadows(elements);
     if (next) queueMicrotask(() => api?.updateScene({ elements: next as never }));
   }
 

@@ -243,8 +243,9 @@ pub mod testutil {
     /// checkout that has not run `pnpm engines`.
     pub fn engines() -> Option<(PathBuf, PathBuf)> {
         let bin = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("binaries");
-        let triple = std::fs::read_dir(&bin).ok()?.filter_map(|e| e.ok()).find_map(|e| {
-            e.file_name().to_str()?.strip_prefix("ffmpeg-").map(str::to_owned)
+        // Folder `binaries` boleh tidak ada (belum menjalankan `npm run engines`); lalu pakai ffmpeg Homebrew.
+        let triple = std::fs::read_dir(&bin).ok().and_then(|rd| {
+            rd.filter_map(|e| e.ok()).find_map(|e| e.file_name().to_str()?.strip_prefix("ffmpeg-").map(str::to_owned))
         });
         let pair = |dir: PathBuf, suffix: String| (dir.join(format!("ffmpeg{suffix}")), dir.join(format!("ffprobe{suffix}")));
         let candidates = [

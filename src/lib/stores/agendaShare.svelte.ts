@@ -2,10 +2,11 @@
 // terhubung: ditulis ulang saat acara atau langganan berubah (tunda 2 detik), tiap 5 menit, dan saat
 // hubungan baru tersambung. Tidak menulis apa pun bila tidak terhubung.
 
-import { buildAgenda, agendaRange } from "$lib/link/agenda";
+import { buildAgenda, agendaRange, taskRange } from "$lib/link/agenda";
 import { link } from "$lib/link/api";
 import { calendar } from "./calendar.svelte";
 import { notchLink } from "./link.svelte";
+import { moodle } from "./moodle.svelte";
 
 const EVERY_MS = 5 * 60_000;
 const DEBOUNCE_MS = 2000;
@@ -17,7 +18,12 @@ async function write() {
   const now = Date.now();
   const [from, to] = agendaRange(now);
   try {
-    await link.writeAgenda(JSON.stringify(buildAgenda(calendar.occurrences(from, to), now)));
+    const occ = calendar.occurrences(from, to);
+    // Tugas Moodle dibagikan dengan rentang lebih lebar supaya tampil di To-do notch, termasuk yang terlambat.
+    const seen = new Set(occ.map((o) => o.key));
+    const [tFrom, tTo] = taskRange(now);
+    for (const o of calendar.occurrences(tFrom, tTo)) if (o.origin === "moodle" && !seen.has(o.key)) occ.push(o);
+    await link.writeAgenda(JSON.stringify(buildAgenda(occ, now)));
   } catch {
     /* paling buruk Notch memakai agenda lama sampai tulis berikutnya */
   }
@@ -31,7 +37,7 @@ export function startAgendaShare(): () => void {
     $effect(() => {
       if (!notchLink.connected) return;
       // Membaca acara dan sumber supaya efek ini berjalan lagi saat salah satunya berubah.
-      void [JSON.stringify(calendar.events), calendar.sources.map((s) => `${s.id}${s.fetchedAt}${s.enabled}`).join()];
+      void [JSON.stringify(calendar.events), calendar.sources.map((s) => `${s.id}${s.fetchedAt}${s.enabled}`).join(), moodle.active, moodle.remindMin, moodle.items.map((i) => `${i.id}${i.due}${i.submitted}`).join()];
       clearTimeout(timer);
       timer = setTimeout(() => void write(), DEBOUNCE_MS);
     });

@@ -3,8 +3,9 @@
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
   import NotchIcon from "./NotchIcon.svelte";
-  import { CalendarDays, FileText, Folder, Hash, Home, Inbox, Plus, Search, Settings, Shapes, Star, Table2, Trash2, Wrench } from "@lucide/svelte";
+  import { CalendarDays, FileText, Folder, GraduationCap, Hash, Home, Inbox, Plus, Search, Settings, Shapes, Star, Table2, Trash2, Wrench } from "@lucide/svelte";
   import { prefs } from "$lib/stores/prefs.svelte";
+  import { moodle } from "$lib/stores/moodle.svelte";
   import { proposals } from "$lib/stores/proposals.svelte";
   import { ws } from "$lib/stores/workspace.svelte";
   import type { PageKind } from "$lib/workspace/types";
@@ -47,6 +48,9 @@
   <nav>
     <a href="/" class:on={is("/")}><Home size={16} />{tr("Beranda", "Home")}</a>
     <a href="/calendar" class="k-calendar" class:on={is("/calendar")}><CalendarDays size={16} />{tr("Kalender", "Calendar")}</a>
+    {#if moodle.active}
+      <a href="/moodle" class:on={is("/moodle")}><GraduationCap size={16} />{tr("Materi", "Materials")}</a>
+    {/if}
     <a href="/notch" class="k-notch" class:on={is("/notch")}><NotchIcon size={16} />Notch</a>
     <a href="/tools" class:on={is("/tools")}><Wrench size={16} />{tr("Alat", "Tools")}</a>
     {#if prefs.value.mcp.propose || proposals.count > 0}
@@ -112,7 +116,7 @@
     flex: none;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--space-0);
     padding: var(--space-3) var(--space-2);
     background: var(--surface-2);
     border-right: 1px solid var(--border);
@@ -122,14 +126,14 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    padding: 2px 6px var(--space-2);
+    padding: var(--space-0) var(--space-2) var(--space-2);
   }
   .avatar {
     display: grid;
     place-items: center;
     width: 1.8em;
     height: 1.8em;
-    border-radius: 7px;
+    border-radius: var(--radius-2);
     background: var(--accent);
     color: var(--accent-contrast);
     border: var(--edge-w) solid var(--edge);
@@ -141,8 +145,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 5px 8px;
-    margin-bottom: 4px;
+    padding: var(--space-1) var(--space-2);
+    margin-bottom: var(--space-1);
     background: var(--surface);
     border: var(--edge-w) solid var(--edge);
     border-radius: var(--radius-sm);
@@ -152,7 +156,7 @@
   .search span {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-2);
   }
   .search:hover {
     box-shadow: var(--lift);
@@ -171,8 +175,8 @@
   .fav {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 5px 8px;
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-2);
     border-radius: var(--radius-sm);
     color: var(--text);
     text-decoration: none;
@@ -195,11 +199,11 @@
   .fav:hover {
     background: var(--surface);
   }
-  .tagcloud { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 var(--space-2) var(--space-2); max-height: 110px; overflow: auto; }
-  .tagcloud a { display: inline-flex; align-items: center; gap: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: 99px; padding: 1px 8px 1px 6px; font-size: 0.82em; color: var(--text); text-decoration: none; }
+  .tagcloud { display: flex; flex-wrap: wrap; gap: var(--space-1); padding: 0 var(--space-2) var(--space-2); max-height: 110px; overflow: auto; }
+  .tagcloud a { display: inline-flex; align-items: center; gap: var(--space-0); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 1px var(--space-2) 1px var(--space-2); font-size: 0.82em; color: var(--text); text-decoration: none; }
   .tagcloud a:hover, .tagcloud a.on { border-color: var(--accent-strong); background: var(--accent-soft); }
-  .tagcloud small { color: var(--text-muted); margin-left: 3px; }
-  .badge { animation: pop var(--dur-3) var(--ease-spring) both; margin-left: auto; background: var(--accent); color: var(--accent-contrast); border-radius: 99px; font-size: 0.75em; font-weight: 700; padding: 0 7px; line-height: 1.6; }
+  .tagcloud small { color: var(--text-muted); margin-left: var(--space-1); }
+  .badge { animation: pop var(--dur-3) var(--ease-spring) both; margin-left: auto; background: var(--accent); color: var(--accent-contrast); border-radius: var(--radius-pill); font-size: 0.75em; font-weight: 700; padding: 0 var(--space-2); line-height: 1.6; }
   nav a.on,
   .fav.on {
     background: var(--accent-soft);
@@ -212,7 +216,7 @@
     white-space: nowrap;
   }
   .sec {
-    padding: 12px 8px 3px;
+    padding: var(--space-3) var(--space-2) var(--space-1);
     font-size: 0.82em;
     color: var(--text-muted);
   }
@@ -220,7 +224,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-right: 4px;
+    padding-right: var(--space-1);
   }
   .new {
     position: relative;
@@ -233,7 +237,7 @@
     padding: 0;
     border: none;
     background: none;
-    border-radius: 4px;
+    border-radius: var(--radius-1);
     color: var(--text-muted);
     cursor: pointer;
   }
@@ -247,7 +251,7 @@
     top: 100%;
     z-index: 20;
     min-width: 9.5em;
-    padding: 4px;
+    padding: var(--space-1);
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -255,12 +259,12 @@
   .menu button {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
     width: 100%;
-    padding: 6px 8px;
+    padding: var(--space-2) var(--space-2);
     border: none;
     background: none;
-    border-radius: 4px;
+    border-radius: var(--radius-1);
     text-align: left;
     cursor: pointer;
   }
@@ -273,7 +277,7 @@
     min-height: 0;
   }
   .empty {
-    margin: 4px 8px;
+    margin: var(--space-1) var(--space-2);
     color: var(--text-muted);
     font-size: 0.9em;
   }

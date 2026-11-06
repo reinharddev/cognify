@@ -5,7 +5,6 @@
   import { isTauri } from "@tauri-apps/api/core";
   import { openUrl } from "@tauri-apps/plugin-opener";
   import { onMount } from "svelte";
-  import { prefs } from "$lib/stores/prefs.svelte";
   import type { WhiteboardHandle } from "$lib/whiteboard/excalidraw";
   import type { WhiteboardScene } from "$lib/workspace/types";
 
@@ -36,8 +35,8 @@
       .join("\n");
   }
 
-  // Ganti gaya di Pengaturan: gambar baru langsung mengikuti, tanpa membuka ulang papan.
-  $effect(() => handle?.setNeo(prefs.value.style === "neo"));
+  // Papan selalu bergaya Excalidraw asli (garis sketsa, tanpa bayangan), apa pun gaya yang dipilih di Pengaturan.
+  // Papan lama yang sudah bergaya neo diubah kembali saat dibuka.
 
   onMount(() => {
     let gone = false;
@@ -48,7 +47,7 @@
           scene: parse(content),
           theme: "light",
           viewKey,
-          neo: () => prefs.value.style === "neo",
+          neo: () => false,
           onChange: (scene) => onchange(JSON.stringify(scene), plainTextOf(scene)),
           onLinkOpen: (url) => (isTauri() ? openUrl(url) : window.open(url, "_blank", "noopener")),
         });
@@ -79,21 +78,20 @@
   .canvas {
     height: calc(100vh - 190px);
     min-height: 360px;
-    border: var(--edge-w) solid var(--edge);
-    border-radius: 14px;
-    box-shadow: var(--lift-lg);
+    border: 1px solid var(--edge);
+    border-radius: var(--radius-3);
     overflow: hidden;
   }
   /* Tombol di pojok kanan atas editor (dibuat di dalam Excalidraw, jadi gayanya global). */
   .canvas :global(.cog-neo) {
-    margin-left: 8px;
-    padding: 6px 12px;
+    margin-left: var(--space-2);
+    padding: var(--space-2) var(--space-3);
     white-space: nowrap;
     flex: none;
     background: var(--accent);
     color: var(--accent-contrast);
     border: var(--edge-w) solid var(--edge);
-    border-radius: 99px;
+    border-radius: var(--radius-pill);
     font: inherit;
     font-weight: 700;
     cursor: pointer;

@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  addColumn, addOption, addRow, coerce, cycleSort, display, emptyTable, lanes, moveCard, parseTable, plainText, prTemplate, recolorOption, removeColumn, removeOption,
-  removeRow, renameColumn, renameOption, scheduleTemplate, serialize, setCell, setColumnType, setGroupBy, setSort, setView, visibleRows, MAX_COLUMNS, MAX_OPTIONS, type TableData,
-} from "./model";
+import { addColumn, addOption, addRow, coerce, cycleSort, display, emptyTable, lanes, moveCard, parseTable, plainText, prTemplate, recolorOption, removeColumn, removeOption, removeRow, renameColumn, renameOption, scheduleTemplate, serialize, setCell, setColumnType, setGroupBy, setSort, setView, visibleRows, MAX_COLUMNS, MAX_OPTIONS, type TableData, mergeMoodle, clearMoodleHidden, setMoodleOn, localDate } from "./model";
 
 const status = (t: TableData) => t.columns[1];
 const optId = (t: TableData, label: string) => status(t).options!.find((o) => o.label === label)!.id;
@@ -307,5 +304,100 @@ describe("teks polos dan templat", () => {
       expect(t.groupBy).not.toBeNull();
     }
     expect(prTemplate().view).toBe("board");
+  });
+});
+
+// Label bawaan templat mengikuti bahasa; di tes bahasa Indonesia.
+const tr0 = (id: string) => id;
+
+describe("tabel PR dari Moodle", () => {
+  const task = (id: string, state: "todo" | "draft" | "submitted", extra: Partial<{ title: string; course: string; due: string }> = {}) => ({
+    id, state, course: extra.course ?? "SCK-CI_2026_Physics_12.2", title: extra.title ?? "TERM 2 | ASSIGNMENT 2 | INDUKSI", due: extra.due ?? "2026-11-09T05:00:00.000Z",
+  });
+  const colOf = (t: ReturnType<typeof prTemplate>, key: "title" | "course" | "due" | "status") => t.moodle![key]!;
+  const statusLabel = (t: ReturnType<typeof prTemplate>, rowIndex: number) => {
+    const c = t.columns.find((x) => x.id === colOf(t, "status"))!;
+    return c.options!.find((o) => o.id === t.rows[rowIndex].cells[c.id])?.label;
+  };
+
+  it("templat membawa pengaturan Moodle yang menunjuk kolom dan pilihan status", () => {
+    const t = prTemplate();
+    expect(t.moodle?.on).toBe(true);
+    expect(t.columns.some((c) => c.id === t.moodle!.status)).toBe(true);
+    expect(Object.values(t.moodle!.states).every(Boolean)).toBe(true);
+  });
+
+  it("menambahkan semua tugas dengan status tiga tingkat, mapel rapi, judul ringkas, dan tanggal lokal", () => {
+    const t = mergeMoodle(prTemplate(), [task("1", "todo"), task("2", "draft", { title: "Tugas lain", course: "SCK-CI_2026_Art_12.2" }), task("3", "submitted", { title: "Sudah" })]);
+    expect(t.rows).toHaveLength(3);
+    expect([0, 1, 2].map((i) => statusLabel(t, i))).toEqual([tr0("Belum"), tr0("Dikerjakan"), tr0("Selesai")]);
+    expect(t.rows[0].cells[colOf(t, "title")]).toBe("Assignment 2 · Induksi");
+    const course = t.columns.find((c) => c.id === colOf(t, "course"))!;
+    expect(course.options!.map((o) => o.label)).toContain("Physics");
+    expect(course.options!.map((o) => o.label)).toContain("Art");
+    expect(t.rows[0].cells[colOf(t, "due")]).toBe(localDate("2026-11-09T05:00:00.000Z"));
+    expect(t.rows[0].moodle).toEqual({ id: "1", state: "todo", due: "2026-11-09T05:00:00.000Z" });
+  });
+
+  it("aman dipanggil berulang: hasilnya tabel yang sama bila tidak ada perubahan", () => {
+    const once = mergeMoodle(prTemplate(), [task("1", "todo"), task("2", "draft")]);
+    expect(mergeMoodle(once, [task("1", "todo"), task("2", "draft")])).toBe(once);
+  });
+
+  it("pilihan manual pengguna dihormati sampai status di Moodle berubah", () => {
+    const base = mergeMoodle(prTemplate(), [task("1", "todo")]);
+    const statusCol = base.columns.find((c) => c.id === colOf(base, "status"))!;
+    const dikerjakan = statusCol.options!.find((o) => o.label === tr0("Dikerjakan"))!.id;
+    const manual = setCell(base, base.rows[0].id, statusCol.id, dikerjakan); // user menggeser kartu
+    // Moodle masih "belum": tetap pilihan user
+    expect(mergeMoodle(manual, [task("1", "todo")])).toBe(manual);
+    expect(statusLabel(mergeMoodle(manual, [task("1", "todo")]), 0)).toBe(tr0("Dikerjakan"));
+    // Moodle berubah jadi dikumpulkan: mengikuti Moodle
+    const after = mergeMoodle(manual, [task("1", "submitted")]);
+    expect(statusLabel(after, 0)).toBe(tr0("Selesai"));
+    expect(after.rows[0].moodle!.state).toBe("submitted");
+  });
+
+  it("tenggat ikut berubah bila guru menggantinya, judul tidak ditimpa", () => {
+    const base = mergeMoodle(prTemplate(), [task("1", "todo")]);
+    const titleCol = colOf(base, "title");
+    const renamed = setCell(base, base.rows[0].id, titleCol, "Punyaku");
+    const after = mergeMoodle(renamed, [task("1", "todo", { due: "2026-11-12T05:00:00.000Z" })]);
+    expect(after.rows[0].cells[colOf(after, "due")]).toBe(localDate("2026-11-12T05:00:00.000Z"));
+    expect(after.rows[0].cells[titleCol]).toBe("Punyaku");
+  });
+
+  it("baris yang dihapus pengguna tidak muncul lagi, dan bisa dipulihkan", () => {
+    const base = mergeMoodle(prTemplate(), [task("1", "todo"), task("2", "todo")]);
+    const removed = removeRow(base, base.rows[0].id);
+    expect(removed.moodle!.hidden).toEqual(["1"]);
+    const again = mergeMoodle(removed, [task("1", "todo"), task("2", "todo")]);
+    expect(again.rows).toHaveLength(1);
+    const restored = mergeMoodle(clearMoodleHidden(removed), [task("1", "todo"), task("2", "todo")]);
+    expect(restored.rows).toHaveLength(2);
+  });
+
+  it("baris buatan pengguna tidak tersentuh, dan mati bila dimatikan atau tanpa pengaturan", () => {
+    const own = addRow(prTemplate(), { [prTemplate().columns[0].id]: "x" });
+    const t = prTemplate();
+    const withOwn = addRow(t, { [t.columns[0].id]: "PR sendiri" });
+    const merged = mergeMoodle(withOwn, [task("1", "todo")]);
+    expect(merged.rows).toHaveLength(2);
+    expect(merged.rows[0].moodle).toBeUndefined();
+    expect(own.rows).toHaveLength(1);
+    expect(mergeMoodle(setMoodleOn(prTemplate(), false), [task("1", "todo")]).rows).toHaveLength(0);
+    const plain = prTemplate();
+    delete plain.moodle;
+    expect(mergeMoodle(plain, [task("1", "todo")])).toBe(plain);
+  });
+
+  it("pengaturan dan penanda baris bertahan lewat simpan dan baca ulang", () => {
+    const merged = mergeMoodle(prTemplate(), [task("1", "draft")]);
+    const back = parseTable(serialize(merged));
+    expect(back.moodle).toEqual(merged.moodle);
+    expect(back.rows[0].moodle).toEqual(merged.rows[0].moodle);
+    // data rusak dibersihkan, tidak membuat gagal
+    const broken = parseTable(JSON.stringify({ ...merged, moodle: { on: true, title: "tidak-ada", status: 5, states: { todo: "x" }, hidden: [1, "a"] } }));
+    expect(broken.moodle).toMatchObject({ on: true, title: null, status: null, hidden: ["a"] });
   });
 });

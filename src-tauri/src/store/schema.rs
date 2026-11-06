@@ -146,6 +146,66 @@ const MIGRATIONS: &[&str] = &[
     UPDATE pages SET kind = 'folder', content = '', plain_text = ''
         WHERE id IN (SELECT value FROM settings WHERE key IN ('sticky.folder', 'ext.folder'));
     "#,
+    // 6: tugas dan tenggat dari Moodle (opsional, dinyalakan di Pengaturan). Hanya salinan lokal; token ada di keychain.
+    r#"
+    CREATE TABLE moodle_items (
+        id         TEXT PRIMARY KEY,
+        course     TEXT NOT NULL DEFAULT '',
+        title      TEXT NOT NULL,
+        due        TEXT NOT NULL,
+        submitted  INTEGER NOT NULL DEFAULT 0,
+        url        TEXT,
+        fetched_at TEXT NOT NULL
+    );
+    CREATE INDEX moodle_items_due ON moodle_items (due);
+    "#,
+    // 7: materi Moodle yang bisa disimpan offline (salinan lokal di folder data app; url tanpa token).
+    r#"
+    CREATE TABLE moodle_courses (
+        id   INTEGER PRIMARY KEY,
+        name TEXT NOT NULL
+    );
+    CREATE TABLE moodle_files (
+        id         TEXT PRIMARY KEY,
+        course_id  INTEGER NOT NULL,
+        section    TEXT NOT NULL DEFAULT '',
+        module     TEXT NOT NULL DEFAULT '',
+        filename   TEXT NOT NULL,
+        filepath   TEXT NOT NULL DEFAULT '/',
+        size       INTEGER NOT NULL DEFAULT 0,
+        mime       TEXT NOT NULL DEFAULT '',
+        url        TEXT NOT NULL,
+        modified   INTEGER NOT NULL DEFAULT 0,
+        state      TEXT NOT NULL DEFAULT 'remote' CHECK (state IN ('remote', 'queued', 'downloading', 'done', 'error')),
+        local_path TEXT,
+        bytes_done INTEGER NOT NULL DEFAULT 0,
+        error      TEXT,
+        position   INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL
+    );
+    CREATE INDEX moodle_files_course ON moodle_files (course_id, position);
+    "#,
+    // 8: tautan dan embed dari halaman Moodle (Canva, YouTube, dan lainnya) serta teks halamannya, untuk dibaca offline.
+    r#"
+    CREATE TABLE moodle_links (
+        id         TEXT PRIMARY KEY,
+        course_id  INTEGER NOT NULL,
+        section    TEXT NOT NULL DEFAULT '',
+        module     TEXT NOT NULL DEFAULT '',
+        kind       TEXT NOT NULL CHECK (kind IN ('page', 'embed', 'link')),
+        title      TEXT NOT NULL,
+        url        TEXT NOT NULL DEFAULT '',
+        provider   TEXT NOT NULL DEFAULT 'link',
+        body       TEXT NOT NULL DEFAULT '',
+        position   INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE INDEX moodle_links_course ON moodle_links (course_id, position);
+    "#,
+    // 9: status tiga tingkat tugas Moodle (todo, draft = sedang dikerjakan, submitted) dan tabel PR otomatis.
+    r#"
+    ALTER TABLE moodle_items ADD COLUMN state TEXT NOT NULL DEFAULT 'todo';
+    UPDATE moodle_items SET state = CASE WHEN submitted = 1 THEN 'submitted' ELSE 'todo' END;
+    "#,
 ];
 
 pub const LATEST: u32 = MIGRATIONS.len() as u32;
@@ -185,6 +245,7 @@ pub fn migrate(conn: &Connection) -> Result<(), Error> {
     result
 }
 
+#[cfg(test)]
 pub fn version(conn: &Connection) -> Result<u32, Error> {
     Ok(conn.query_row("PRAGMA user_version", [], |r| r.get(0))?)
 }

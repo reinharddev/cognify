@@ -771,17 +771,23 @@ pub fn start(app: &AppHandle) {
     let alive = Arc::new(());
     std::thread::spawn(move || {
         let _alive = alive;
+        // Tunggu bertahap: cepat setelah ada sambungan, makin jarang saat sepi (hemat CPU).
+        let mut wait = 60u64;
         loop {
             if !enabled(&app.state::<Store>()) {
                 break;
             }
             match listener.accept() {
                 Ok((stream, _)) => {
+                    wait = 60;
                     stream.set_nonblocking(false).ok();
                     let app = app.clone();
                     std::thread::spawn(move || serve(&app, stream));
                 }
-                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => std::thread::sleep(Duration::from_millis(120)),
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    std::thread::sleep(Duration::from_millis(wait));
+                    wait = (wait * 2).min(400);
+                }
                 Err(_) => std::thread::sleep(Duration::from_millis(500)),
             }
         }

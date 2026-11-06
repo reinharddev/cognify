@@ -22,15 +22,15 @@
 <style>
 	.tabs {
 		display: inline-flex;
-		margin-bottom: 18px;
+		margin-bottom: var(--space-4);
 		border: var(--edge-w) solid var(--edge);
-		border-radius: 8px;
+		border-radius: var(--radius-2);
 		overflow: hidden;
 		background: var(--surface);
 	}
 
 	.tabs button {
-		padding: 7px 22px;
+		padding: var(--space-2) var(--space-4);
 		border: 0;
 		border-right: 1px solid var(--border);
 		background: transparent;

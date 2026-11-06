@@ -8,13 +8,17 @@
   import { hslToHex, hexToHsl } from "$lib/theme/color";
   import { workspace } from "$lib/workspace/api";
   import ExtensionGuide from "$lib/components/ExtensionGuide.svelte";
+  import { moodle, REMIND_CHOICES } from "$lib/stores/moodle.svelte";
+  import { embedConsent } from "$lib/moodle/embedConsent.svelte";
+  import Select from "$lib/ui/Select.svelte";
   import type { BridgeStatus, McpInfo } from "$lib/workspace/types";
 
-  type Tab = "general" | "appearance" | "preferences" | "mcp" | "data" | "about";
+  type Tab = "general" | "appearance" | "preferences" | "moodle" | "mcp" | "data" | "about";
   const TABS = $derived<{ id: Tab; label: string }[]>([
     { id: "general", label: tr("Umum", "General") },
     { id: "appearance", label: tr("Tampilan", "Appearance") },
     { id: "preferences", label: tr("Preferensi", "Preferences") },
+    { id: "moodle", label: "Moodle" },
     { id: "mcp", label: "MCP (AI)" },
     { id: "data", label: "Data" },
     { id: "about", label: tr("Tentang", "About") },
@@ -22,6 +26,14 @@
   const PRESET_EN: Record<string, string> = { peach: "Peach", butter: "Butter", mint: "Mint", sky: "Sky", rose: "Rose", graphite: "Graphite" };
   const FONT_EN: Record<string, string> = { rounded: "Rounded", system: "System" };
   let tab = $state<Tab>("general");
+  let mdUrl = $state("");
+  let mdUser = $state("");
+  let mdPass = $state("");
+  const mdTime = (iso: string | null) => (iso ? new Date(iso).toLocaleString(i18n.lang === "en" ? "en-US" : "id-ID", { dateStyle: "medium", timeStyle: "short" }) : "");
+  async function mdConnect() {
+    await moodle.connect(mdUrl, mdUser, mdPass);
+    mdPass = ""; // kata sandi tidak disimpan di mana pun
+  }
 
   const p = $derived(prefs.value);
 
@@ -171,7 +183,7 @@
             <button class:on={p.style === id} onclick={() => prefs.set({ style: id as StyleChoice })}>{name}</button>
           {/each}
         </div>
-        <p class="hint">{tr("Neo memakai garis tinta tegas dan bayangan kecil. Normal tampil datar dan tenang. Gaya Neo di papan berlaku untuk papan yang dibuka berikutnya.", "Neo uses bold ink outlines and small shadows. Normal looks flat and calm. The Neo style on boards applies to boards opened next.")}</p>
+        <p class="hint">{tr("Neo memakai garis tinta tegas dan bayangan kecil. Normal tampil datar dan tenang.", "Neo uses bold ink outlines and small shadows. Normal looks flat and calm.")}</p>
 
         <h2>{tr("Huruf", "Font")}</h2>
         <div class="seg" role="group" aria-label={tr("Jenis huruf", "Font family")}>
@@ -205,6 +217,49 @@
           <div><b>{tr("Pengingat acara", "Event reminders")}</b><small>{tr("Notifikasi desktop sebelum acara mulai.", "Desktop notification before an event starts.")}</small></div>
           <input type="checkbox" role="switch" checked={p.reminders} onchange={(e) => prefs.set({ reminders: e.currentTarget.checked })} />
         </label>
+      {:else if tab === "moodle"}
+        <h2>Moodle</h2>
+        <p class="hint">{tr("Untuk kamu yang sekolah atau kuliahnya memakai Moodle. Bawaannya mati. Setelah dinyalakan dan masuk, tugas yang belum dikumpulkan muncul di Kalender, di Notch, dan bisa diingatkan sebelum tenggat.", "For schools and universities that use Moodle. Off by default. Once turned on and signed in, unsubmitted assignments appear in the Calendar and in Notch, with reminders before the deadline.")}</p>
+        {#if !isTauri()}
+          <p class="hint warn">{tr("Moodle hanya tersedia di aplikasi Cognify, bukan di browser.", "Moodle is only available in the Cognify app, not in the browser.")}</p>
+        {/if}
+        <label class="row">
+          <div><b>{tr("Nyalakan Moodle", "Turn on Moodle")}</b><small>{tr("Cognify hanya menghubungi alamat Moodle yang kamu isi di bawah. Tidak ada server lain.", "Cognify only contacts the Moodle address you enter below. No other server.")}</small></div>
+          <input type="checkbox" role="switch" disabled={!isTauri() || moodle.busy || !moodle.status.connected} checked={moodle.status.enabled} onchange={(e) => void moodle.setEnabled(e.currentTarget.checked)} />
+        </label>
+        {#if !moodle.status.connected}
+          <h2>{tr("Masuk", "Sign in")}</h2>
+          <form class="md" onsubmit={(e) => { e.preventDefault(); void mdConnect(); }}>
+            <label>{tr("Alamat Moodle", "Moodle address")}<input type="text" inputmode="url" autocomplete="off" placeholder="lms.sekolahmu.sch.id" bind:value={mdUrl} disabled={moodle.busy} /></label>
+            <label>Username<input type="text" autocomplete="off" bind:value={mdUser} disabled={moodle.busy} /></label>
+            <label>Password<input type="password" autocomplete="off" bind:value={mdPass} disabled={moodle.busy} /></label>
+            <button class="plain tight" type="submit" disabled={!isTauri() || moodle.busy || !mdUrl.trim() || !mdUser.trim() || !mdPass}>{moodle.busy ? tr("Menghubungkan…", "Connecting…") : tr("Masuk dan nyalakan", "Sign in and turn on")}</button>
+          </form>
+          <p class="hint">{tr("Password hanya dipakai sekali untuk meminta kunci akses dari Moodle, lalu dibuang. Kunci aksesnya disimpan di keychain komputermu, bukan di database Cognify.", "Your password is used once to ask Moodle for an access key, then discarded. The key is kept in your computer's keychain, not in the Cognify database.")}</p>
+        {:else}
+          <div class="row">
+            <div><b>{moodle.status.fullName || moodle.status.userName}</b><small>{moodle.status.siteName || moodle.status.baseUrl}</small></div>
+            <button class="plain tight" disabled={moodle.busy} onclick={() => void moodle.disconnect()}>{tr("Putuskan", "Disconnect")}</button>
+          </div>
+          <div class="row" class:off={!moodle.status.enabled}>
+            <div>
+              <b>{tr("Sinkronisasi", "Sync")}</b>
+              <small>{moodle.status.lastSync ? tr(`Terakhir ${mdTime(moodle.status.lastSync)}, ${moodle.status.count} tugas.`, `Last ${mdTime(moodle.status.lastSync)}, ${moodle.status.count} items.`) : tr("Belum pernah disinkronkan.", "Not synced yet.")} {tr("Otomatis tiap 15 menit.", "Automatic every 15 minutes.")}</small>
+            </div>
+            <button class="plain tight" disabled={moodle.busy || !moodle.status.enabled} onclick={() => void moodle.sync()}>{moodle.busy ? tr("Menyinkronkan…", "Syncing…") : tr("Sinkronkan sekarang", "Sync now")}</button>
+          </div>
+          <div class="row" class:off={!moodle.status.enabled}>
+            <div><b>{tr("Pengingat tenggat", "Deadline reminder")}</b><small>{tr("Berbunyi di Cognify dan di Notch. Tugas yang sudah dikumpulkan tidak ditampilkan.", "Rings in Cognify and in Notch. Submitted assignments are not shown.")}</small></div>
+            <Select value={moodle.remindMin === null ? "none" : String(moodle.remindMin)} options={REMIND_CHOICES.map((c) => ({ value: c.value === null ? "none" : String(c.value), label: tr(c.id, c.en) }))} onchange={(v: string) => moodle.setRemind(v === "none" ? null : Number(v))} disabled={!moodle.status.enabled} label={tr("Pengingat tenggat", "Deadline reminder")} />
+          </div>
+          {#if embedConsent.canva}
+            <div class="row">
+              <div><b>{tr("Embed Canva diizinkan", "Canva embeds allowed")}</b><small>{tr("Embed Canva di halaman Materi dimuat dari canva.com (butuh internet). Cabut izin untuk menanyakannya lagi.", "Canva embeds on the Materials page load from canva.com (needs internet). Revoke to be asked again.")}</small></div>
+              <button class="plain tight" onclick={() => embedConsent.revoke()}>{tr("Cabut izin", "Revoke")}</button>
+            </div>
+          {/if}
+        {/if}
+        {#if moodle.error}<p class="hint warn" role="alert">{moodle.error}</p>{/if}
       {:else if tab === "mcp"}
         <h2>MCP (AI)</h2>
         <p class="hint">{tr("Hubungkan AI apa pun yang mendukung MCP, seperti Claude, Codex, atau Cursor, supaya bisa mencari dan membaca catatanmu. Bawaannya mati.", "Connect any AI that supports MCP, such as Claude, Codex, or Cursor, so it can search and read your notes. Off by default.")}</p>
@@ -254,38 +309,43 @@
 </div>
 
 <style>
-  .settings { max-width: 860px; margin: 0 auto; }
+  .settings { max-width: 860px; margin: 0 auto; touch-action: pan-y; }
   h1 { font-size: 1.9em; margin-bottom: var(--space-4); }
-  .layout { display: grid; grid-template-columns: 160px 1fr; gap: var(--space-6); align-items: start; }
-  nav { display: flex; flex-direction: column; gap: 2px; }
-  nav button { text-align: left; background: none; border: 0; padding: 8px 12px; border-radius: var(--radius-sm); cursor: pointer; color: var(--text-muted); }
+  .layout { display: grid; grid-template-columns: 160px 1fr; gap: var(--space-4); align-items: start; }
+  nav { display: flex; flex-direction: column; gap: var(--space-0); }
+  nav button { text-align: left; background: none; border: 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); cursor: pointer; color: var(--text-muted); }
   nav button:hover { background: var(--surface-2); color: var(--text); }
   nav button.on { background: var(--accent-soft); color: var(--text); font-weight: 600; }
-  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-6); min-height: 280px; }
-  h2 { font-size: 0.85em; font-weight: 600; color: var(--text-muted); margin: var(--space-6) 0 var(--space-2); }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-4); min-height: 280px; }
+  h2 { font-size: 0.85em; font-weight: 600; color: var(--text-muted); margin: var(--space-4) 0 var(--space-2); }
   h2:first-child { margin-top: 0; }
   .hint { color: var(--text-muted); max-width: 560px; margin: 0 0 var(--space-3); }
   .row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-3) 0; border-top: 1px solid var(--border); }
   h2 + .row { border-top: 0; }
   .row small { display: block; color: var(--text-muted); }
   h2 + .seg { margin-bottom: var(--space-3); }
-  .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 99px; padding: 3px; gap: 2px; flex-wrap: wrap; }
-  .seg button { background: none; border: 0; padding: 6px 14px; border-radius: 99px; cursor: pointer; color: var(--text-muted); }
+  .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-pill); padding: var(--space-1); gap: var(--space-0); flex-wrap: wrap; }
+  .seg button { background: none; border: 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-pill); cursor: pointer; color: var(--text-muted); }
   .seg button.on { background: var(--accent); color: var(--accent-contrast); font-weight: 600; }
   .seg button:focus-visible, nav button:focus-visible, .sw:focus-visible, .plain:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
   .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: var(--space-3); }
-  .sw { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 10px; border: 2px solid var(--border); border-radius: var(--radius); background: var(--surface); cursor: pointer; position: relative; text-align: left; }
+  .sw { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding: var(--space-3); border: 2px solid var(--border); border-radius: var(--radius); background: var(--surface); cursor: pointer; position: relative; text-align: left; }
   .sw.on { border-color: var(--accent-strong); }
-  .chip { display: flex; gap: 6px; width: 100%; padding: 10px; border-radius: var(--radius-sm); background: var(--sw-bg); border: 1px solid var(--border); }
-  .chip i { flex: 1; height: 16px; border-radius: 99px; background: var(--sw-a); }
+  .chip { display: flex; gap: var(--space-2); width: 100%; padding: var(--space-3); border-radius: var(--radius-sm); background: var(--sw-bg); border: 1px solid var(--border); }
+  .chip i { flex: 1; height: 16px; border-radius: var(--radius-pill); background: var(--sw-a); }
   .chip i + i { background: var(--sw-s); }
   input[type="range"] { width: 180px; }
   .row.off { opacity: 0.55; }
   .where { margin-top: var(--space-3); }
   .code { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--space-3); margin: 0 0 var(--space-2); white-space: pre-wrap; word-break: break-all; font: 0.85em/1.5 var(--font-mono); user-select: all; }
   .hint.warn { color: var(--danger); }
+  .md { display: grid; gap: var(--space-3); max-width: 420px; margin-bottom: var(--space-3); }
+  .md label { display: grid; gap: var(--space-1); color: var(--text-muted); }
+  .md input { padding: var(--space-2) var(--space-3); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font: inherit; }
+  .md input:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 1px; }
+  .row.off { opacity: 0.55; }
   .plain.tight { margin: 0 0 var(--space-3); }
-  .plain { margin-top: var(--space-6); background: none; border: 1px solid var(--border-strong); border-radius: 99px; padding: 7px 16px; cursor: pointer; color: var(--text); }
+  .plain { margin-top: var(--space-4); background: none; border: 1px solid var(--border-strong); border-radius: var(--radius-pill); padding: var(--space-2) var(--space-4); cursor: pointer; color: var(--text); }
   .plain:hover { background: var(--surface-2); }
   @media (max-width: 640px) {
     .layout { grid-template-columns: 1fr; }

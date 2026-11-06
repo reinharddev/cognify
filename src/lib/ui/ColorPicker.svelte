@@ -123,8 +123,8 @@
   .cp {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 10px;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
     background: var(--surface);
     color: var(--text);
     border: 1px solid var(--border);
@@ -135,7 +135,7 @@
   .cp:hover:not(:disabled) { border-color: var(--border-strong); }
   .cp.open { border-color: var(--accent-strong); }
   .cp:disabled { opacity: 0.55; cursor: not-allowed; }
-  .chip { width: 18px; height: 18px; border-radius: 5px; border: 1px solid var(--border-strong); }
+  .chip { width: 18px; height: 18px; border-radius: var(--radius-1); border: 1px solid var(--border-strong); }
   .code { font-family: var(--font-mono); font-size: 0.9em; }
   .scrim { position: fixed; inset: 0; z-index: 190; }
   .pop {
@@ -143,12 +143,12 @@
     z-index: 191;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: var(--space-3);
     width: 220px;
-    padding: 10px;
+    padding: var(--space-3);
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: var(--radius-3);
     box-shadow: 0 8px 28px var(--shadow-4);
     animation: pop var(--dur-2) var(--ease-out) both;
     outline: none;
@@ -156,7 +156,7 @@
   .area {
     position: relative;
     height: 130px;
-    border-radius: 8px;
+    border-radius: var(--radius-2);
     background-image: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent);
     touch-action: none;
     cursor: crosshair;
@@ -164,7 +164,7 @@
   .hue {
     position: relative;
     height: 12px;
-    border-radius: 6px;
+    border-radius: var(--radius-2);
     background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
     touch-action: none;
     cursor: pointer;
@@ -180,10 +180,10 @@
     pointer-events: none;
   }
   .hue .knob { top: 50%; }
-  .swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
-  .sw { aspect-ratio: 1; border: 1px solid var(--border-strong); border-radius: 6px; cursor: pointer; padding: 0; }
+  .swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--space-2); }
+  .sw { aspect-ratio: 1; border: 1px solid var(--border-strong); border-radius: var(--radius-2); cursor: pointer; padding: 0; }
   .sw.on { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent-strong); }
   .hex { font-family: var(--font-mono); }
-  .clear { padding: 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text); font: inherit; cursor: pointer; }
+  .clear { padding: var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-2); background: var(--surface-2); color: var(--text); font: inherit; cursor: pointer; }
   .clear:hover { background: var(--accent-soft); }
 </style>

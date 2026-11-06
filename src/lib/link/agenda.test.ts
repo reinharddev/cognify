@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Occurrence } from "$lib/calendar/types";
-import { AGENDA_DAYS, agendaRange, buildAgenda } from "./agenda";
+import { AGENDA_DAYS, agendaRange, buildAgenda, taskRange } from "./agenda";
 
 const NOW = new Date(2026, 9, 22, 9, 30).getTime();
 const HOUR = 3_600_000;
@@ -16,6 +16,16 @@ describe("agendaRange", () => {
     expect(new Date(from).getHours()).toBe(0);
     expect(new Date(from).getDate()).toBe(22);
     expect(new Date(to).getDate()).toBe(22 + AGENDA_DAYS);
+  });
+});
+
+describe("buildAgenda: pengingat", () => {
+  it("membawa remindMin hanya untuk acara buatan pengguna dan tugas Moodle", () => {
+    const f = buildAgenda(
+      [occ({ key: "a", remindMin: 15 }), occ({ key: "b", remindMin: 0, start: NOW + 2 * HOUR }), occ({ key: "c", origin: "ics", remindMin: 10, start: NOW + 3 * HOUR }), occ({ key: "m", origin: "moodle", remindMin: 1440, start: NOW + 5 * HOUR }), occ({ key: "d", remindMin: null, start: NOW + 4 * HOUR })],
+      NOW,
+    );
+    expect(f.events.map((e) => e.remindMin)).toEqual([15, 0, undefined, undefined, 1440]);
   });
 });
 
@@ -51,5 +61,20 @@ describe("buildAgenda", () => {
     const day = new Date(2026, 9, 23).getTime();
     const f = buildAgenda([occ({ key: "d", start: day, end: day + 24 * HOUR, allDay: true })], NOW);
     expect(f.events[0].allDay).toBe(true);
+  });
+});
+
+describe("tugas Moodle di agenda", () => {
+  it("ditandai kind task dan tetap ikut walau sudah lewat tenggat", () => {
+    const f = buildAgenda([occ({ key: "m1", origin: "moodle", calendar: "Moodle, Fisika", start: NOW - 2 * HOUR, end: null }), occ({ key: "l1", start: NOW - 2 * HOUR, end: NOW - HOUR })], NOW);
+    expect(f.events.map((e) => e.id)).toEqual(["m1"]);
+    expect(f.events[0].kind).toBe("task");
+    expect(f.events[0].calendar).toBe("Moodle, Fisika");
+  });
+
+  it("taskRange: 14 hari ke belakang sampai 60 hari ke depan", () => {
+    const [from, to] = taskRange(NOW);
+    expect(NOW - from).toBe(14 * 24 * HOUR);
+    expect(to - NOW).toBe(60 * 24 * HOUR);
   });
 });

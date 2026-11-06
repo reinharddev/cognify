@@ -350,7 +350,7 @@
     height: 26px;
     flex: none;
     border: var(--edge-w) solid var(--edge);
-    border-radius: 8px;
+    border-radius: var(--radius-2);
   }
   .t1 { background: var(--tint-1); }
   .t2 { background: var(--tint-5); }
@@ -359,9 +359,9 @@
   .t5 { background: var(--tint-3); }
   .t6 { background: var(--tint-6); }
   .count {
-    padding: 0 8px;
+    padding: 0 var(--space-2);
     background: var(--surface-2);
-    border-radius: 99px;
+    border-radius: var(--radius-pill);
     color: var(--text-muted);
     font-size: 0.8em;
     font-variant-numeric: tabular-nums;
@@ -423,12 +423,12 @@
   .chip {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-2);
     max-width: 100%;
-    padding: 4px 12px;
+    padding: var(--space-1) var(--space-3);
     background: var(--surface);
     border: var(--edge-w) solid var(--edge);
-    border-radius: 99px;
+    border-radius: var(--radius-pill);
   }
   .chip .clip {
     max-width: 280px;
@@ -444,7 +444,7 @@
     display: flex;
     align-items: baseline;
     gap: var(--space-3);
-    padding: 8px 0;
+    padding: var(--space-2) 0;
     border-top: 1px solid var(--border);
   }
   li:first-child {
@@ -488,9 +488,9 @@
     white-space: nowrap;
   }
   .tag {
-    padding: 0 8px;
+    padding: 0 var(--space-2);
     background: var(--surface-2);
-    border-radius: 99px;
+    border-radius: var(--radius-pill);
   }
   .tag.run {
     background: var(--tint-3);
@@ -502,7 +502,7 @@
     width: 18px;
     height: 18px;
     border: var(--edge-w) solid var(--edge);
-    border-radius: 5px;
+    border-radius: var(--radius-1);
     flex: none;
     align-self: center;
   }
@@ -517,7 +517,7 @@
   .more {
     width: 100%;
     margin-top: var(--space-2);
-    padding: 6px;
+    padding: var(--space-2);
     background: var(--surface-2);
     border: none;
     border-radius: var(--radius-sm);
@@ -542,7 +542,7 @@
     margin-bottom: var(--space-3);
     background: var(--surface-2);
     border: var(--edge-w) solid var(--edge);
-    border-radius: 99px;
+    border-radius: var(--radius-pill);
     overflow: hidden;
   }
   .meter span {
@@ -553,7 +553,7 @@
   .bars {
     display: flex;
     align-items: flex-end;
-    gap: 6px;
+    gap: var(--space-2);
     height: 64px;
   }
   .bar {
@@ -563,7 +563,7 @@
     display: flex;
     align-items: flex-end;
     background: var(--surface-2);
-    border-radius: 4px;
+    border-radius: var(--radius-1);
     overflow: hidden;
   }
   .bar span {
@@ -579,7 +579,7 @@
   .connect,
   .waiting {
     max-width: 560px;
-    padding: var(--space-5, 20px) var(--space-6);
+    padding: var(--space-4) var(--space-4);
   }
   .connect h2,
   .waiting h2 {
@@ -607,7 +607,7 @@
   }
   .old li {
     display: list-item;
-    padding: 2px 0;
+    padding: var(--space-0) 0;
     border: none;
   }
   .old ol {
@@ -616,7 +616,7 @@
     color: var(--text-muted);
   }
   .primary {
-    padding: 8px 16px;
+    padding: var(--space-2) var(--space-4);
     background: var(--accent);
     color: var(--accent-contrast);
     border: var(--edge-w) solid var(--edge);

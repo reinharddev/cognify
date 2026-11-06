@@ -50,7 +50,7 @@
 	let allowPlaylist = $state(false);
 	let info = $state<Info | null>(null);
 	let checking = $state(false);
-	let mode = $state<'video' | 'audio'>('video');
+	let mode = $state<'video' | 'videoOnly' | 'audio'>('video');
 	let maxHeight = $state<number | null>(null);
 	let audioFormat = $state<'mp3' | 'm4a' | 'opus'>('mp3');
 	let outDir = $state<string | null>(null);
@@ -124,7 +124,7 @@
 					url,
 					outDir,
 					mode,
-					maxHeight: mode === 'video' ? maxHeight : null,
+					maxHeight: mode !== 'audio' ? maxHeight : null,
 					audioFormat,
 					playlist: allowPlaylist && !!info?.isPlaylist
 				}
@@ -255,12 +255,15 @@
 						<button class:on={mode === 'video'} role="radio" aria-checked={mode === 'video'} disabled={downloading} onclick={() => (mode = 'video')}>
 							{t('media.mode.video')}
 						</button>
+						<button class:on={mode === 'videoOnly'} role="radio" aria-checked={mode === 'videoOnly'} disabled={downloading} onclick={() => (mode = 'videoOnly')}>
+							{t('media.mode.videoOnly')}
+						</button>
 						<button class:on={mode === 'audio'} role="radio" aria-checked={mode === 'audio'} disabled={downloading} onclick={() => (mode = 'audio')}>
 							{t('media.mode.audio')}
 						</button>
 					</div>
 
-					{#if mode === 'video'}
+					{#if mode !== 'audio'}
 						<label class="inline">
 							<span class="dim">{t('media.quality')}</span>
 							<Select bind:value={maxHeight} disabled={downloading} options={[{ value: null, label: t('media.quality.best') }, ...info.heights.map((h) => ({ value: h, label: `${h}p` }))]} />
@@ -273,6 +276,7 @@
 					{/if}
 					<FolderPicker bind:value={outDir} disabled={downloading} emptyLabel={t('media.folder.empty')} />
 				</div>
+				<p class="dim">{t(mode === 'video' ? 'media.mode.hint.video' : mode === 'videoOnly' ? 'media.mode.hint.videoOnly' : 'media.mode.hint.audio')}</p>
 
 				<div class="row">
 					{#if downloading}
@@ -321,9 +325,9 @@
 	.card {
 		display: flex;
 		flex-direction: column;
-		gap: 12px;
-		margin-bottom: 14px;
-		padding: 16px 18px;
+		gap: var(--space-3);
+		margin-bottom: var(--space-3);
+		padding: var(--space-4) var(--space-4);
 		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
@@ -336,17 +340,17 @@
 
 	ul {
 		margin: 0;
-		padding-left: 18px;
+		padding-left: var(--space-4);
 		display: flex;
 		flex-direction: column;
-		gap: 6px;
+		gap: var(--space-2);
 	}
 
 	.row {
 		display: flex;
 		align-items: center;
 		flex-wrap: wrap;
-		gap: 10px;
+		gap: var(--space-3);
 	}
 
 	.row.grow input {
@@ -363,13 +367,13 @@
 	.check {
 		display: inline-flex;
 		align-items: center;
-		gap: 8px;
+		gap: var(--space-2);
 	}
 
 	.field {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
+		gap: var(--space-2);
 	}
 
 	.label {
@@ -381,9 +385,9 @@
 	}
 
 	input:not([type]) {
-		padding: 8px 10px;
+		padding: var(--space-2) var(--space-3);
 		border: var(--edge-w) solid var(--edge);
-		border-radius: 8px;
+		border-radius: var(--radius-2);
 		background: var(--surface);
 		color: var(--text);
 		font: inherit;
@@ -394,7 +398,7 @@
 
 	.media {
 		display: flex;
-		gap: 14px;
+		gap: var(--space-3);
 		align-items: flex-start;
 	}
 
@@ -402,7 +406,7 @@
 		width: 160px;
 		aspect-ratio: 16 / 9;
 		object-fit: cover;
-		border-radius: 8px;
+		border-radius: var(--radius-2);
 		background: var(--surface-2);
 	}
 
@@ -410,24 +414,24 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 14px 22px;
+		gap: var(--space-3) var(--space-4);
 	}
 
 	.inline {
 		display: inline-flex;
 		align-items: center;
-		gap: 8px;
+		gap: var(--space-2);
 	}
 
 	.seg {
 		display: inline-flex;
 		border: var(--edge-w) solid var(--edge);
-		border-radius: 8px;
+		border-radius: var(--radius-2);
 		overflow: hidden;
 	}
 
 	.seg button {
-		padding: 7px 16px;
+		padding: var(--space-2) var(--space-4);
 		border: 0;
 		border-right: 1px solid var(--border);
 		background: transparent;
@@ -444,7 +448,7 @@
 
 	.bar {
 		height: 4px;
-		border-radius: 2px;
+		border-radius: var(--radius-1);
 		background: var(--surface-2);
 		overflow: hidden;
 	}
@@ -478,22 +482,22 @@
 	}
 
 	.problem {
-		margin-bottom: 14px;
+		margin-bottom: var(--space-3);
 		color: var(--danger);
 	}
 
 	.problem p {
 		display: flex;
 		align-items: flex-start;
-		gap: 6px;
-		margin: 0 0 8px;
+		gap: var(--space-2);
+		margin: 0 0 var(--space-2);
 	}
 
 	.result .ok {
 		display: flex;
 		align-items: center;
-		gap: 6px;
-		margin: 0 0 8px;
+		gap: var(--space-2);
+		margin: 0 0 var(--space-2);
 		color: var(--ok);
 	}
 
@@ -509,8 +513,8 @@
 	.result li {
 		display: flex;
 		align-items: center;
-		gap: 10px;
-		padding: 8px 12px;
+		gap: var(--space-3);
+		padding: var(--space-2) var(--space-3);
 		border-bottom: 1px solid var(--border);
 	}
 
@@ -528,8 +532,8 @@
 
 	.error {
 		margin: 0;
-		padding: 8px 10px;
-		border-radius: 6px;
+		padding: var(--space-2) var(--space-3);
+		border-radius: var(--radius-2);
 		background: var(--surface-2);
 		color: var(--danger);
 		font-size: 12px;

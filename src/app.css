@@ -85,15 +85,57 @@
   --accent-text: var(--accent-contrast);
   --warn-text: var(--warn);
 
-  --radius: 12px;
-  --radius-sm: 9px;
-  --radius-lg: 18px;
+  /* ── Skala ruang dan radius ──────────────────────────────────────────────────────
+     Satu unit u = 4px. Langkah skala = u × deret Fibonacci (1, 2, 3, 5, 8, 13, 21):
+
+        --space-1 = 4   --space-2 = 8   --space-3 = 12   --space-4 = 20
+        --space-5 = 32  --space-6 = 52  --space-7 = 84     (--space-0 = 2: celah rambut)
+
+     Tiap langkah ≈ 1,618 × langkah sebelumnya (rasio emas φ), dan dua langkah berurutan
+     berjumlah langkah berikutnya: 4 + 8 = 12, 8 + 12 = 20, 12 + 20 = 32, 20 + 32 = 52.
+
+     JARAK. Wadah berpadding p:
+        jarak antar isi di dalam wadah = p ÷ φ   (satu langkah ke bawah; p 20 → 12, p 12 → 8)
+        jarak antar kelompok           = p × φ   (satu langkah ke atas;  p 20 → 32)
+        jarak antar bagian halaman     = dua langkah di atas padding wadah.
+     Makin dekat hubungannya, makin kecil jaraknya; selisih antar tingkat selalu satu langkah.
+
+     RADIUS. Memakai skala yang sama (4, 8, 12, 20, 32, pil). Radius bersarang itu konsentris:
+        radius anak = radius induk − jarak anak ke tepi induk (padding induk)
+     Karena skalanya Fibonacci, hasilnya selalu jatuh tepat di langkah skala:
+        20 − 12 = 8,   12 − 8 = 4,   32 − 20 = 12.
+     Di CSS: induk menetapkan --r-out dan --pad, anak diberi kelas .concentric (lihat bawah). */
+  --u: 4px;
+  --space-0: 2px;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
-  --space-4: 16px;
-  --space-6: 24px;
-  --space-8: 32px;
+  --space-4: 20px;
+  --space-5: 32px;
+  --space-6: 52px;
+  --space-7: 84px;
+
+  --radius-1: 4px;
+  --radius-2: 8px;
+  --radius-3: 12px;
+  --radius-4: 20px;
+  --radius-5: 32px;
+  --radius-pill: 999px;
+  /* Nama lama, kini menunjuk ke skala: kontrol, permukaan, dan kartu. */
+  --radius-sm: var(--radius-2);
+  --radius: var(--radius-3);
+  --radius-lg: var(--radius-4);
+
+  /* Peran jarak (satu langkah per tingkat hubungan) */
+  --gap-inline: var(--space-2);   /* ikon + teks, tombol berdampingan */
+  --gap-stack: var(--space-3);    /* butir dalam daftar atau formulir */
+  --gap-group: var(--space-4);    /* antar kelompok dalam satu kartu atau halaman */
+  --gap-section: var(--space-5);  /* antar bagian halaman */
+  --gap-region: var(--space-4);   /* antar wilayah besar */
+
+  /* Bawaan radius bersarang: kartu (20) dengan padding 12 menghasilkan anak berradius 8. */
+  --r-out: var(--radius-4);
+  --pad: var(--space-3);
   --sidebar-w: 236px;
 
   /* "ui-rounded" (SF Rounded) tersedia di macOS; lainnya memakai font sistem. */
@@ -192,7 +234,7 @@ input[type="radio"] {
   flex: none;
   background: var(--surface);
   border: 1.5px solid var(--border-strong);
-  border-radius: 5px;
+  border-radius: var(--radius-1);
   cursor: pointer;
   vertical-align: middle;
   transition: background var(--dur-1), border-color var(--dur-1);
@@ -232,7 +274,7 @@ input[type="radio"]:disabled {
 input[type="checkbox"][role="switch"] {
   width: 40px;
   height: 22px;
-  border-radius: 99px;
+  border-radius: var(--radius-pill);
   place-content: center start;
   background: var(--border-strong);
   border-color: transparent;
@@ -242,7 +284,7 @@ input[type="checkbox"][role="switch"]:checked::after {
   content: "";
   width: 16px;
   height: 16px;
-  margin-left: 3px;
+  margin-left: var(--space-1);
   border-radius: 50%;
   clip-path: none;
   background: var(--surface);
@@ -266,14 +308,14 @@ input[type="range"] {
 }
 input[type="range"]::-webkit-slider-runnable-track {
   height: 6px;
-  border-radius: 99px;
+  border-radius: var(--radius-pill);
   background: var(--border-strong);
 }
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 16px;
   height: 16px;
-  margin-top: -5px;
+  margin-top: calc(var(--space-1) * -1);
   border-radius: 50%;
   border: 2px solid var(--surface);
   background: var(--accent-strong);
@@ -475,7 +517,7 @@ button:active:not(:disabled),
   top: 0;
   width: 44px;
   height: 44px;
-  margin: -22px 0 0 -22px;
+  margin: calc(var(--space-4) * -1) 0 0 calc(var(--space-4) * -1);
   border-radius: 50%;
   border: 2px solid var(--accent);
   opacity: 0;
@@ -733,4 +775,20 @@ input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [typ
 textarea,
 .tiptap {
   cursor: text;
+}
+
+/* Radius bersarang konsentris: anak mengikuti lengkung induk. Induk menetapkan --r-out (radiusnya sendiri) dan
+   --pad (jarak anak ke tepinya); anak diberi kelas ini. Hasil tidak pernah di bawah radius terkecil. */
+.concentric {
+  border-radius: max(calc(var(--r-out) - var(--pad)), var(--radius-1));
+}
+
+/* Cetak dan ekspor PDF dari halaman Cognify: sembunyikan kerangka antarmuka (menu samping, toolbar, tombol) dan biarkan
+   isi halaman mengalir di beberapa lembar. Elemen yang tidak boleh tercetak diberi atribut data-noprint. */
+@media print {
+  html, body { height: auto !important; overflow: visible !important; background: white !important; color: black !important; }
+  .shell { display: block !important; height: auto !important; }
+  aside, .side, .burger, .scrim, [data-noprint], .block-handle, .block-drop { display: none !important; }
+  main { overflow: visible !important; height: auto !important; padding: 0 !important; }
+  * { box-shadow: none !important; }
 }

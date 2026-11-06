@@ -34,7 +34,7 @@ export async function ensureNotificationPermission(): Promise<boolean> {
 export function dueReminders(now: number, already: ReadonlySet<string>) {
   return calendar
     .occurrences(now - GRACE_MS, now + LOOKAHEAD_MS) // acara yang baru mulai tetap dilihat untuk jendela toleransi
-    .filter((o) => o.origin === "local" && o.remindMin !== null && !already.has(o.key))
+    .filter((o) => (o.origin === "local" || o.origin === "moodle") && o.remindMin !== null && !already.has(o.key))
     .filter((o) => {
       const remindAt = o.start - o.remindMin! * 60_000;
       return remindAt <= now && now < Math.max(o.start, remindAt + GRACE_MS);

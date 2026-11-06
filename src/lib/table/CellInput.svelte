@@ -31,9 +31,9 @@
   input:not(.check) {
     width: 100%;
     border: 0;
-    border-radius: 6px;
+    border-radius: var(--radius-2);
     background: transparent;
-    padding: 6px 8px;
+    padding: var(--space-2) var(--space-2);
     min-height: 34px;
   }
   input:not(.check):hover {
@@ -47,14 +47,14 @@
   .check {
     width: 18px;
     height: 18px;
-    margin: 8px;
+    margin: var(--space-2);
     cursor: pointer;
   }
   .pick :global(.cell-sel) {
     border: 0;
-    border-radius: 6px;
+    border-radius: var(--radius-2);
     background: transparent;
-    padding: 6px 8px;
+    padding: var(--space-2) var(--space-2);
     min-height: 34px;
   }
   .pick :global(.cell-sel:hover:not(:disabled)) {
@@ -62,9 +62,9 @@
   }
   .pick.set :global(.cell-sel) {
     background: color-mix(in srgb, var(--c) 24%, var(--surface));
-    border-radius: 99px;
+    border-radius: var(--radius-pill);
     font-weight: 600;
-    padding-inline: 12px;
+    padding-inline: var(--space-3);
   }
   .pick.set :global(.cell-sel:hover:not(:disabled)) {
     background: color-mix(in srgb, var(--c) 34%, var(--surface));

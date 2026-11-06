@@ -123,7 +123,7 @@
     flex: none;
     background: var(--tint-2);
     border: var(--edge-w) solid var(--edge);
-    border-radius: 8px;
+    border-radius: var(--radius-2);
   }
   .what {
     flex: 1;

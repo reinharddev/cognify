@@ -1,6 +1,6 @@
 {
   "name": "cognify",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Cognify — AI knowledge management lokal & offline",
   "type": "module",
   "scripts": {
@@ -13,15 +13,11 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "tauri": "tauri",
-    "sidecar:setup": "uv --directory sidecar sync",
-    "sidecar:build": "node scripts/build-sidecar.mjs",
     "notch:build": "node scripts/build-notch.mjs",
     "notch:app": "zsh scripts/build-notch-app.sh",
     "notch:release": "zsh scripts/release-notch.sh",
     "notch:publish-source": "zsh scripts/publish-notch-source.sh",
     "release:mac": "zsh scripts/release-mac.sh",
-    "sidecar:dev": "COGNIFY_TOKEN=cognify-dev-token uv --directory sidecar run python -m cognify_sidecar --port 8765 --data-dir .devdata",
-    "sidecar:test": "uv --directory sidecar run pytest -q",
     "engines": "node scripts/fetch-engines.mjs",
     "test": "vitest run",
     "tauri:build": "node scripts/fetch-engines.mjs && tauri build --config src-tauri/tauri.sidecar.conf.json"
@@ -36,6 +32,7 @@
     "@tauri-apps/plugin-opener": "^2",
     "@tiptap/core": "^3.32.0",
     "@tiptap/extension-highlight": "^3.32.0",
+    "@tiptap/extension-image": "^3.32.0",
     "@tiptap/extension-link": "^3.32.0",
     "@tiptap/extension-placeholder": "^3.32.0",
     "@tiptap/extension-subscript": "^3.32.0",

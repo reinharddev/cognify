@@ -40,10 +40,10 @@
 
 <style>
   .wrap { max-width: 720px; margin: 0 auto; }
-  h1 { display: flex; align-items: center; gap: 8px; font-size: 1.7em; margin-bottom: var(--space-4); }
+  h1 { display: flex; align-items: center; gap: var(--space-2); font-size: 1.7em; margin-bottom: var(--space-4); }
   ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
   li { animation: rise var(--dur-3) var(--ease-out) backwards; animation-delay: calc(var(--i, 0) * 40ms); }
-  a { display: flex; align-items: center; gap: 10px; padding: var(--space-3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); text-decoration: none; }
+  a { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); text-decoration: none; }
   a:hover { border-color: var(--accent-strong); transform: translateY(-2px); }
   .k { display: inline-flex; }
   .k-doc { color: var(--kind-doc); }

@@ -1,0 +1,21 @@
+<!doctype html><meta charset="utf-8">
+<style>
+html,body{margin:0;width:1024px;height:1024px;background:transparent}
+.body{position:absolute;inset:var(--m,0);background:#8f87ff;border-radius:var(--r,230px);overflow:hidden}
+.notch{position:absolute;left:50%;top:0;width:50%;height:26%;transform:translateX(-50%);background:#0b0b0d;border-radius:0 0 18% 18%/0 0 34% 34%}
+.ear{position:absolute;top:0;width:7%;height:7%;fill:#0b0b0d}
+.ear.l{left:calc(25% - 7%)} .ear.r{right:calc(25% - 7%);transform:scaleX(-1)}
+.eyes{position:absolute;left:50%;top:7.5%;transform:translateX(-50%);display:flex;gap:26%;width:38%;justify-content:center}
+.eyes i{width:13%;aspect-ratio:.62;background:#fff;border-radius:50%;display:block}
+.sun{position:absolute;right:-6%;top:44%;width:44%;aspect-ratio:1;border-radius:50%;background:#ffd23f}
+.hill{position:absolute;left:-12%;bottom:-24%;width:96%;aspect-ratio:1;border-radius:50%;background:#ff7a59}
+.hill2{position:absolute;right:-26%;bottom:-34%;width:80%;aspect-ratio:1;border-radius:50%;background:#3fb27f}
+</style>
+<div class="body" id="b">
+  <span class="sun"></span><span class="hill"></span><span class="hill2"></span>
+  <svg class="ear l" viewBox="0 0 10 10"><path d="M0 0H10V10A10 10 0 0 0 0 0Z"/></svg>
+  <svg class="ear r" viewBox="0 0 10 10"><path d="M0 0H10V10A10 10 0 0 0 0 0Z"/></svg>
+  <div class="notch"></div>
+  <div class="eyes"><i></i><i></i></div>
+</div>
+<script>if(location.hash==='#mac'){document.getElementById('b').style.setProperty('--m','100px');document.getElementById('b').style.setProperty('--r','185px')}</script>

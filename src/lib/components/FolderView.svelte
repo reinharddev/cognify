@@ -47,12 +47,12 @@
 
 <style>
   .add { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-3) 0 var(--space-4); }
-  .add button { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 99px; cursor: pointer; }
+  .add button { display: inline-flex; align-items: center; gap: var(--space-1); padding: var(--space-2) var(--space-3); background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-pill); cursor: pointer; }
   .add button:hover { border-color: var(--accent-strong); background: var(--accent-soft); }
   .empty { color: var(--text-muted); }
   ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
   li { animation: rise var(--dur-3) var(--ease-out) backwards; animation-delay: calc(var(--i, 0) * 40ms); }
-  a { display: flex; align-items: center; gap: 10px; padding: var(--space-3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); text-decoration: none; }
+  a { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); text-decoration: none; }
   a:hover { border-color: var(--accent-strong); transform: translateY(-2px); }
   .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .untitled, small { color: var(--text-muted); }

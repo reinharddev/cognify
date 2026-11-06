@@ -10,7 +10,12 @@ const MAX_EVENTS = 100;
 export interface AgendaFile {
   schema: 1;
   updatedAt: string;
-  events: { id: string; title: string; start: string; end?: string; allDay: boolean; calendar?: string }[];
+  events: { id: string; title: string; start: string; end?: string; allDay: boolean; calendar?: string; remindMin?: number; kind?: "task" }[];
+}
+
+/** Tugas Moodle dibagikan lebih jauh: dari 14 hari lalu (terlambat) sampai 60 hari ke depan. */
+export function taskRange(now: number): [number, number] {
+  return [now - 14 * 86_400_000, now + 60 * 86_400_000];
 }
 
 /** Awal rentang (hari ini 00:00 lokal) dan akhirnya (AGENDA_DAYS hari kemudian). */
@@ -27,7 +32,8 @@ export function agendaRange(now: number): [number, number] {
  */
 export function buildAgenda(occurrences: Occurrence[], now: number): AgendaFile {
   const events = occurrences
-    .filter((o) => o.origin !== "notch" && (o.end ?? o.start) > now && Number.isFinite(o.start))
+    // Tugas Moodle yang lewat tenggat tetap ikut (belum dikumpulkan); acara lain yang sudah selesai tidak.
+    .filter((o) => o.origin !== "notch" && (o.origin === "moodle" || (o.end ?? o.start) > now) && Number.isFinite(o.start))
     .sort((a, b) => a.start - b.start || a.title.localeCompare(b.title))
     .slice(0, MAX_EVENTS)
     .map((o) => ({
@@ -37,6 +43,9 @@ export function buildAgenda(occurrences: Occurrence[], now: number): AgendaFile 
       ...(o.end !== null && Number.isFinite(o.end) ? { end: new Date(o.end).toISOString() } : {}),
       allDay: o.allDay,
       ...(o.calendar ? { calendar: o.calendar.slice(0, 80) } : {}),
+      ...(o.origin === "moodle" ? { kind: "task" as const } : {}),
+      // Menit sebelum mulai saat pengingat berbunyi; hanya acara buatan pengguna dan tugas Moodle yang punya pengingat.
+      ...((o.origin === "local" || o.origin === "moodle") && o.remindMin !== null && o.remindMin >= 0 ? { remindMin: Math.min(Math.round(o.remindMin), 10080) } : {}),
     }));
   return { schema: 1, updatedAt: new Date(now).toISOString(), events };
 }

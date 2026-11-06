@@ -40,7 +40,7 @@
 
 <style>
 	header {
-		margin-bottom: 32px;
+		margin-bottom: var(--space-5);
 	}
 
 	h1 {
@@ -48,7 +48,7 @@
 		font-size: 30px;
 		font-weight: 700;
 		letter-spacing: -0.02em;
-		margin-bottom: 6px;
+		margin-bottom: var(--space-2);
 	}
 
 	header p {
@@ -56,12 +56,12 @@
 	}
 
 	.hint {
-		margin-top: 4px;
+		margin-top: var(--space-1);
 		font-size: 12px;
 	}
 
 	section {
-		margin-bottom: 32px;
+		margin-bottom: var(--space-5);
 	}
 
 	h2 {
@@ -70,20 +70,20 @@
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
 		color: var(--text-dim);
-		margin-bottom: 12px;
+		margin-bottom: var(--space-3);
 	}
 
 	.grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-		gap: 12px;
+		gap: var(--space-3);
 	}
 
 	.card {
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
-		padding: 16px;
+		gap: var(--space-1);
+		padding: var(--space-4);
 		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
@@ -101,9 +101,9 @@
 		place-items: center;
 		width: 36px;
 		height: 36px;
-		margin-bottom: 8px;
+		margin-bottom: var(--space-2);
 		border: var(--edge-w) solid var(--edge);
-		border-radius: 9px;
+		border-radius: var(--radius-2);
 		background: var(--tint, var(--accent-soft));
 		color: var(--text);
 	}
@@ -116,16 +116,16 @@
 	.chips {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 8px;
+		gap: var(--space-2);
 	}
 
 	.chip {
 		display: inline-flex;
 		align-items: center;
-		gap: 6px;
-		padding: 5px 11px;
+		gap: var(--space-2);
+		padding: var(--space-1) var(--space-3);
 		border: var(--edge-w) dashed var(--edge);
-		border-radius: 999px;
+		border-radius: var(--radius-pill);
 		color: var(--text-dim);
 		font-size: 13px;
 	}

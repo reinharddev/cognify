@@ -97,7 +97,8 @@
     width: min(560px, 92vw);
     background: var(--surface);
     border: var(--edge-w) solid var(--edge);
-    border-radius: var(--radius-lg);
+    /* Kotak 12 − jarak butir ke tepi 4 = 8 (butir berradius 8) */
+    border-radius: var(--radius-3);
     box-shadow: var(--lift-lg);
     overflow: hidden;
   }
@@ -115,16 +116,16 @@
   ul {
     list-style: none;
     margin: 0;
-    padding: 4px;
+    padding: var(--space-1);
     max-height: 50vh;
     overflow-y: auto;
   }
   li button {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
     width: 100%;
-    padding: 7px 10px;
+    padding: var(--space-2) var(--space-3);
     border: none;
     background: none;
     border-radius: var(--radius-sm);

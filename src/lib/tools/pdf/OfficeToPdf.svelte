@@ -225,9 +225,9 @@
 	.card {
 		display: flex;
 		flex-direction: column;
-		gap: 10px;
-		margin-bottom: 16px;
-		padding: 14px 16px;
+		gap: var(--space-3);
+		margin-bottom: var(--space-4);
+		padding: var(--space-3) var(--space-4);
 		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
@@ -241,7 +241,7 @@
 	.row {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 10px;
+		gap: var(--space-3);
 	}
 
 	.dim {
@@ -257,24 +257,24 @@
 	}
 
 	.note {
-		margin-top: 12px;
+		margin-top: var(--space-3);
 	}
 
 	.ok {
 		display: inline-flex;
 		align-items: center;
-		gap: 6px;
+		gap: var(--space-2);
 		margin: 0;
 		color: var(--ok);
 	}
 
 	.options {
-		margin: 18px 0;
+		margin: var(--space-4) 0;
 	}
 
 	.list {
 		list-style: none;
-		margin: 0 0 16px;
+		margin: 0 0 var(--space-4);
 		padding: 0;
 		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
@@ -283,7 +283,7 @@
 	}
 
 	li {
-		padding: 10px 14px;
+		padding: var(--space-3) var(--space-3);
 		border-bottom: 1px solid var(--border);
 	}
 
@@ -294,7 +294,7 @@
 	.head {
 		display: flex;
 		align-items: center;
-		gap: 10px;
+		gap: var(--space-3);
 	}
 
 	.status-icon {
@@ -325,8 +325,8 @@
 
 	.bar {
 		height: 4px;
-		margin-top: 8px;
-		border-radius: 2px;
+		margin-top: var(--space-2);
+		border-radius: var(--radius-1);
 		background: var(--surface-2);
 		overflow: hidden;
 	}
@@ -364,9 +364,9 @@
 	.icon-btn {
 		display: inline-grid;
 		place-items: center;
-		padding: 3px;
+		padding: var(--space-1);
 		border: 0;
-		border-radius: 5px;
+		border-radius: var(--radius-1);
 		background: none;
 		color: var(--text-dim);
 	}
@@ -377,13 +377,13 @@
 
 	.actions {
 		display: flex;
-		gap: 10px;
+		gap: var(--space-3);
 	}
 
 	pre.error {
-		margin: 8px 0 0;
-		padding: 8px 10px;
-		border-radius: 6px;
+		margin: var(--space-2) 0 0;
+		padding: var(--space-2) var(--space-3);
+		border-radius: var(--radius-2);
 		background: var(--surface-2);
 		color: var(--danger);
 		font-size: 12px;

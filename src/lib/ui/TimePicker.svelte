@@ -74,7 +74,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: var(--space-2);
     width: 100%;
     min-width: 0;
     padding: var(--space-2) var(--space-3);
@@ -98,20 +98,20 @@
     z-index: 191;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 6px;
+    gap: var(--space-2);
     width: 156px;
-    padding: 8px;
+    padding: var(--space-2);
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: var(--radius-3);
     box-shadow: 0 8px 28px var(--shadow-4);
     animation: pop var(--dur-2) var(--ease-out) both;
     outline: none;
   }
-  .col { display: flex; flex-direction: column; gap: 2px; max-height: 196px; overflow-y: auto; }
-  .col button { padding: 6px 0; border: none; border-radius: 8px; background: none; color: var(--text); font: inherit; font-variant-numeric: tabular-nums; cursor: pointer; }
+  .col { display: flex; flex-direction: column; gap: var(--space-0); max-height: 196px; overflow-y: auto; }
+  .col button { padding: var(--space-2) 0; border: none; border-radius: var(--radius-2); background: none; color: var(--text); font: inherit; font-variant-numeric: tabular-nums; cursor: pointer; }
   .col button:hover { background: var(--surface-2); }
   .col button.on { background: var(--accent); color: var(--accent-contrast); font-weight: 600; }
-  .done { grid-column: 1 / -1; padding: 6px; border: none; border-radius: 8px; background: var(--surface-2); color: var(--text); font: inherit; cursor: pointer; }
+  .done { grid-column: 1 / -1; padding: var(--space-2); border: none; border-radius: var(--radius-2); background: var(--surface-2); color: var(--text); font: inherit; cursor: pointer; }
   .done:hover { background: var(--accent-soft); }
 </style>

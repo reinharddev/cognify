@@ -1,10 +1,9 @@
-//! Pantau clipboard (PRD #13): teks yang disalin dari aplikasi lain dikirim ke UI lewat event
-//! `clipboard-captured`, lalu UI menyimpannya ke catatan kliping harian (sidecar).
+//! Pantau clipboard: teks yang disalin dari aplikasi lain dikirim ke UI lewat event
+//! `clipboard-captured`, lalu UI menyimpannya ke catatan kliping harian.
 //!
 //! Privasi: default MATI dan hanya jalan setelah user menyalakannya. Diabaikan: teks yang disalin
 //! saat jendela Cognify aktif, teks pendek / satu kata (password, token, kode OTP), dan teks yang
-//! sama dengan sebelumnya. Penyaringan isi (nomor kartu, "password:", kunci privat) juga
-//! dilakukan sidecar. Isi clipboard tidak pernah ditulis ke log.
+//! sama dengan sebelumnya. Isi clipboard tidak pernah ditulis ke log.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
@@ -16,6 +15,7 @@ use tauri_plugin_clipboard_manager::ClipboardExt;
 
 pub const CAPTURED_EVENT: &str = "clipboard-captured";
 const POLL: Duration = Duration::from_millis(1500);
+const IDLE_POLL: Duration = Duration::from_secs(3);
 const MIN_CHARS: usize = 40;
 const MIN_WORDS: usize = 6;
 const MAX_CHARS: usize = 20_000;
@@ -54,17 +54,33 @@ fn worth_saving(text: &str) -> bool {
 }
 
 pub fn start(app: AppHandle) {
-    thread::spawn(move || loop {
-        thread::sleep(POLL);
+    thread::spawn(move || {
+        // Saat mati, clipboard tidak dibaca sama sekali (hemat CPU). Begitu menyala lagi, bacaan pertama
+        // hanya dicatat sebagai dasar supaya isi lama tidak ikut tersimpan.
+        let mut need_baseline = true;
+        loop {
         let watcher = app.state::<ClipboardWatcher>();
+        if !watcher.enabled() {
+            need_baseline = true;
+            thread::sleep(IDLE_POLL);
+            continue;
+        }
+        thread::sleep(POLL);
+        if !watcher.enabled() {
+            continue;
+        }
         let Ok(text) = app.clipboard().read_text() else { continue };
         let digest = hash(&text);
         let mut last = watcher.last.lock().unwrap();
         let changed = *last != Some(digest);
         *last = Some(digest);
         drop(last);
-        if !watcher.enabled() || !changed {
-            continue; // tetap catat hash saat mati: menyalakan tidak menyimpan isi lama
+        if need_baseline {
+            need_baseline = false;
+            continue;
+        }
+        if !changed {
+            continue;
         }
         let own_window = app
             .get_webview_window("main")
@@ -74,6 +90,7 @@ pub fn start(app: AppHandle) {
             continue;
         }
         let _ = app.emit(CAPTURED_EVENT, text);
+        }
     });
 }
 

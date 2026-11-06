@@ -28,7 +28,7 @@ pub(crate) fn load(path: &Path) -> Result<Document, String> {
     Ok(doc)
 }
 
-fn inline_inherited(doc: &mut Document, page_id: ObjectId) {
+pub(crate) fn inline_inherited(doc: &mut Document, page_id: ObjectId) {
     let mut found: Vec<(&[u8], Object)> = Vec::new();
     for key in INHERITABLE {
         let mut current = page_id;

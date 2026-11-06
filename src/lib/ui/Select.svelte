@@ -156,7 +156,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: var(--space-2);
     width: 100%;
     min-width: 0;
     padding: var(--space-2) var(--space-3);
@@ -203,15 +203,15 @@
     position: fixed;
     z-index: 191;
     overflow-y: auto;
-    padding: 4px;
+    padding: var(--space-1);
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: var(--radius-3);
     box-shadow: 0 8px 28px var(--shadow-4);
     animation: pop var(--dur-2) var(--ease-out) both;
   }
   .grp {
-    padding: 8px 10px 4px;
+    padding: var(--space-2) var(--space-3) var(--space-1);
     font-size: 0.78em;
     color: var(--text-muted);
     text-transform: uppercase;
@@ -221,11 +221,11 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
+    gap: var(--space-3);
     width: 100%;
-    padding: 6px 10px;
+    padding: var(--space-2) var(--space-3);
     border: none;
-    border-radius: 6px;
+    border-radius: var(--radius-2);
     background: none;
     color: var(--text);
     font: inherit;

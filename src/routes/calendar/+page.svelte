@@ -156,14 +156,14 @@
   }
   .nav {
     display: flex;
-    gap: 4px;
+    gap: var(--space-1);
   }
   .nav button,
   .primary {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
     background: var(--surface);
     border: var(--edge-w) solid var(--edge);
     border-radius: var(--radius-sm);
@@ -192,13 +192,13 @@
     }
     .cell {
       min-height: 4.4em;
-      padding: 2px 3px;
+      padding: var(--space-0) var(--space-1);
     }
   }
   .weekdays {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    padding: 0 2px 6px;
+    padding: 0 var(--space-0) var(--space-2);
     color: var(--text-muted);
     font-size: 0.78em;
     font-weight: 600;
@@ -218,9 +218,9 @@
   .cell {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--space-0);
     min-height: 6.2em;
-    padding: 4px 5px;
+    padding: var(--space-1) var(--space-1);
     background: var(--surface);
     border: none;
     border-right: 1px solid var(--border);
@@ -251,9 +251,9 @@
   .num {
     align-self: flex-start;
     min-width: 1.7em;
-    padding: 1px 4px;
+    padding: 1px var(--space-1);
     border: var(--edge-w) solid transparent;
-    border-radius: 99px;
+    border-radius: var(--radius-pill);
     font-size: 0.9em;
     text-align: center;
   }
@@ -266,7 +266,7 @@
   .chip {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: var(--space-1);
     font-size: 0.8em;
     overflow: hidden;
     white-space: nowrap;
@@ -284,7 +284,7 @@
     color: var(--text-muted);
   }
   .day {
-    margin-top: var(--space-6);
+    margin-top: var(--space-4);
   }
   .day h2 {
     font-family: var(--font-display);
@@ -294,7 +294,7 @@
   .link {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: var(--space-1);
     padding: 0;
     border: none;
     background: none;

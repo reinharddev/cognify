@@ -152,9 +152,9 @@
   .row {
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: var(--space-0);
     min-height: 1.9em;
-    padding-right: 4px;
+    padding-right: var(--space-1);
     border-radius: var(--radius-sm);
     color: var(--text);
   }
@@ -171,7 +171,7 @@
     left: 6px;
     right: 6px;
     height: 3px;
-    border-radius: 99px;
+    border-radius: var(--radius-pill);
     background: var(--accent-strong);
     animation: fade var(--dur-1) ease both;
   }
@@ -202,7 +202,7 @@
     padding: 0;
     border: none;
     background: none;
-    border-radius: 4px;
+    border-radius: var(--radius-1);
     color: var(--text-muted);
     cursor: pointer;
     flex: none;
@@ -223,12 +223,12 @@
   .label {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-2);
     flex: 1;
     min-width: 0;
     color: inherit;
     text-decoration: none;
-    padding: 2px 0;
+    padding: var(--space-0) 0;
   }
   .kind {
     display: inline-flex;

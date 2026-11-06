@@ -176,7 +176,7 @@
 	.layout {
 		display: grid;
 		grid-template-columns: minmax(280px, 1fr) minmax(260px, 340px);
-		gap: 28px;
+		gap: var(--space-5);
 		align-items: start;
 	}
 
@@ -189,20 +189,20 @@
 	.form {
 		display: flex;
 		flex-direction: column;
-		gap: 16px;
+		gap: var(--space-4);
 	}
 
 	.seg {
 		display: inline-flex;
 		align-self: flex-start;
 		border: var(--edge-w) solid var(--edge);
-		border-radius: 8px;
+		border-radius: var(--radius-2);
 		overflow: hidden;
 		background: var(--surface);
 	}
 
 	.seg button {
-		padding: 7px 14px;
+		padding: var(--space-2) var(--space-3);
 		border: 0;
 		border-right: 1px solid var(--border);
 		background: transparent;
@@ -220,7 +220,7 @@
 	.field {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
+		gap: var(--space-2);
 	}
 
 	.label {
@@ -233,9 +233,9 @@
 
 	input:not([type]),
 	textarea {
-		padding: 8px 10px;
+		padding: var(--space-2) var(--space-3);
 		border: var(--edge-w) solid var(--edge);
-		border-radius: 8px;
+		border-radius: var(--radius-2);
 		background: var(--surface);
 		color: var(--text);
 		font: inherit;
@@ -255,13 +255,13 @@
 	.row {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 22px;
+		gap: var(--space-4);
 	}
 
 	.check {
 		display: inline-flex;
 		align-items: center;
-		gap: 8px;
+		gap: var(--space-2);
 	}
 
 	.dim {
@@ -272,7 +272,7 @@
 	.warn {
 		display: flex;
 		align-items: flex-start;
-		gap: 6px;
+		gap: var(--space-2);
 		margin: 0;
 		color: var(--danger);
 		font-size: 13px;
@@ -281,14 +281,14 @@
 	.preview {
 		display: flex;
 		flex-direction: column;
-		gap: 10px;
+		gap: var(--space-3);
 	}
 
 	.canvas {
 		display: grid;
 		place-items: center;
 		aspect-ratio: 1;
-		padding: 12px;
+		padding: var(--space-3);
 		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
@@ -302,6 +302,6 @@
 
 	.actions {
 		display: flex;
-		gap: 10px;
+		gap: var(--space-3);
 	}
 </style>

@@ -11,7 +11,12 @@ import {
 	Files,
 	Braces,
 	QrCode,
-	Presentation
+	Presentation,
+	Images,
+	LayoutGrid,
+	CaseSensitive,
+	Globe,
+	Film
 } from '@lucide/svelte';
 import type { ToolManifest } from './types';
 
@@ -84,6 +89,16 @@ const all: ToolManifest[] = [
 		load: () => import('./media/TrimJoin.svelte')
 	},
 	{
+		id: 'video-editor',
+		category: 'video',
+		icon: Film,
+		name: { id: 'Editor Video Sederhana', en: 'Simple Video Editor' },
+		description: { id: 'Potong klip, sambung beberapa video, tambah musik dari MP3, lalu ekspor.', en: 'Cut clips, join several videos, add music from an MP3, then export.' },
+		keywords: ['edit', 'editor', 'potong', 'cut', 'trim', 'gabung', 'sambung', 'join', 'musik', 'music', 'mp3', 'audio', 'tambah suara', 'add audio', 'ekspor', 'export', 'video editor', 'klip'],
+		status: 'ready',
+		load: () => import('./media/VideoEditor.svelte')
+	},
+	{
 		id: 'image-compress',
 		category: 'image',
 		icon: Minimize2,
@@ -135,6 +150,46 @@ const all: ToolManifest[] = [
 		keywords: ['pptx', 'powerpoint', 'ppt', 'docx', 'word', 'xlsx', 'excel', 'odp', 'odt', 'slide', 'presentasi', 'presentation', 'dokumen', 'ke pdf', 'to pdf', 'libreoffice'],
 		status: 'ready',
 		load: () => import('./pdf/OfficeToPdf.svelte')
+	},
+	{
+		id: 'web-to-pdf',
+		category: 'pdf',
+		icon: Globe,
+		name: { id: 'Web ke PDF', en: 'Web to PDF' },
+		description: { id: 'Simpan halaman web sebagai PDF yang teksnya bisa dipilih.', en: 'Save a web page as a PDF with selectable text.' },
+		keywords: ['web', 'halaman web', 'website', 'situs', 'url', 'artikel', 'cetak', 'print', 'simpan halaman', 'save page', 'web to pdf', 'html'],
+		status: 'ready',
+		load: () => import('./pdf/WebToPdf.svelte')
+	},
+	{
+		id: 'image-to-pdf',
+		category: 'pdf',
+		icon: Images,
+		name: { id: 'Gambar ke PDF', en: 'Images to PDF' },
+		description: { id: 'Gabungkan foto atau hasil pindai jadi satu PDF.', en: 'Combine photos or scans into one PDF.' },
+		keywords: ['gambar', 'foto', 'jpg', 'png', 'pindai', 'scan', 'image', 'photo', 'images to pdf', 'jpg ke pdf', 'png ke pdf'],
+		status: 'ready',
+		load: () => import('./pdf/ImagesToPdf.svelte')
+	},
+	{
+		id: 'pdf-organize',
+		category: 'pdf',
+		icon: LayoutGrid,
+		name: { id: 'Atur Halaman PDF', en: 'Organize PDF pages' },
+		description: { id: 'Hapus, putar, urutkan halaman PDF, atau ambil teksnya.', en: 'Delete, rotate and reorder PDF pages, or extract the text.' },
+		keywords: ['atur', 'urutkan', 'putar', 'hapus halaman', 'rotate', 'reorder', 'delete pages', 'organize', 'teks', 'text', 'extract text', 'pdf ke teks'],
+		status: 'ready',
+		load: () => import('./pdf/PdfOrganize.svelte')
+	},
+	{
+		id: 'text-tools',
+		category: 'developer',
+		icon: CaseSensitive,
+		name: { id: 'Alat Teks & Kode', en: 'Text & Code tools' },
+		description: { id: 'Hitung kata, ubah huruf, rapikan baris, Base64, URL, hash, waktu, UUID.', en: 'Count words, change case, tidy lines, Base64, URL, hash, time, UUID.' },
+		keywords: ['hitung kata', 'word count', 'huruf besar', 'uppercase', 'lowercase', 'base64', 'url encode', 'hash', 'sha256', 'timestamp', 'unix', 'uuid', 'baris ganda', 'duplicate lines', 'sort'],
+		status: 'ready',
+		load: () => import('./dev/TextTools.svelte')
 	},
 	{
 		id: 'bulk-rename',
