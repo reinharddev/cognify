@@ -182,7 +182,7 @@ body.dark .block h2 { color: var(--paper); }
 
 /* Alat */
 .tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-.tools div { background: #fff; border: 2px solid var(--ink); border-radius: 14px; padding: 12px 10px; font-size: 12.5px; font-weight: 700; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.tools div { background: #fff; color: var(--ink); border: 2px solid var(--ink); border-radius: 14px; padding: 12px 10px; font-size: 12.5px; font-weight: 700; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .tools svg { width: 20px; height: 20px; }
 
 .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 56px; }
@@ -226,7 +226,7 @@ body.dark .block h2 { color: var(--paper); }
 .net > div { background: var(--card); border: 2px solid var(--ink); border-radius: 22px; padding: 20px 22px; box-shadow: 6px 6px 0 var(--ink); font-size: 15px; }
 .net b { display: block; font-family: var(--display); font-size: 22px; margin-bottom: 4px; }
 .net p { margin: 0; color: var(--muted); }
-.convrt { color: var(--accent); font-weight: 700; font-size: 15px; margin-top: 6px; display: inline-block; }
+.convrt { font-weight: 700; font-size: 15px; margin-top: 6px; display: inline-block; }
 .cnvrt-i {color: var(--ink); font-weight: 700; font-size: 15px; margin-top: 6px; display: inline-block; }
 
 /* Tanya jawab */
@@ -314,6 +314,7 @@ footer { max-width: 1100px; margin: 0 auto; padding: 50px 28px 40px; display: fl
 @keyframes popOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: scale(.94) translateY(8px); } }
 @keyframes caret { 50% { opacity: 0; } }
 .lang-out .lang-fade { opacity: 0; }
+
 
 @media (max-width: 960px) {
   .feat, .notch-card { grid-template-columns: 1fr; gap: 30px; }
