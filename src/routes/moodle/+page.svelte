@@ -132,7 +132,7 @@
   /* Kartu horizontal: kotak warna di kiri, nama dan status di tengah, panah di kanan. Dasarnya kelas .card global
      (garis tinta dan bayangan), jadi tampilannya serumpun dengan kartu di Beranda dan Alat. */
   .course {
-    /* Radius bersarang konsentris: kartu 20 − jarak 12 = 8 untuk kotak warna (rumus di docs/UI_SCALE.md). */
+    /* Radius bersarang konsentris: kartu 20 − jarak 12 = 8 untuk kotak warna (rumus di docs/desain/skala-ruang-radius.md). */
     --r-out: var(--radius-4);
     --pad: var(--space-3);
     position: relative;

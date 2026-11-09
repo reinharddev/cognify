@@ -16,16 +16,19 @@
   import ToolPane from "$lib/components/ToolPane.svelte";
   import { startReminders } from "$lib/calendar/reminders";
   import { prefs } from "$lib/stores/prefs.svelte";
+  import { notifications } from "$lib/stores/notifications.svelte";
+  import NotificationToasts from "$lib/components/NotificationToasts.svelte";
   import { proposals } from "$lib/stores/proposals.svelte";
   import { startAgendaShare } from "$lib/stores/agendaShare.svelte";
   import { moodle } from "$lib/stores/moodle.svelte";
+  import { school } from "$lib/stores/school.svelte";
   import { onNavigate } from "$app/navigation";
   import { listen } from "@tauri-apps/api/event";
   import { isTauri } from "@tauri-apps/api/core";
   import { NotepadText } from "@lucide/svelte";
   import { workspace } from "$lib/workspace/api";
   import { Menu } from "@lucide/svelte";
-  import { motionOff, startClickFx, startIconFx } from "$lib/motion";
+  import { motionOff, startClickFx } from "$lib/motion";
   import { calendar } from "$lib/stores/calendar.svelte";
   import { notchLink } from "$lib/stores/link.svelte";
   import { ws } from "$lib/stores/workspace.svelte";
@@ -52,6 +55,8 @@
     void notchLink.init();
     void calendar.init();
     void moodle.init();
+    void notifications.init();
+    void school.init();
     void (async () => {
       await Promise.all([prefs.init(), ws.init()]);
       // Halaman awal "terakhir dibuka": hanya bila aplikasi dibuka di Beranda dan halamannya masih ada.
@@ -79,14 +84,12 @@
         })
       : null;
     const stopNav = isTauri() ? listen<string>("tray-navigate", (e) => void goto(e.payload)) : null;
-    const stopIconFx = startIconFx();
     return () => {
       stopTips();
       stopClickFx();
       void stopNav?.then((off) => off());
       void stopPages?.then((off) => off());
       clearTimeout(refreshTimer);
-      stopIconFx();
       stopReminders();
       stopProposals();
       stopAgenda();
@@ -209,6 +212,7 @@
 <SearchPalette bind:open={searching} />
 <ContextMenu />
 <DialogHost />
+<NotificationToasts />
 
 <style>
   .shell {

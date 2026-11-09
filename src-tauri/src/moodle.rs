@@ -554,6 +554,8 @@ pub struct CourseView {
     foreign: usize,
     /// Teks halaman, embed, dan tautan dari halaman Moodle.
     links: Vec<db::Link>,
+    /// Struktur lengkap mata pelajaran: bagian dan semua modulnya (untuk tampilan "seluruh isi").
+    structure: Vec<db::Module>,
 }
 
 /// Isi `index.html` sebuah halaman Moodle (kecil; lebih dari 512 KB diabaikan).
@@ -592,6 +594,8 @@ pub async fn moodle_refresh_course(app: AppHandle, store: State<'_, Store>, cour
     let parsed = db::parse_contents(&contents, course_id, &allowed_prefixes(&cfg));
     let stale = store.with(|c| db::files_upsert(c, course_id, &parsed.files))?;
     remove_local(&app, &stale);
+    let structure = db::parse_structure(&contents, course_id, &allowed_prefixes(&cfg));
+    store.with(|c| db::structure_replace(c, course_id, &structure))?;
 
     // Halaman dan tautan: ambil isi halaman (4 sekaligus) lalu simpan teks, embed, dan tautannya.
     let allowed = allowed_prefixes(&cfg);
@@ -620,7 +624,17 @@ pub async fn moodle_refresh_course(app: AppHandle, store: State<'_, Store>, cour
         other: parsed.other.into_iter().filter(|(k, _)| k != "page" && k != "url").map(|(kind, count)| OtherKind { kind, count }).collect(),
         foreign: parsed.foreign,
         links: store.with(|c| db::links_list(c, course_id))?,
+        structure,
     })
+}
+
+/// Struktur lengkap yang tersimpan (dibaca offline).
+#[tauri::command]
+pub fn moodle_structure(store: State<'_, Store>, course_id: i64) -> Res<Vec<db::Module>> {
+    if !enabled(&store)? {
+        return Ok(Vec::new());
+    }
+    store.with(|c| db::structure_list(c, course_id))
 }
 
 /// Teks halaman, embed, dan tautan yang tersimpan (dibaca offline).

@@ -1,5 +1,11 @@
 # Catatan rilis Cognify, dua bahasa (id: Indonesia, en: English), terbaru di atas.
-# Format dan aturan: docs/RELEASE_NOTES.md. Tiap versi wajib punya kedua bahasa.
+# Format dan aturan: docs/rilis/aturan-catatan-rilis.md. Tiap versi wajib punya kedua bahasa.
+
+0.3.0
+id: Baru: editor dokumen (cari, daftar isi, komentar, riwayat versi, ekspor Word dan Markdown), Editor Video dengan garis waktu, dan sambungan Notch yang lebih luas (hub dan inbox).
+id: Perbaikan: menu menu bar tidak lagi membuka halaman kosong.
+en: New: document editor (find, outline, comments, version history, Word and Markdown export), Video Editor with a timeline, and a richer Notch link (hub and inbox).
+en: Fix: the menu bar no longer opens a blank page.
 
 0.2.0
 id: Baru: Moodle opsional (tugas, tenggat, materi offline, Daftar PR dan Tabel PR otomatis), gambar di dokumen, dan empat Alat baru: Gambar ke PDF, Atur Halaman PDF, Alat Teks dan Kode, Web ke PDF.

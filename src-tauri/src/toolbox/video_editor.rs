@@ -53,6 +53,9 @@ pub struct EditorMusic {
     /// Suara mengecil pelan di akhir video.
     #[serde(default)]
     pub fade_out: bool,
+    /// Detik pada garis waktu saat musik mulai terdengar (0 = dari awal).
+    #[serde(default)]
+    pub music_start: f64,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
@@ -92,6 +95,8 @@ pub struct MusicPlan {
     pub video_volume: f64,
     pub looped: bool,
     pub fade_out: bool,
+    /// Detik tunda sebelum musik mulai, sudah dibatasi ke dalam video.
+    pub delay: f64,
 }
 
 #[derive(Debug, Clone)]
@@ -164,9 +169,12 @@ pub fn build_filter(plan: &Plan) -> String {
 
     if let Some(m) = music {
         let mv = clamp_volume(m.music_volume);
+        // musik terlambat mulai: hening dulu sebanyak `delay` (adelay dalam milidetik, tiap kanal)
+        let ms = (m.delay.max(0.0) * 1000.0).round() as u64;
+        let delay = if ms > 0 { format!("adelay={ms}|{ms},") } else { String::new() };
         // musik: samakan format, atur volume, perpanjang dengan hening bila pendek, potong tepat sepanjang video
         parts.push(format!(
-            "[{n}:a:0]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,volume={mv:.3},apad=whole_dur={total:.3},atrim=duration={total:.3},asetpts=PTS-STARTPTS[am]"
+            "[{n}:a:0]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,volume={mv:.3},{delay}apad=whole_dur={total:.3},atrim=duration={total:.3},asetpts=PTS-STARTPTS[am]"
         ));
         let mixed = if replace {
             "[am]".to_string()
@@ -243,6 +251,7 @@ pub fn make_plan(
         let (start, end) = validate_range(clip.start, clip.end, duration).map_err(|e| explain(&file_name(&path), &e))?;
         segments.push(Segment { path, start, duration: end - start, has_audio: info.has_audio });
     }
+    let segments_total: f64 = segments.iter().map(|s| s.duration).sum();
     let first = &infos[0];
     let (width, height) = target_size(first.width.unwrap_or(1280), first.height.unwrap_or(720), size);
     let fps = first.fps.filter(|f| (1.0..=60.0).contains(f)).unwrap_or(30.0);
@@ -261,6 +270,7 @@ pub fn make_plan(
                 video_volume: m.video_volume,
                 looped: m.loop_music,
                 fade_out: m.fade_out,
+                delay: if m.music_start.is_finite() { m.music_start.clamp(0.0, (segments_total - 0.1).max(0.0)) } else { 0.0 },
             })
         }
     };
@@ -284,6 +294,45 @@ pub async fn audio_info(app: AppHandle, path: String) -> Result<f64, String> {
         return Err(explain(&file_name(p), "tidak berisi suara"));
     }
     info.duration.ok_or_else(|| explain(&file_name(p), "durasi tidak terbaca"))
+}
+
+/// Turns raw mono 16-bit little-endian samples into `buckets` loudness values between 0 and 1 (for the waveform).
+pub fn peaks_from_pcm(pcm: &[u8], buckets: usize) -> Vec<f32> {
+    let samples = pcm.len() / 2;
+    if samples == 0 || buckets == 0 {
+        return Vec::new();
+    }
+    let buckets = buckets.min(samples);
+    let mut peaks = vec![0f32; buckets];
+    for i in 0..samples {
+        let v = i16::from_le_bytes([pcm[i * 2], pcm[i * 2 + 1]]);
+        let level = (f32::from(v).abs() / 32768.0).min(1.0);
+        let b = i * buckets / samples;
+        if level > peaks[b] {
+            peaks[b] = level;
+        }
+    }
+    let top = peaks.iter().cloned().fold(0.0f32, f32::max);
+    if top > 0.0 {
+        for p in &mut peaks {
+            *p /= top;
+        }
+    }
+    peaks
+}
+
+/// Loudness profile of a sound file for drawing its waveform (`buckets` values between 0 and 1).
+#[tauri::command]
+pub async fn audio_peaks(app: AppHandle, path: String, buckets: usize) -> Result<Vec<f32>, String> {
+    let ffmpeg_bin = engine::resolve(&app, "ffmpeg").ok_or_else(|| MISSING_FFMPEG.to_string())?;
+    let out = tokio::process::Command::new(ffmpeg_bin)
+        .args(["-hide_banner", "-loglevel", "error", "-nostdin", "-i"])
+        .arg(&path)
+        .args(["-vn", "-ac", "1", "-ar", "4000", "-f", "s16le", "-"])
+        .output()
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(peaks_from_pcm(&out.stdout, buckets.clamp(8, 2000)))
 }
 
 #[tauri::command]
@@ -334,7 +383,7 @@ mod tests {
     }
 
     fn music(mode: MusicMode) -> MusicPlan {
-        MusicPlan { path: PathBuf::from("lagu.mp3"), mode, music_volume: 0.5, video_volume: 1.0, looped: false, fade_out: false }
+        MusicPlan { path: PathBuf::from("lagu.mp3"), mode, music_volume: 0.5, video_volume: 1.0, looped: false, fade_out: false, delay: 0.0 }
     }
 
     #[test]
@@ -393,6 +442,20 @@ mod tests {
         assert!(long.ends_with("afade=t=out:st=17.000:d=3.000[aout]"), "{long}");
         let short = build_filter(&plan(vec![seg("a.mp4", 0.0, 2.0, true)], Some(m)));
         assert!(short.ends_with("afade=t=out:st=1.000:d=1.000[aout]"), "{short}");
+    }
+
+    #[test]
+    fn late_music_is_delayed_and_pcm_peaks_are_normalised() {
+        let mut m = music(MusicMode::Replace);
+        m.delay = 2.5;
+        let f = build_filter(&Plan { segments: vec![seg("a.mp4", 0.0, 6.0, true)], music: Some(m), width: 640, height: 360, fps: 30.0 });
+        assert!(f.contains("adelay=2500|2500,apad"), "{f}");
+        let f0 = build_filter(&Plan { segments: vec![seg("a.mp4", 0.0, 6.0, true)], music: Some(music(MusicMode::Replace)), width: 640, height: 360, fps: 30.0 });
+        assert!(!f0.contains("adelay"));
+        let pcm: Vec<u8> = [0i16, 8000, -16000, 100].iter().flat_map(|v| v.to_le_bytes()).collect();
+        assert_eq!(peaks_from_pcm(&pcm, 2), vec![0.5, 1.0]);
+        assert!(peaks_from_pcm(&[], 10).is_empty());
+        assert_eq!(peaks_from_pcm(&pcm, 99).len(), 4);
     }
 
     #[test]
@@ -458,7 +521,7 @@ mod tests {
         let err = make_plan(&[clip("a.mp4", 20.0, 30.0)], &[info(10.0, 640, 360, true)], None, OutSize::First).unwrap_err();
         assert!(err.contains("a.mp4"), "{err}");
 
-        let m = EditorMusic { path: "sunyi.mp3".into(), mode: MusicMode::Mix, music_volume: 1.0, video_volume: 1.0, loop_music: false, fade_out: false };
+        let m = EditorMusic { path: "sunyi.mp3".into(), mode: MusicMode::Mix, music_volume: 1.0, video_volume: 1.0, loop_music: false, fade_out: false, music_start: 0.0 };
         let err = make_plan(&[clip("a.mp4", 0.0, 2.0)], &[info(10.0, 640, 360, true)], Some((&m, &info(3.0, 0, 0, false))), OutSize::First).unwrap_err();
         assert!(err.contains("sunyi.mp3") && err.contains("tidak berisi suara"), "{err}");
     }
@@ -489,8 +552,9 @@ mod tests {
 
         for (tag, music, expect_audio) in [
             ("tanpa-musik", None, true),
-            ("ganti", Some(EditorMusic { path: song.to_str().unwrap().into(), mode: MusicMode::Replace, music_volume: 1.0, video_volume: 1.0, loop_music: true, fade_out: true }), true),
-            ("campur", Some(EditorMusic { path: song.to_str().unwrap().into(), mode: MusicMode::Mix, music_volume: 0.5, video_volume: 0.8, loop_music: false, fade_out: false }), true),
+            ("ganti", Some(EditorMusic { path: song.to_str().unwrap().into(), mode: MusicMode::Replace, music_volume: 1.0, video_volume: 1.0, loop_music: true, fade_out: true, music_start: 0.0 }), true),
+            ("terlambat", Some(EditorMusic { path: song.to_str().unwrap().into(), mode: MusicMode::Replace, music_volume: 1.0, video_volume: 1.0, loop_music: false, fade_out: false, music_start: 2.0 }), true),
+            ("campur", Some(EditorMusic { path: song.to_str().unwrap().into(), mode: MusicMode::Mix, music_volume: 0.5, video_volume: 0.8, loop_music: false, fade_out: false, music_start: 0.0 }), true),
         ] {
             let plan = make_plan(&clips, &[ia.clone(), ib.clone()], music.as_ref().map(|m| (m, &isong)), OutSize::First).unwrap();
             let out = dir.join(format!("{tag}.mp4"));
@@ -519,6 +583,7 @@ mod tests {
             match tag {
                 "tanpa-musik" => assert!(early > -40.0 && late < -60.0, "klip A bersuara, klip B hening: {early} / {late}"),
                 "ganti" => assert!(early > -40.0 && late > -45.0, "lagu diulang sampai akhir: {early} / {late}"),
+                "terlambat" => assert!(early < -60.0 && loud(2.2) > -40.0, "musik baru mulai di detik 2: {early}"),
                 "campur" => assert!(early > -40.0 && late < -60.0, "lagu 1 detik tidak diulang, setelahnya hening karena klip B bisu: {early} / {late}"),
                 _ => unreachable!(),
             }

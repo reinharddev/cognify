@@ -16,6 +16,30 @@ export const imagesReady: Promise<void> = isTauri()
 
 const resolve = (src: string | null | undefined) => (src && src.startsWith(PREFIX) && base ? convertFileSrc(`${base}/${src.slice(PREFIX.length)}`) : (src ?? ""));
 
+/** Byte dan ukuran sebuah gambar dokumen untuk ekspor Word (png, jpg, gif; format lain diubah ke png). Null bila tidak terbaca. */
+export async function imageForExport(src: string): Promise<{ data: Uint8Array; type: "png" | "jpg" | "gif"; width: number; height: number } | null> {
+  const url = resolve(src);
+  if (!url) return null;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    let blob = await res.blob();
+    const bmp = await createImageBitmap(blob);
+    let type: "png" | "jpg" | "gif" = /jpe?g/.test(blob.type) ? "jpg" : /gif/.test(blob.type) ? "gif" : "png";
+    if (!/png|jpe?g|gif/.test(blob.type)) {
+      const canvas = document.createElement("canvas");
+      canvas.width = bmp.width;
+      canvas.height = bmp.height;
+      canvas.getContext("2d")!.drawImage(bmp, 0, 0);
+      blob = await new Promise<Blob>((ok, fail) => canvas.toBlob((b) => (b ? ok(b) : fail(new Error("gambar"))), "image/png"));
+      type = "png";
+    }
+    return { data: new Uint8Array(await blob.arrayBuffer()), type, width: bmp.width, height: bmp.height };
+  } catch {
+    return null;
+  }
+}
+
 export const isImageFile = (f: { type: string; name?: string }) => f.type.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/i.test(f.name ?? "");
 
 const toBase64 = (buf: ArrayBuffer) => {

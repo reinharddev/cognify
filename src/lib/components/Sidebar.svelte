@@ -3,13 +3,14 @@
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
   import NotchIcon from "./NotchIcon.svelte";
-  import { CalendarDays, FileText, Folder, GraduationCap, Hash, Home, Inbox, Plus, Search, Settings, Shapes, Star, Table2, Trash2, Wrench } from "@lucide/svelte";
+  import { CalendarDays, FileText, Folder, Award, GraduationCap, Hash, Home, Inbox, Plus, Search, Settings, Shapes, Star, Table2, Trash2, Wrench } from "@lucide/svelte";
   import { prefs } from "$lib/stores/prefs.svelte";
   import { moodle } from "$lib/stores/moodle.svelte";
   import { proposals } from "$lib/stores/proposals.svelte";
   import { ws } from "$lib/stores/workspace.svelte";
   import type { PageKind } from "$lib/workspace/types";
   import TreeRow from "./TreeRow.svelte";
+  import NotificationBell from "./NotificationBell.svelte";
 
   let { onsearch }: { onsearch: () => void } = $props();
 
@@ -38,6 +39,7 @@
   <div class="ws">
     <span class="avatar">R</span>
     <strong>{tr("Ruang saya", "My space")}</strong>
+    <NotificationBell />
   </div>
 
   <button class="search" onclick={onsearch}>
@@ -51,6 +53,7 @@
     {#if moodle.active}
       <a href="/moodle" class:on={is("/moodle")}><GraduationCap size={16} />{tr("Materi", "Materials")}</a>
     {/if}
+    <a href="/nilai" class:on={is("/nilai")}><Award size={16} />{tr("Nilai", "Grades")}</a>
     <a href="/notch" class="k-notch" class:on={is("/notch")}><NotchIcon size={16} />Notch</a>
     <a href="/tools" class:on={is("/tools")}><Wrench size={16} />{tr("Alat", "Tools")}</a>
     {#if prefs.value.mcp.propose || proposals.count > 0}

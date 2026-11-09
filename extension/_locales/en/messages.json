@@ -185,5 +185,23 @@
   },
   "ctxSelectAll": {
     "message": "Select all"
+  },
+  "btnSendTables": {
+    "message": "Send school grades to Cognify"
+  },
+  "savedTables": {
+    "message": "School grades sent to Cognify. Open the Grades page."
+  },
+  "noTables": {
+    "message": "There is no table on this page."
+  },
+  "btnSendAll": {
+    "message": "Send all terms"
+  },
+  "savedAll": {
+    "message": "All terms sent to Cognify. Open the Grades page."
+  },
+  "noPeriods": {
+    "message": "No term dropdown found on this page. Open the Assignment & Exam page."
   }
 }

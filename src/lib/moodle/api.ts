@@ -66,7 +66,22 @@ export interface MoodleLink {
   body: string;
 }
 
+/** Satu baris struktur course: ringkasan bagian (`section`) atau satu modul Moodle (`resource`, `quiz`, `forum`, dan lainnya). */
+export interface MoodleModule {
+  id: string;
+  courseId: number;
+  sectionPos: number;
+  section: string;
+  kind: string;
+  name: string;
+  description: string;
+  /** Alamat modul di situs Moodle sendiri; kosong bila tidak ada. */
+  url: string;
+  files: number;
+}
+
 export interface MoodleCourseView {
+  structure: MoodleModule[];
   links: MoodleLink[];
   files: MoodleFile[];
   /** Isi yang bukan berkas (halaman, kuis, tautan, dan lainnya), per jenis modul. */
@@ -96,6 +111,7 @@ export const moodleApi = {
   items: () => (isTauri() ? call<MoodleItem[]>("moodle_items") : Promise.resolve([])),
   courses: () => (isTauri() ? call<MoodleCourse[]>("moodle_courses") : Promise.resolve([])),
   links: (courseId: number) => call<MoodleLink[]>("moodle_links", { courseId }),
+  structure: (courseId: number) => call<MoodleModule[]>("moodle_structure", { courseId }),
   files: (courseId: number) => call<MoodleFile[]>("moodle_files", { courseId }),
   refreshCourse: (courseId: number) => call<MoodleCourseView>("moodle_refresh_course", { courseId }),
   download: (ids: string[]) => call<void>("moodle_download", { ids }),

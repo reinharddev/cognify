@@ -476,6 +476,7 @@ pub fn resume_interrupted(conn: &Connection) -> Result<(), Error> {
 pub fn clear_materials(conn: &Connection) -> Result<(), Error> {
     conn.execute("DELETE FROM moodle_files", [])?;
     conn.execute("DELETE FROM moodle_links", [])?;
+    conn.execute("DELETE FROM moodle_modules", [])?;
     conn.execute("DELETE FROM moodle_courses", [])?;
     Ok(())
 }
@@ -743,6 +744,103 @@ pub fn links_list(conn: &Connection, course_id: i64) -> Result<Vec<Link>, Error>
     Ok(rows.collect::<Result<_, _>>()?)
 }
 
+
+// ── Struktur lengkap mata pelajaran ──────────────────────────────────────────────
+
+const MAX_DESC: usize = 4_000;
+
+/// Satu baris struktur mata pelajaran: ringkasan sebuah bagian (`section`) atau satu modul (jenisnya = `modname` Moodle).
+#[derive(Serialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Module {
+    /// `{course}:{module}` untuk modul, `section:{course}:{nomor}` untuk bagian.
+    pub id: String,
+    pub course_id: i64,
+    pub section_pos: i64,
+    pub section: String,
+    /// section, atau jenis modul: resource, folder, page, url, label, quiz, forum, assign, dan lainnya.
+    pub kind: String,
+    pub name: String,
+    /// Teks isi (label, pengantar kuis atau forum, ringkasan bagian), HTML sudah dibuang.
+    pub description: String,
+    /// Alamat modul di situs Moodle sendiri (kosong bila bukan server sendiri).
+    pub url: String,
+    /// Jumlah berkas pada modul berkas atau folder.
+    pub files: i64,
+}
+
+/// Seluruh isi `core_course_get_contents` sebagai daftar berurutan: bagian lalu modul-modulnya, termasuk yang tidak
+/// bisa diunduh. Modul yang tidak terlihat murid dilewati. Alamat modul hanya dipakai bila di server Moodle sendiri.
+pub fn parse_structure(v: &Value, course_id: i64, allowed: &[String]) -> Vec<Module> {
+    let mut out = Vec::new();
+    for (si, section) in v.as_array().into_iter().flatten().enumerate() {
+        let section_name = text(section, "name");
+        let section_pos = si as i64;
+        let summary: String = html_text(&text(section, "summary")).chars().take(MAX_DESC).collect();
+        let modules: Vec<&Value> = section
+            .get("modules")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter(|m| m.get("uservisible").and_then(Value::as_bool) != Some(false))
+            .collect();
+        if modules.is_empty() && summary.is_empty() {
+            continue;
+        }
+        out.push(Module {
+            id: format!("section:{course_id}:{si}"),
+            course_id,
+            section_pos,
+            section: section_name.clone(),
+            kind: "section".into(),
+            name: section_name.clone(),
+            description: summary,
+            url: String::new(),
+            files: 0,
+        });
+        for module in modules {
+            let kind = text(module, "modname");
+            if kind.is_empty() {
+                continue;
+            }
+            let module_id = int(module, "id");
+            // Label menyimpan isinya di `description`; namanya hanya potongan HTML-nya.
+            let name: String = html_text(&text(module, "name")).replace('\n', " ").chars().take(120).collect();
+            let description: String = html_text(&text(module, "description")).chars().take(MAX_DESC).collect();
+            let url = text(module, "url");
+            let url = if allowed.iter().any(|b| url.starts_with(&format!("{b}/"))) { url } else { String::new() };
+            let files = module
+                .get("contents")
+                .and_then(Value::as_array)
+                .map(|c| c.iter().filter(|f| text(f, "type") == "file").count() as i64)
+                .unwrap_or(0);
+            out.push(Module { id: format!("{course_id}:{module_id}"), course_id, section_pos, section: section_name.clone(), kind, name, description, url, files });
+        }
+    }
+    out
+}
+
+pub fn structure_replace(conn: &Connection, course_id: i64, modules: &[Module]) -> Result<(), Error> {
+    let tx = conn.unchecked_transaction()?;
+    tx.execute("DELETE FROM moodle_modules WHERE course_id = ?1", [course_id])?;
+    for (i, m) in modules.iter().enumerate() {
+        tx.execute(
+            "INSERT OR REPLACE INTO moodle_modules (id, course_id, section_pos, section, kind, name, description, url, files, position) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+            params![m.id, course_id, m.section_pos, m.section, m.kind, m.name, m.description, m.url, m.files, i as i64],
+        )?;
+    }
+    tx.commit()?;
+    Ok(())
+}
+
+pub fn structure_list(conn: &Connection, course_id: i64) -> Result<Vec<Module>, Error> {
+    let mut stmt = conn.prepare("SELECT id, course_id, section_pos, section, kind, name, description, url, files FROM moodle_modules WHERE course_id = ?1 ORDER BY position")?;
+    let rows = stmt.query_map([course_id], |r| {
+        Ok(Module { id: r.get(0)?, course_id: r.get(1)?, section_pos: r.get(2)?, section: r.get(3)?, kind: r.get(4)?, name: r.get(5)?, description: r.get(6)?, url: r.get(7)?, files: r.get(8)? })
+    })?;
+    Ok(rows.collect::<Result<Vec<_>, _>>()?)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1006,5 +1104,37 @@ mod tests {
         replace_all(&c, &[mk("a", "todo"), mk("b", "draft"), mk("c", "submitted")]).unwrap();
         let got = list(&c).unwrap();
         assert_eq!(got.iter().map(|i| (i.id.as_str(), i.state.as_str(), i.submitted)).collect::<Vec<_>>(), vec![("a", "todo", false), ("b", "draft", false), ("c", "submitted", true)]);
+    }
+
+    #[test]
+    fn structure_keeps_every_visible_module_in_order() {
+        let allowed = vec!["https://lms.test".to_string()];
+        let v = json!([
+            {"name": "Minggu 1", "summary": "<p>Pengantar <b>bab</b> satu</p>", "modules": [
+                {"id": 11, "modname": "label", "name": "<p>Selamat datang</p>", "description": "<p>Baca dulu <a href='x'>panduan</a></p>"},
+                {"id": 12, "modname": "resource", "name": "Slide", "url": "https://lms.test/mod/resource/view.php?id=12", "contents": [{"type": "file", "filename": "a.pdf"}]},
+                {"id": 13, "modname": "quiz", "name": "Kuis 1", "url": "https://evil.test/quiz", "description": ""},
+                {"id": 14, "modname": "forum", "name": "Rahasia", "uservisible": false}
+            ]},
+            {"name": "Kosong", "summary": "", "modules": []},
+            {"name": "", "summary": "", "modules": [{"id": 20, "modname": "assign", "name": "Tugas 1", "url": "https://lms.test/mod/assign/view.php?id=20"}]}
+        ]);
+        let s = parse_structure(&v, 5, &allowed);
+        let kinds: Vec<_> = s.iter().map(|m| m.kind.as_str()).collect();
+        assert_eq!(kinds, vec!["section", "label", "resource", "quiz", "section", "assign"], "bagian kosong dan modul tersembunyi dilewati");
+        assert_eq!(s[0].description, "Pengantar bab satu");
+        assert_eq!(s[1].description, "Baca dulu panduan");
+        assert_eq!(s[2].files, 1);
+        assert_eq!(s[2].url, "https://lms.test/mod/resource/view.php?id=12");
+        assert!(s[3].url.is_empty(), "alamat server lain tidak dipakai");
+        assert_eq!(s[3].id, "5:13");
+        let c = db();
+        structure_replace(&c, 5, &s).unwrap();
+        assert_eq!(structure_list(&c, 5).unwrap(), s);
+        structure_replace(&c, 5, &s[..2]).unwrap();
+        assert_eq!(structure_list(&c, 5).unwrap().len(), 2, "mengganti, bukan menambah");
+        assert!(structure_list(&c, 6).unwrap().is_empty());
+        clear_materials(&c).unwrap();
+        assert!(structure_list(&c, 5).unwrap().is_empty());
     }
 }

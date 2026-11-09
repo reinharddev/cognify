@@ -225,6 +225,12 @@ pub fn update(conn: &Connection, id: &str, upd: PageUpdate) -> Result<Page, Erro
         tx.execute("UPDATE pages SET icon = ?2 WHERE id = ?1", params![id, icon])?;
     }
     if let Some(c) = upd.content {
+        // Potret isi lama sebelum rangkaian pengeditan ini (riwayat versi, hanya dokumen).
+        let (kind, old_title, old): (String, String, String) =
+            tx.query_row("SELECT kind, title, content FROM pages WHERE id = ?1", [id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?;
+        if kind == "doc" && old != c {
+            super::versions::snapshot_if_due(&tx, id, &old_title, &old, super::versions::GAP_SECS)?;
+        }
         tx.execute("UPDATE pages SET content = ?2 WHERE id = ?1", params![id, c])?;
     }
     if let Some(p) = upd.plain_text {

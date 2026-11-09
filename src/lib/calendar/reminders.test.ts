@@ -1,7 +1,7 @@
 process.env.TZ = process.env.TEST_TZ ?? "Asia/Jakarta";
 import { beforeEach, describe, expect, it } from "vitest";
 import { calendar } from "$lib/stores/calendar.svelte";
-import { dueReminders } from "./reminders";
+import { dueReminders, missedReminders } from "./reminders";
 import type { CalEvent } from "./types";
 
 const NOW = new Date(2026, 9, 22, 8, 0).getTime();
@@ -64,5 +64,28 @@ describe("dueReminders", () => {
     const due = dueReminders(NOW, new Set());
     expect(due).toHaveLength(1);
     expect(due[0].start).toBe(NOW + min(10));
+  });
+});
+
+describe("missedReminders", () => {
+  it("catches a reminder whose event already started without it ringing", () => {
+    calendar.events = [ev({ remindMin: 15, start: iso(NOW - min(60)) })];
+    expect(missedReminders(NOW, new Set())).toHaveLength(1);
+  });
+
+  it("does not repeat what dueReminders already covers", () => {
+    calendar.events = [ev({})];
+    expect(missedReminders(NOW, new Set())).toHaveLength(0);
+  });
+
+  it("forgets events more than a day old", () => {
+    calendar.events = [ev({ start: iso(NOW - 25 * 3_600_000) })];
+    expect(missedReminders(NOW, new Set())).toHaveLength(0);
+  });
+
+  it("skips occurrences that were already reminded", () => {
+    calendar.events = [ev({ start: iso(NOW - min(60)) })];
+    const [m] = missedReminders(NOW, new Set());
+    expect(missedReminders(NOW, new Set([m.key]))).toHaveLength(0);
   });
 });

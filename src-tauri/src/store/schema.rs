@@ -206,6 +206,33 @@ const MIGRATIONS: &[&str] = &[
     ALTER TABLE moodle_items ADD COLUMN state TEXT NOT NULL DEFAULT 'todo';
     UPDATE moodle_items SET state = CASE WHEN submitted = 1 THEN 'submitted' ELSE 'todo' END;
     "#,
+    // 10: struktur lengkap mata pelajaran (bagian dan semua modul: kuis, forum, tugas, label, halaman, dan lainnya), dibaca offline.
+    r#"
+    CREATE TABLE moodle_modules (
+        id          TEXT PRIMARY KEY,
+        course_id   INTEGER NOT NULL,
+        section_pos INTEGER NOT NULL DEFAULT 0,
+        section     TEXT NOT NULL DEFAULT '',
+        kind        TEXT NOT NULL,
+        name        TEXT NOT NULL DEFAULT '',
+        description TEXT NOT NULL DEFAULT '',
+        url         TEXT NOT NULL DEFAULT '',
+        files       INTEGER NOT NULL DEFAULT 0,
+        position    INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE INDEX moodle_modules_course ON moodle_modules (course_id, position);
+    "#,
+    // 11: riwayat versi dokumen (potret isi sebelum sebuah rangkaian pengeditan; dibatasi jumlahnya per halaman).
+    r#"
+    CREATE TABLE page_versions (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        page_id    TEXT NOT NULL REFERENCES pages(id) ON DELETE CASCADE,
+        title      TEXT NOT NULL DEFAULT '',
+        content    TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    );
+    CREATE INDEX page_versions_page ON page_versions (page_id, id DESC);
+    "#,
 ];
 
 pub const LATEST: u32 = MIGRATIONS.len() as u32;

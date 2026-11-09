@@ -17,6 +17,11 @@
   function start(e: PointerEvent, n: DocNote) {
     if (locked || (e.target as HTMLElement).closest("button, textarea, input")) return;
     drag = { id: n.id, dx: e.clientX - n.x, dy: e.clientY - n.y };
+    // Cegah seleksi teks dokumen di bawah catatan selama digeser.
+    e.preventDefault();
+    document.body.style.userSelect = "none";
+    document.body.style.setProperty("-webkit-user-select", "none");
+    window.getSelection()?.removeAllRanges();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     // Catatan yang disentuh naik ke paling depan.
     onchange([...notes.filter((x) => x.id !== n.id), n]);
@@ -30,7 +35,11 @@
     patch(drag.id, { x, y });
   }
 
-  const end = () => (drag = null);
+  const end = () => {
+    drag = null;
+    document.body.style.userSelect = "";
+    document.body.style.removeProperty("-webkit-user-select");
+  };
 </script>
 
 <div class="layer" bind:this={layer}>
@@ -83,6 +92,13 @@
     pointer-events: auto;
     cursor: grab;
     touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .note textarea,
+  .note input {
+    user-select: text;
+    -webkit-user-select: text;
   }
   .note.locked,
   .note.locked .grip {

@@ -185,5 +185,23 @@
   },
   "ctxSelectAll": {
     "message": "Pilih semua"
+  },
+  "btnSendTables": {
+    "message": "Kirim nilai sekolah ke Cognify"
+  },
+  "savedTables": {
+    "message": "Nilai sekolah terkirim ke Cognify. Buka halaman Nilai."
+  },
+  "noTables": {
+    "message": "Tidak ada tabel di halaman ini."
+  },
+  "btnSendAll": {
+    "message": "Kirim semua semester"
+  },
+  "savedAll": {
+    "message": "Semua semester terkirim ke Cognify. Buka halaman Nilai."
+  },
+  "noPeriods": {
+    "message": "Dropdown semester tidak ditemukan di halaman ini. Buka halaman Assignment & Exam."
   }
 }

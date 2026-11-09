@@ -1,4 +1,4 @@
-// Data dari Cognify Notch. Harus sinkron dengan src-tauri/src/link/model.rs dan docs/NOTCH_LINK.md.
+// Data dari Cognify Notch. Harus sinkron dengan src-tauri/src/link/model.rs dan docs/notch/protokol-tautan.md.
 
 export interface LinkStatus {
   connected: boolean;

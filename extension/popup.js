@@ -163,7 +163,7 @@ function action(button, work) {
     try {
       await remember();
       const done = await work(await activeTab());
-      const base = t(done.sticky ? "savedSticky" : done.append ? "savedAppend" : button.dataset.saved);
+      const base = done.text ?? t(done.sticky ? "savedSticky" : done.append ? "savedAppend" : button.dataset.saved);
       message(done.pdfError ? `${base} ${t("pdfFailed", [done.pdfError])}` : base, true);
     } catch (err) {
       message(explain(err), false);
@@ -178,6 +178,14 @@ $("save-selection").dataset.saved = "savedSelection";
 $("save-link").dataset.saved = "savedLink";
 action($("save-page"), (tab) => savePage(tab, { prefs }));
 action($("save-selection"), async (tab) => saveSelection(tab, await selectedText(tab), { prefs }));
+// Satu tombol untuk portal sekolah: semua periode bila ada dropdown, atau tabel yang sedang tampil. Dikerjakan di background.js.
+$("send-tables").dataset.saved = "savedTables";
+action($("send-tables"), async (tab) => {
+  const r = await chrome.runtime.sendMessage({ type: "send-all", tabId: tab.id });
+  if (!r?.ok) throw new Error(r?.error || "gagal");
+  if (r.partial) throw new Error(`Terkirim: ${r.summary}. Yang gagal${r.partial}`);
+  return { text: `Terkirim ke Cognify: ${r.summary}. Buka halaman Nilai.` };
+});
 action($("save-link"), (tab) => saveLink(tab.url, tab.title, { prefs }));
 
 // Tidak ada menu klik kanan bawaan browser: kolom teks memakai menu sendiri, selebihnya tidak ada menu.

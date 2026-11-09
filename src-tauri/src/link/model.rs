@@ -1,4 +1,4 @@
-//! Bentuk data `notch-data.json` (lihat docs/NOTCH_LINK.md). Pembacaan sengaja longgar: semua bagian
+//! Bentuk data `notch-data.json` (lihat docs/notch/protokol-tautan.md). Pembacaan sengaja longgar: semua bagian
 //! opsional, bidang tak dikenal diabaikan, dan satu elemen rusak dilewati tanpa membuang yang lain.
 
 use serde::de::DeserializeOwned;

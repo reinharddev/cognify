@@ -4,7 +4,7 @@
   import { page as route } from "$app/state";
   import { onDestroy } from "svelte";
   import { invoke, isTauri } from "@tauri-apps/api/core";
-  import { Download, FileDown, Lock, LockOpen, Quote, Star, StickyNote, Trash2 } from "@lucide/svelte";
+  import { Download, FileDown, FileText, Lock, LockOpen, BookOpenText, Star, StickyNote, Trash2 } from "@lucide/svelte";
   import CitePanel from "$lib/components/CitePanel.svelte";
   import FolderView from "$lib/components/FolderView.svelte";
   import { kindLabel, kindIcon } from "$lib/workspace/kinds";
@@ -18,6 +18,9 @@
   import { createBroadcaster, onRemoteChange } from "$lib/pageSync";
   import { createAutosave } from "$lib/autosave";
   import { pickSavePath } from "$lib/savePath";
+  import { contextMenu } from "$lib/stores/contextmenu.svelte";
+  import { toMarkdown } from "$lib/editor/markdown";
+  import { imageForExport, imagesReady } from "$lib/editor/image";
   import { prefs } from "$lib/stores/prefs.svelte";
   import { ws } from "$lib/stores/workspace.svelte";
   import { workspace } from "$lib/workspace/api";
@@ -210,6 +213,38 @@
     }
   }
 
+  const fileBase = () => (current?.title || tr("dokumen", "document")).replace(/[\\/:*?"<>|]+/g, " ").trim() || "dokumen";
+
+  /** Ekspor dokumen ke Markdown atau Word (.docx); keduanya dibuat di perangkat ini dari isi dokumen. */
+  async function exportDoc(format: "md" | "docx") {
+    if (!current) return;
+    notice = null;
+    await flush();
+    const raw = lastJson || current.content;
+    const path = await pickSavePath(`${fileBase()}.${format}`, format === "md" ? { name: "Markdown", extensions: ["md"] } : { name: "Word", extensions: ["docx"] });
+    if (!path) return;
+    try {
+      if (!isTauri()) throw new Error(tr("Ekspor hanya tersedia di aplikasi Cognify.", "Export is only available in the Cognify app."));
+      if (format === "md") await invoke("write_text_file", { path, content: toMarkdown(raw, current.title) });
+      else {
+        await imagesReady;
+        const { docxBlob } = await import("$lib/editor/docx");
+        await invoke("write_base64_file", { path, data: await toBase64(await docxBlob(raw, { title: current.title, resolveImage: imageForExport })) });
+      }
+      notice = tr(`Dokumen disimpan di ${path}`, `Document saved to ${path}`);
+    } catch (e) {
+      notice = typeof e === "string" ? e : e instanceof Error ? e.message : tr("Dokumen gagal diekspor.", "The document could not be exported.");
+    }
+  }
+
+  function exportMenu(event: MouseEvent) {
+    contextMenu.show(event, [
+      { label: tr("Word (.docx)", "Word (.docx)"), icon: FileText, onclick: () => void exportDoc("docx") },
+      { label: tr("Markdown (.md)", "Markdown (.md)"), icon: FileText, onclick: () => void exportDoc("md") },
+      { label: tr("PDF (lewat jendela cetak)", "PDF (via the print window)"), icon: FileDown, onclick: () => void exportPdf() },
+    ]);
+  }
+
   async function remove() {
     await flush();
     await ws.trash(id);
@@ -241,8 +276,8 @@
       {#if current.kind === "doc"}
         <button class="icon" aria-label={tr("Catatan melayang", "Floating notes")} title={tr("Tambah catatan melayang", "Add a floating note")} onclick={addNote}><StickyNote size={16} /></button>
         <button class="icon" class:on={locked} aria-label={locked ? tr("Buka kunci objek", "Unlock objects") : tr("Kunci objek", "Lock objects")} title={locked ? tr("Objek terkunci: blok dan catatan tidak bisa bergeser. Klik untuk membuka.", "Objects locked: blocks and notes cannot move. Click to unlock.") : tr("Kunci objek supaya tidak tergeser tanpa sengaja", "Lock objects so they do not move by accident")} onclick={toggleLock}>{#if locked}<Lock size={16} />{:else}<LockOpen size={16} />{/if}</button>
-        <button class="icon" aria-label={tr("Ekspor PDF", "Export PDF")} title={tr("Ekspor sebagai PDF (pilih Simpan sebagai PDF di jendela cetak)", "Export as PDF (choose Save as PDF in the print window)")} onclick={exportPdf}><FileDown size={16} /></button>
-        <button class="icon" aria-label={tr("Kutip", "Cite")} title={tr("Kutip", "Cite")} onclick={() => (citeOpen = true)}><Quote size={16} /></button>
+        <button class="icon" aria-label={tr("Ekspor", "Export")} title={tr("Ekspor ke Word, Markdown, atau PDF", "Export to Word, Markdown or PDF")} onclick={exportMenu}><FileDown size={16} /></button>
+        <button class="icon" aria-label={tr("Kutip", "Cite")} title={tr("Kutip", "Cite")} onclick={() => (citeOpen = true)}><BookOpenText size={16} /></button>
       {/if}
       <button class="icon" class:on={current.favorite} aria-label={current.favorite ? tr("Hapus dari favorit", "Remove from favorites") : tr("Jadikan favorit", "Add to favorites")} title={tr("Favorit", "Favorite")} onclick={favorite}><Star size={16} /></button>
       <button class="icon" aria-label={tr("Buang ke sampah", "Move to trash")} title={tr("Buang ke sampah", "Move to trash")} onclick={remove}><Trash2 size={16} /></button>

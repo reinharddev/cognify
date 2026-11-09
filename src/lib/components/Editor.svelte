@@ -15,10 +15,21 @@
   import Subscript from "@tiptap/extension-subscript";
   import Superscript from "@tiptap/extension-superscript";
   import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
+  import { Details, DetailsContent, DetailsSummary } from "@tiptap/extension-details";
+  import { Mathematics } from "@tiptap/extension-mathematics";
+  import "katex/dist/katex.min.css";
+  import { Find, findKey } from "$lib/editor/find";
+  import { Callout } from "$lib/editor/callout";
+  import { Comment } from "$lib/editor/comment";
+  import { ParagraphStyleExt, type ParagraphStyle } from "$lib/editor/paragraphStyle";
+  import { BUILTIN_FONTS, addFontFile, addInstalledFont, loadCustomFonts, pickFontFile, removeCustomFont, type FontChoice } from "$lib/editor/fonts";
+  import { countWords, readingMinutes } from "$lib/editor/docstats";
+  import DocPanel from "$lib/components/DocPanel.svelte";
   import {
     AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, Code, SquareCode, Heading1, Heading2, Heading3, Highlighter, IndentDecrease,
     IndentIncrease, CalendarDays, GraduationCap, Image as ImageIcon, Shapes, Italic, Link as LinkIcon, Link2, StickyNote, Unlink, List, ListChecks, ListOrdered, Minus, Quote, Redo2, RemoveFormatting,
     Strikethrough, Subscript as SubIcon, Superscript as SupIcon, Table as TableIcon, Underline as UnderlineIcon, Undo2,
+    Search, Info,  ListCollapse, Sigma, MessageSquarePlus, PanelRight, ChevronUp, ChevronDown, X as XIcon, CaseSensitive,
   } from "@lucide/svelte";
   import { getCurrentWebview } from "@tauri-apps/api/webview";
   import { ImageNode, importImagePath, isImageFile, saveImageFile } from "$lib/editor/image";
@@ -38,6 +49,12 @@
 
   let { content, onchange, spellcheck = true, toolbar = true, pageId = "", locked = false, noteLinks = null }: { content: string; onchange: (json: string, plain: string) => void; spellcheck?: boolean; toolbar?: boolean; pageId?: string; locked?: boolean; noteLinks?: { notes: { id: string; label: string }[]; create: () => string } | null } = $props();
 
+  /** Rumus ikut ke teks polos (pencarian dan MCP) sebagai LaTeX-nya. */
+  const latexOf = (node: { attrs: Record<string, unknown> }) => String(node.attrs.latex ?? "");
+  const MATH_TEXT = {
+    inlineMath: ({ node }: { node: { attrs: Record<string, unknown> } }) => "$" + latexOf(node) + "$",
+    blockMath: ({ node }: { node: { attrs: Record<string, unknown> } }) => "$$" + latexOf(node) + "$$",
+  };
   let element: HTMLDivElement;
   let editor = $state.raw<Editor>();
   // Naik setiap transaksi supaya status tombol (tebal, daftar, dan lainnya) ikut diperbarui.
@@ -60,6 +77,12 @@
     { label: tr("Gambar", "Image"), hint: tr("Sisipkan gambar dari komputer", "Insert an image from this computer"), keys: "gambar foto image picture photo img", icon: ImageIcon, run: (c) => { queueMicrotask(pickImage); return c; } },
     { label: tr("Tugas Moodle", "Moodle tasks"), hint: tr("Tugas sekolah yang belum dikumpulkan, otomatis dari Moodle", "Unsubmitted school tasks, filled in automatically from Moodle"), keys: "moodle tugas pr deadline sekolah tenggat moodle tasks homework deadline", icon: GraduationCap, run: (c) => c.insertContent({ type: "moodleTasks" }) },
     { label: tr("Papan", "Board"), hint: tr("Tampilkan gambar dari papan (hanya baca)", "Show the drawing from a board (read only)"), keys: "papan board gambar whiteboard board whiteboard drawing", icon: Shapes, run: (c) => c.insertContent({ type: "boardBlock", attrs: { pageId: "" } }) },
+    { label: tr("Kotak info", "Info box"), hint: tr("Kotak berwarna untuk informasi", "Colored box for information"), keys: "kotak info callout catatan note info box callout", icon: Info, run: (c) => c.toggleCallout("info") },
+    { label: tr("Kotak tips", "Tip box"), hint: tr("Kotak hijau untuk saran", "Green box for advice"), keys: "kotak tips saran callout hijau tip box advice callout", icon: Info, run: (c) => c.toggleCallout("tip") },
+    { label: tr("Kotak peringatan", "Warning box"), hint: tr("Kotak kuning agar tidak terlewat", "Yellow box so it is not missed"), keys: "kotak peringatan awas penting warning callout warning box important callout", icon: Info, run: (c) => c.toggleCallout("warn") },
+    { label: tr("Blok lipat", "Toggle"), hint: tr("Judul yang bisa dibuka dan ditutup", "A heading that opens and closes"), keys: "lipat toggle buka tutup details collapse fold toggle details", icon: ListCollapse, run: (c) => c.setDetails() },
+    { label: tr("Rumus", "Formula"), hint: tr("Rumus di dalam kalimat (LaTeX)", "Inline formula (LaTeX)"), keys: "rumus matematika math latex formula equation math latex", icon: Sigma, run: (c) => { queueMicrotask(() => void insertMath("inline")); return c; } },
+    { label: tr("Rumus blok", "Formula block"), hint: tr("Rumus di baris sendiri (LaTeX)", "Formula on its own line (LaTeX)"), keys: "rumus blok matematika math latex block persamaan display formula block math latex equation", icon: Sigma, run: (c) => { queueMicrotask(() => void insertMath("block")); return c; } },
     { label: tr("Tabel", "Table"), hint: tr("Tabel 3 × 3", "3 × 3 table"), keys: "tabel table kolom baris table column row", icon: TableIcon, run: (c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }) },
   ]);
   let slash = $state<{ from: number; to: number; query: string; x: number; y: number } | null>(null);
@@ -251,6 +274,18 @@
         Subscript,
         Superscript,
         Table.configure({ resizable: false }),
+        Find,
+        Callout,
+        Comment,
+        ParagraphStyleExt,
+        Details.configure({ persist: true }),
+        DetailsSummary,
+        DetailsContent,
+        Mathematics.configure({
+          katexOptions: { throwOnError: false },
+          inlineOptions: { onClick: (node, pos) => void editMath("inline", String(node.attrs.latex ?? ""), pos) },
+          blockOptions: { onClick: (node, pos) => void editMath("block", String(node.attrs.latex ?? ""), pos) },
+        }),
         TableRow,
         TableHeader,
         TableCell,
@@ -268,7 +303,7 @@
         slash = null;
         wiki = null;
       },
-      onUpdate: ({ editor: e }) => onchange(JSON.stringify(e.getJSON()), e.getText({ blockSeparator: "\n" })),
+      onUpdate: ({ editor: e }) => onchange(JSON.stringify(e.getJSON()), e.getText({ blockSeparator: "\n", textSerializers: MATH_TEXT })),
     });
     editor = instance;
     // Tauri menahan seretan berkas ke webview, jadi posisi dan jalur berkas datang dari onDragDropEvent.
@@ -284,7 +319,16 @@
           void addImages(paths, instance.view.posAtCoords({ left: x, top: y })?.pos);
         })
       : null;
+    const onKey = (e: KeyboardEvent) => {
+      if (!toolbar) return;
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        openFind();
+      }
+    };
+    window.addEventListener("keydown", onKey);
     return () => {
+      window.removeEventListener("keydown", onKey);
       void unlisten?.then((fn) => fn());
       instance.destroy();
     };
@@ -320,6 +364,102 @@
 
   const run = (fn: (chain: ReturnType<Editor["chain"]>) => ReturnType<Editor["chain"]>) => fn(editor!.chain().focus()).run();
 
+  // ── Rumus (LaTeX, ditampilkan KaTeX) ──
+  async function insertMath(kind: "inline" | "block") {
+    if (!editor) return;
+    const latex = await dialog.prompt(tr("Tulis rumus dalam LaTeX, mis. x^2 + y^2 = r^2 atau \\frac{a}{b}", "Write the formula in LaTeX, e.g. x^2 + y^2 = r^2 or \\frac{a}{b}"), "", { okLabel: tr("Sisipkan", "Insert") });
+    if (!latex?.trim()) return;
+    const c = editor.chain().focus();
+    (kind === "inline" ? c.insertInlineMath({ latex: latex.trim() }) : c.insertBlockMath({ latex: latex.trim() })).run();
+  }
+  async function editMath(kind: "inline" | "block", current: string, pos: number) {
+    if (!editor || locked) return;
+    const latex = await dialog.prompt(tr("Ubah rumus (LaTeX). Kosongkan untuk menghapus.", "Edit the formula (LaTeX). Leave empty to delete."), current, { okLabel: "OK" });
+    if (latex === null) return;
+    const c = editor.chain();
+    if (!latex.trim()) (kind === "inline" ? c.deleteInlineMath({ pos }) : c.deleteBlockMath({ pos })).run();
+    else (kind === "inline" ? c.updateInlineMath({ latex: latex.trim(), pos }) : c.updateBlockMath({ latex: latex.trim(), pos })).run();
+  }
+
+  // ── Cari di dokumen ──
+  let findOpen = $state(false);
+  let findText = $state("");
+  let matchCase = $state(false);
+  let findInput: HTMLInputElement | undefined = $state();
+  const findInfo = $derived.by(() => {
+    void tick;
+    const st = editor ? findKey.getState(editor.state) : undefined;
+    return { count: st?.matches.length ?? 0, index: st?.index ?? 0 };
+  });
+  function revealMatch() {
+    if (!editor) return;
+    const st = findKey.getState(editor.state);
+    const m = st?.matches[st.index];
+    if (!m) return;
+    const node = editor.view.domAtPos(m.from).node;
+    (node instanceof HTMLElement ? node : node.parentElement)?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+  function openFind() {
+    if (!editor) return;
+    const { from, to, empty } = editor.state.selection;
+    if (!empty && to - from < 80 && !editor.state.doc.textBetween(from, to).includes("\n")) findText = editor.state.doc.textBetween(from, to);
+    findOpen = true;
+    editor.commands.setFind(findText, matchCase);
+    queueMicrotask(() => {
+      findInput?.focus();
+      findInput?.select();
+      revealMatch();
+    });
+  }
+  function closeFind() {
+    findOpen = false;
+    editor?.commands.clearFind();
+    editor?.commands.focus();
+  }
+  function onFindInput() {
+    editor?.commands.setFind(findText, matchCase);
+    revealMatch();
+  }
+  function stepFind(dir: 1 | -1) {
+    editor?.commands.findStep(dir);
+    revealMatch();
+  }
+  function findKeydown(e: KeyboardEvent) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      stepFind(e.shiftKey ? -1 : 1);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      closeFind();
+    }
+  }
+
+  // ── Panel samping: daftar isi, komentar, riwayat ──
+  let panelOpen = $state(false);
+  let panelTab = $state<"outline" | "comments" | "history">("outline");
+  let commentDraft = $state<{ from: number; to: number } | null>(null);
+  function startComment() {
+    if (!editor) return;
+    const { from, to, empty } = editor.state.selection;
+    if (empty) {
+      void dialog.confirm(tr("Pilih dulu teks yang ingin dikomentari.", "Select the text you want to comment on first."), { okLabel: "OK" });
+      return;
+    }
+    commentDraft = { from, to };
+    panelTab = "comments";
+    panelOpen = true;
+  }
+
+  // ── Jumlah kata ──
+  const stats = $derived.by(() => {
+    void tick;
+    if (!editor) return { words: 0, chars: 0, minutes: 0, selected: 0 };
+    const text = editor.getText({ blockSeparator: " " });
+    const { from, to, empty } = editor.state.selection;
+    const words = countWords(text);
+    return { words, chars: text.length, minutes: readingMinutes(words), selected: empty ? 0 : countWords(editor.state.doc.textBetween(from, to, " ")) };
+  });
+
   // Nilai kontrol toolbar dibaca dari keadaan editor (ikut `tick`).
   const attr = (mark: string, key: string): string => {
     void tick;
@@ -327,8 +467,9 @@
   };
   const blockStyle = $derived.by(() => {
     void tick;
-    for (const level of [1, 2, 3]) if (editor?.isActive("heading", { level })) return `h${level}`;
-    return "p";
+    for (const level of [1, 2, 3, 4, 5, 6]) if (editor?.isActive("heading", { level })) return `h${level}`;
+    const ps = editor?.getAttributes("paragraph").pstyle as string | null | undefined;
+    return ps ? `p:${ps}` : "p";
   });
   const aligned = (a: string) => {
     void tick;
@@ -336,19 +477,102 @@
     return cur === a;
   };
   const BLOCKS = $derived([
-    { value: "p", label: tr("Paragraf", "Paragraph") },
+    { value: "p", label: tr("Teks biasa", "Normal text") },
+    { value: "p:title", label: tr("Judul dokumen", "Title") },
+    { value: "p:subtitle", label: tr("Subjudul", "Subtitle") },
+    { value: "p:lead", label: tr("Pengantar", "Lead paragraph") },
+    { value: "p:small", label: tr("Teks kecil", "Small text") },
     { value: "h1", label: tr("Judul 1", "Heading 1") },
     { value: "h2", label: tr("Judul 2", "Heading 2") },
     { value: "h3", label: tr("Judul 3", "Heading 3") },
+    { value: "h4", label: tr("Judul 4", "Heading 4") },
+    { value: "h5", label: tr("Judul 5", "Heading 5") },
+    { value: "h6", label: tr("Judul 6", "Heading 6") },
   ]);
-  const FONTS = $derived([
-    { value: "", label: tr("Bawaan", "Default") },
-    { value: "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif", label: "Sans" },
-    { value: "ui-serif, Georgia, 'Times New Roman', serif", label: "Serif" },
-    { value: "ui-monospace, 'SF Mono', Menlo, Consolas, monospace", label: "Mono" },
-    { value: "'Comic Sans MS', 'Chalkboard SE', cursive", label: tr("Santai", "Casual") },
-  ]);
-  const SIZES = $derived(["", "10px", "12px", "14px", "16px", "18px", "20px", "24px", "28px", "32px", "40px"].map((v) => ({ value: v, label: v ? v.replace("px", "") : tr("Ukuran", "Size") })));
+  // Font milik pengguna (nama font terpasang atau berkas font), dimuat dari penyimpanan lokal.
+  let customFonts = $state<FontChoice[]>([]);
+  onMount(() => void loadCustomFonts().then((f) => (customFonts = f)));
+  const FONTS = $derived.by(() => {
+    const seen = new Set<string>();
+    const out: { value: string; label: string; group?: string }[] = [{ value: "", label: tr("Bawaan", "Default") }, ...BUILTIN_FONTS, ...customFonts].map((f) => {
+      const g = (f as FontChoice).group;
+      if (!g || seen.has(g)) return { value: f.value, label: f.label };
+      seen.add(g);
+      return { value: f.value, label: f.label, group: g };
+    });
+    out.push({ value: "__add__", label: tr("Tambah font terpasang…", "Add installed font…"), group: tr("Font sendiri", "Custom font") });
+    out.push({ value: "__file__", label: tr("Impor berkas font…", "Import font file…") });
+    if (customFonts.length) out.push({ value: "__remove__", label: tr("Hapus font saya…", "Remove my fonts…") });
+    return out;
+  });
+  async function setFont(v: string) {
+    if (v === "__add__") {
+      const name = await dialog.prompt(tr("Nama font yang sudah terpasang di komputer (persis seperti di daftar font sistem):", "Name of a font already installed on this computer (exactly as in the system font list):"), "", { okLabel: tr("Tambah", "Add") });
+      const f = name ? await addInstalledFont(name) : null;
+      if (f) {
+        customFonts = [...customFonts.filter((x) => x.label !== f.label), f];
+        run((c) => c.setFontFamily(f.value));
+      }
+      return;
+    }
+    if (v === "__file__") {
+      const file = await pickFontFile();
+      if (!file) return;
+      try {
+        const f = await addFontFile(file);
+        customFonts = [...customFonts.filter((x) => x.label !== f.label), f];
+        run((c) => c.setFontFamily(f.value));
+      } catch {
+        await dialog.confirm(tr("Berkas font tidak bisa dibaca. Pakai .ttf, .otf, .woff, atau .woff2.", "That font file could not be read. Use .ttf, .otf, .woff or .woff2."), { okLabel: "OK" });
+      }
+      return;
+    }
+    if (v === "__remove__") {
+      const list = customFonts.map((f) => f.label).join(", ");
+      const name = await dialog.prompt(tr(`Hapus font yang mana? Ketik namanya: ${list}`, `Remove which font? Type its name: ${list}`), "", { okLabel: tr("Hapus", "Remove") });
+      const hit = customFonts.find((f) => f.label.toLowerCase() === (name ?? "").trim().toLowerCase());
+      if (hit) {
+        await removeCustomFont(hit.label);
+        customFonts = customFonts.filter((f) => f !== hit);
+      }
+      return;
+    }
+    run((c) => (v ? c.setFontFamily(v) : c.unsetFontFamily()));
+  }
+  const SIZE_STEPS = [8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 32, 36, 40, 48, 56, 64, 72, 96];
+  /** Angka ukuran yang tampil di kotak (kosong = ukuran bawaan). */
+  const sizeShown = $derived.by(() => {
+    const n = parseFloat(attr("textStyle", "fontSize"));
+    return Number.isFinite(n) ? String(n) : "";
+  });
+  function commitSize(input: HTMLInputElement) {
+    const raw = input.value.trim().replace(",", ".");
+    if (raw === "") return void (sizeShown && run((c) => c.unsetFontSize()));
+    const n = Number(raw);
+    if (Number.isFinite(n) && n >= 6 && n <= 400) {
+      if (String(n) !== sizeShown) run((c) => c.setFontSize(`${Math.round(n * 10) / 10}px`));
+    } else input.value = sizeShown;
+  }
+  function sizeKey(event: KeyboardEvent) {
+    const input = event.currentTarget as HTMLInputElement;
+    if (event.key === "Enter") {
+      event.preventDefault();
+      commitSize(input);
+      editor?.commands.focus();
+    } else if (event.key === "Escape") {
+      input.value = sizeShown;
+      editor?.commands.focus();
+    } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+      event.preventDefault();
+      const cur = Number(input.value.replace(",", ".")) || parseFloat(sizeShown) || 16;
+      const next = Math.max(6, Math.min(400, cur + (event.key === "ArrowUp" ? 1 : -1)));
+      input.value = String(next);
+      run((c) => c.setFontSize(`${next}px`));
+    }
+  }
+  function sizeMenu(event: MouseEvent) {
+    contextMenu.show(event, SIZE_STEPS.map((n) => ({ label: String(n), onclick: () => void run((c) => c.setFontSize(`${n}px`)) })));
+  }
   const LINES = $derived([
     { value: "", label: tr("Jarak baris", "Line spacing") },
     { value: "1", label: "1,0" },
@@ -358,11 +582,10 @@
     { value: "2.5", label: "2,5" },
   ]);
   function setBlock(v: string) {
-    if (v === "p") run((c) => c.setParagraph());
-    else run((c) => c.setHeading({ level: Number(v[1]) as 1 | 2 | 3 }));
+    if (v === "p") run((c) => c.setParagraphStyle(null));
+    else if (v.startsWith("p:")) run((c) => c.setParagraphStyle(v.slice(2) as ParagraphStyle));
+    else run((c) => c.setHeading({ level: Number(v[1]) as 1 | 2 | 3 | 4 | 5 | 6 }));
   }
-  const setFont = (v: string) => run((c) => (v ? c.setFontFamily(v) : c.unsetFontFamily()));
-  const setSize = (v: string) => run((c) => (v ? c.setFontSize(v) : c.unsetFontSize()));
   const setLine = (v: string) => run((c) => (v ? c.setLineHeight(v) : c.unsetLineHeight()));
   const inTable = $derived.by(() => (void tick, editor?.isActive("table") ?? false));
   const canList = $derived.by(() => (void tick, !!editor && (editor.isActive("listItem") || editor.isActive("taskItem"))));
@@ -441,7 +664,7 @@
     contextMenu.show(event, [
       ...textMenu(field),
       ...noteLinks.notes.map((n, i) => ({ label: tr(`Hubungkan ke ${n.label}`, `Link to ${n.label}`), icon: StickyNote, separator: i === 0, onclick: () => linkToNote(n.id) })),
-      { label: tr("Hubungkan ke catatan baru", "Link to new note"), icon: StickyNote, separator: noteLinks.notes.length === 0, onclick: () => linkToNote(noteLinks!.create()) },
+      { label: tr("Tambah catatan untuk teks ini", "Add note to this text"), icon: StickyNote, separator: noteLinks.notes.length === 0, onclick: () => linkToNote(noteLinks!.create()) },
     ]);
   }
 
@@ -473,7 +696,10 @@
     <div class="grp">
       <div class="dd w-block"><Select class="tb-sel" value={blockStyle} options={BLOCKS} label={tr("Gaya paragraf", "Paragraph style")} onchange={setBlock} /></div>
       <div class="dd w-font"><Select class="tb-sel" value={attr("textStyle", "fontFamily")} options={FONTS} label={tr("Jenis huruf", "Font")} onchange={setFont} /></div>
-      <div class="dd w-size"><Select class="tb-sel" value={attr("textStyle", "fontSize")} options={SIZES} label={tr("Ukuran huruf", "Font size")} onchange={setSize} /></div>
+      <div class="size-box">
+        <input class="size-in" inputmode="decimal" value={sizeShown} placeholder="16" aria-label={tr("Ukuran huruf", "Font size")} title={tr("Ukuran huruf: ketik angka lalu Enter, atau panah atas/bawah", "Font size: type a number then Enter, or use the up/down arrows")} onfocus={(e) => e.currentTarget.select()} onkeydown={sizeKey} onblur={(e) => commitSize(e.currentTarget)} />
+        <button class="size-dd" title={tr("Pilihan ukuran", "Size presets")} aria-label={tr("Pilihan ukuran", "Size presets")} onclick={sizeMenu}><ChevronDown size={14} /></button>
+      </div>
     </div>
     <div class="grp">
       <button class:on={active("bold")} title={tr("Tebal (⌘B)", "Bold (⌘B)")} aria-label={tr("Tebal", "Bold")} onclick={() => run((c) => c.toggleBold())}><Bold size={16} /></button>
@@ -531,8 +757,28 @@
       <button class:on={active("codeBlock")} title={tr("Kotak kode (beberapa baris)", "Code block (multiple lines)")} aria-label={tr("Kotak kode", "Code block")} onclick={() => run((c) => c.toggleCodeBlock())}><SquareCode size={16} /></button>
       <button title={tr("Garis pemisah", "Divider")} aria-label={tr("Garis pemisah", "Divider")} onclick={() => run((c) => c.setHorizontalRule())}><Minus size={16} /></button>
     </div>
+    <div class="grp">
+      <button class:on={active("callout")} title={tr("Kotak penekanan (klik lagi untuk ganti warna)", "Callout box (click again to change color)")} aria-label={tr("Kotak penekanan", "Callout box")} onclick={() => run((c) => (active("callout") ? c.cycleCallout() : c.toggleCallout("info")))}><Info size={16} /></button>
+      <button class:on={active("details")} title={tr("Blok lipat", "Toggle block")} aria-label={tr("Blok lipat", "Toggle block")} onclick={() => run((c) => (active("details") ? c.unsetDetails() : c.setDetails()))}><ListCollapse size={16} /></button>
+      <button title={tr("Rumus (LaTeX)", "Formula (LaTeX)")} aria-label={tr("Sisipkan rumus", "Insert formula")} onclick={() => void insertMath("inline")}><Sigma size={16} /></button>
+      <button title={tr("Komentar pada teks terpilih", "Comment on selected text")} aria-label={tr("Komentar", "Comment")} onclick={startComment}><MessageSquarePlus size={16} /></button>
+    </div>
+    <div class="grp">
+      <button class:on={findOpen} title={tr("Cari di dokumen (⌘F)", "Find in document (⌘F)")} aria-label={tr("Cari di dokumen", "Find in document")} onclick={() => (findOpen ? closeFind() : openFind())}><Search size={16} /></button>
+      <button class:on={panelOpen} title={tr("Daftar isi, komentar, dan riwayat versi", "Outline, comments and version history")} aria-label={tr("Panel dokumen", "Document panel")} onclick={() => (panelOpen = !panelOpen)}><PanelRight size={16} /></button>
+    </div>
   </div>
 </div>
+{#if findOpen}
+  <div class="bar findbar" role="search" data-noprint aria-label={tr("Cari di dokumen", "Find in document")}>
+    <input bind:this={findInput} bind:value={findText} type="search" placeholder={tr("Cari di dokumen…", "Find in document…")} aria-label={tr("Kata yang dicari", "Text to find")} oninput={onFindInput} onkeydown={findKeydown} />
+    <span class="count">{findText ? (findInfo.count ? `${findInfo.index + 1} / ${findInfo.count}` : tr("Tidak ada", "None")) : ""}</span>
+    <button class:on={matchCase} title={tr("Bedakan huruf besar dan kecil", "Match case")} aria-label={tr("Bedakan huruf besar dan kecil", "Match case")} aria-pressed={matchCase} onclick={() => { matchCase = !matchCase; onFindInput(); }}><CaseSensitive size={16} /></button>
+    <button title={tr("Sebelumnya (⇧Enter)", "Previous (⇧Enter)")} aria-label={tr("Sebelumnya", "Previous")} disabled={!findInfo.count} onclick={() => stepFind(-1)}><ChevronUp size={16} /></button>
+    <button title={tr("Berikutnya (Enter)", "Next (Enter)")} aria-label={tr("Berikutnya", "Next")} disabled={!findInfo.count} onclick={() => stepFind(1)}><ChevronDown size={16} /></button>
+    <button title={tr("Tutup (Esc)", "Close (Esc)")} aria-label={tr("Tutup", "Close")} onclick={closeFind}><XIcon size={16} /></button>
+  </div>
+{/if}
 {#if inTable}
   <div class="bar tbl" role="toolbar" data-noprint aria-label={tr("Tabel", "Table")}>
     <button class="txt" onclick={selectTable}>Pilih tabel</button>
@@ -554,6 +800,14 @@
 <!-- Tautan di dalam catatan dibuka di browser (bukan di jendela app). -->
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 <div class="doc" bind:this={element} onclickcapture={openLink} oncontextmenu={onContext}></div>
+{#if toolbar && editor}
+  <p class="stats" data-noprint role="status">
+    {tr(`${stats.words} kata`, `${stats.words} words`)} · {tr(`${stats.chars} karakter`, `${stats.chars} characters`)}{#if stats.minutes}{" · "}{tr(`±${stats.minutes} menit baca`, `~${stats.minutes} min read`)}{/if}{#if stats.selected}{" · "}{tr(`${stats.selected} kata dipilih`, `${stats.selected} words selected`)}{/if}
+  </p>
+{/if}
+{#if panelOpen && editor && toolbar}
+  <DocPanel {editor} {tick} {pageId} bind:tab={panelTab} bind:draft={commentDraft} onclose={() => (panelOpen = false)} />
+{/if}
 
 {#if wiki && wikiItems.length}
   <div class="slash" role="listbox" aria-label="Tautkan ke halaman" style:left="{wiki.x}px" style:top="{wiki.y}px">
@@ -662,9 +916,11 @@
   .dd {
     flex: none;
   }
-  .dd.w-block { width: 112px; }
-  .dd.w-font { width: 96px; }
-  .dd.w-size { width: 84px; }
+  .dd.w-block { width: 128px; }
+  .dd.w-font { width: 128px; }
+  .size-box { flex: none; display: flex; align-items: center; border: 1px solid var(--border); border-radius: var(--radius-2); }
+  .size-in { width: 40px; padding: var(--space-1) 0 var(--space-1) var(--space-2); font-size: 0.88em; text-align: center; border: 0; background: transparent; color: inherit; outline: none; }
+  .size-box :global(.size-dd) { width: auto; padding: var(--space-1); }
   .dd.w-line { width: 118px; }
   .dd :global(.tb-sel) {
     padding: var(--space-1) var(--space-2);
@@ -834,6 +1090,13 @@
     font-size: 1.15em;
     margin-top: 0.9em;
   }
+  .doc :global(.tiptap h4) { font-size: 1.05em; margin-top: 0.8em; }
+  .doc :global(.tiptap h5) { font-size: 0.95em; margin-top: 0.8em; }
+  .doc :global(.tiptap h6) { font-size: 0.85em; margin-top: 0.8em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+  .doc :global(.tiptap p[data-pstyle="title"]) { font-size: 2.4em; font-weight: 700; line-height: 1.15; margin: 0.2em 0 0.3em; }
+  .doc :global(.tiptap p[data-pstyle="subtitle"]) { font-size: 1.3em; line-height: 1.35; color: var(--text-muted); margin: 0 0 0.8em; }
+  .doc :global(.tiptap p[data-pstyle="lead"]) { font-size: 1.15em; line-height: 1.6; }
+  .doc :global(.tiptap p[data-pstyle="small"]) { font-size: 0.82em; color: var(--text-muted); }
   .doc :global(.tiptap ul),
   .doc :global(.tiptap ol) {
     padding-left: 1.5em;
@@ -1002,4 +1265,38 @@
     display: block;
     color: var(--text-muted);
   }
+
+  /* Cari di dokumen. */
+  .findbar { flex-direction: row; align-items: center; gap: var(--space-1); }
+  .findbar input { flex: 1; min-width: 0; padding: var(--space-1) var(--space-2); border: 1px solid var(--border-strong); border-radius: var(--radius-2); background: var(--surface); color: var(--text); font: inherit; }
+  .findbar .count { min-width: 4.5em; text-align: center; color: var(--text-muted); font-size: 0.85em; font-variant-numeric: tabular-nums; }
+  .findbar button { display: grid; place-items: center; padding: var(--space-1); border: 0; border-radius: var(--radius-1); background: none; color: var(--text-muted); cursor: pointer; }
+  .findbar button:hover:not(:disabled) { background: var(--surface-2); color: var(--text); }
+  .findbar button.on { background: var(--accent-soft); color: var(--link); }
+  .findbar button:disabled { opacity: 0.4; }
+  .doc :global(.find-hit) { background: var(--warn-soft); border-radius: var(--radius-1); }
+  .doc :global(.find-current) { background: var(--tint-4); outline: 2px solid var(--accent-strong); }
+  .stats { position: sticky; bottom: 0; z-index: 4; margin: var(--space-2) 0 0; padding: var(--space-1) var(--space-2); width: fit-content; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-pill); color: var(--text-muted); font-size: 0.8em; font-variant-numeric: tabular-nums; }
+
+  /* Kotak penekanan, blok lipat, rumus, dan komentar. */
+  .doc :global(.tiptap .callout) { margin: var(--space-3) 0; padding: var(--space-2) var(--space-3); border-left: 4px solid var(--info); border-radius: var(--radius-2); background: var(--info-soft); }
+  .doc :global(.tiptap .callout[data-callout="tip"]) { border-left-color: var(--ok); background: var(--ok-soft); }
+  .doc :global(.tiptap .callout[data-callout="warn"]) { border-left-color: var(--warn); background: var(--warn-soft); }
+  .doc :global(.tiptap .callout > :first-child) { margin-top: 0; }
+  .doc :global(.tiptap .callout > :last-child) { margin-bottom: 0; }
+  .doc :global(.tiptap [data-type="details"]) { display: flex; gap: var(--space-2); margin: var(--space-2) 0; padding: var(--space-2) var(--space-3); border: 1px solid var(--border-strong); border-radius: var(--radius-2); }
+  .doc :global(.tiptap [data-type="details"] > button) { flex: none; width: 1.4em; height: 1.4em; padding: 0; font-size: 1.1em; line-height: 1; border: 0; background: none; color: var(--text-muted); cursor: pointer; }
+  .doc :global(.tiptap [data-type="details"] > button::before) { content: "▸"; display: inline-block; transition: transform 0.15s; }
+  .doc :global(.tiptap [data-type="details"].is-open > button::before) { transform: rotate(90deg); }
+  .doc :global(.tiptap [data-type="details"] > div) { flex: 1; min-width: 0; }
+  .doc :global(.tiptap [data-type="details"] summary) { list-style: none; font-weight: 600; }
+  .doc :global(.tiptap [data-type="details"] summary::-webkit-details-marker) { display: none; }
+  .doc :global(.tiptap [data-type="detailsContent"] > :last-child) { margin-bottom: 0; }
+  .doc :global(.tiptap [data-type="detailsContent"] > :first-child) { margin-top: var(--space-2); }
+  .doc :global(.tiptap .tiptap-mathematics-render) { cursor: pointer; padding: 0 var(--space-0); border-radius: var(--radius-1); }
+  .doc :global(.tiptap .tiptap-mathematics-render:hover) { background: var(--surface-2); }
+  .doc :global(.tiptap .block-math-inner) { text-align: center; }
+  .doc :global(.tiptap .comment-hit) { background: color-mix(in srgb, var(--tint-4) 70%, transparent); border-bottom: 2px solid var(--warn); }
+  @media (prefers-reduced-motion: reduce) { .doc :global(.tiptap [data-type="details"] > button::before) { transition: none; } }
+  @media print { .doc :global(.tiptap .comment-hit) { background: none; border-bottom: 0; } }
 </style>

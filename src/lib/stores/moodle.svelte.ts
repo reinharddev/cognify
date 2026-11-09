@@ -55,8 +55,10 @@ class MoodleStore {
 
   async #reload() {
     try {
-      this.status = await moodleApi.status();
-      this.items = await moodleApi.items();
+      const status = await moodleApi.status();
+      const items = await moodleApi.items();
+      this.status = status;
+      this.items = items;
     } catch {
       /* fitur opsional: gagal memuat berarti tampil mati */
     }

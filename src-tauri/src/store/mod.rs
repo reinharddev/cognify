@@ -12,6 +12,7 @@ pub mod proposals;
 pub mod schema;
 pub mod settings;
 pub mod sources;
+pub mod versions;
 mod time;
 
 /// Waktu sekarang (UTC, ISO-8601) untuk modul lain.

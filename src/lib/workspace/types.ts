@@ -44,7 +44,19 @@ export interface NewPage {
   plainText?: string;
 }
 
-/** Bidang yang tidak dikirim tidak berubah. `icon: ""` menghapus ikon. */
+/** Satu potret isi dokumen di riwayat versi. */
+export interface PageVersionInfo {
+  id: number;
+  title: string;
+  createdAt: string;
+  size: number;
+}
+export interface PageVersion extends PageVersionInfo {
+  pageId: string;
+  content: string;
+}
+
+/** Bidang yang tidak dikirim tidak berubah. `icon: """` menghapus ikon. */
 export interface PageUpdate {
   title?: string;
   icon?: string;

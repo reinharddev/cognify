@@ -4,7 +4,8 @@
   import { page } from "$app/state";
   import { openPath, openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
   import { ArrowLeft, Check, Download, ExternalLink, FolderOpen, RefreshCw, Search, Trash2, X } from "@lucide/svelte";
-  import { moodleApi, type MoodleCourse, type MoodleFile, type MoodleLink } from "$lib/moodle/api";
+  import { moodleApi, type MoodleCourse, type MoodleFile, type MoodleLink, type MoodleModule } from "$lib/moodle/api";
+  import CourseStructure from "$lib/moodle/CourseStructure.svelte";
   import { embedConsent } from "$lib/moodle/embedConsent.svelte";
   import { courseName, ext, hostOf, kindLabel, PROVIDER, short, size, stem, tidy } from "$lib/moodle/format";
   import { dialog } from "$lib/stores/dialog.svelte";
@@ -15,6 +16,25 @@
   let course = $state<MoodleCourse | null>(null);
   let files = $state<MoodleFile[]>([]);
   let links = $state<MoodleLink[]>([]);
+  let structure = $state<MoodleModule[]>([]);
+  /** Tampilkan seluruh isi course (semua modul, bukan hanya yang bisa diunduh). Bawaan mati; pilihan diingat di perangkat ini. */
+  const SHOW_KEY = "cognify.moodle.showStructure";
+  const readShow = () => {
+    try {
+      return localStorage.getItem(SHOW_KEY) === "1";
+    } catch {
+      return false;
+    }
+  };
+  let showAll = $state(readShow());
+  const setShowAll = (on: boolean) => {
+    showAll = on;
+    try {
+      localStorage.setItem(SHOW_KEY, on ? "1" : "0");
+    } catch {
+      /* hanya kenyamanan */
+    }
+  };
   let opened = $state<Record<string, boolean>>({});
   let openSec = $state<Record<string, boolean>>({});
   let loading = $state(false);
@@ -78,7 +98,7 @@
     const target = id;
     try {
       course = (await moodleApi.courses()).find((c) => c.id === target) ?? null;
-      [files, links] = await Promise.all([moodleApi.files(target), moodleApi.links(target)]);
+      [files, links, structure] = await Promise.all([moodleApi.files(target), moodleApi.links(target), moodleApi.structure(target)]);
     } catch (e) {
       fail(e);
     }
@@ -92,6 +112,7 @@
       const view = await moodleApi.refreshCourse(id);
       files = view.files;
       links = view.links;
+      structure = view.structure;
       other = view.other;
       foreign = view.foreign;
     } catch (e) {
@@ -130,6 +151,7 @@
       course = null;
       files = [];
       links = [];
+      structure = [];
       other = [];
       foreign = 0;
       opened = {};
@@ -162,6 +184,10 @@
           </p>
         </div>
         <div class="tools">
+          <label class="flt" title={tr("Tampilkan semua isi course: kuis, forum, tugas, catatan guru, dan halaman, bukan hanya berkas yang bisa diunduh.", "Show everything in the course: quizzes, forums, assignments, teacher notes and pages, not only downloadable files.")}>
+            <input type="checkbox" role="switch" checked={showAll} onchange={(e) => setShowAll(e.currentTarget.checked)} />
+            <span>{tr("Seluruh isi", "Full content")}</span>
+          </label>
           <button class="ghost icon" title={tr("Perbarui daftar dari Moodle", "Refresh list from Moodle")} aria-label={tr("Perbarui daftar", "Refresh list")} disabled={loading} onclick={() => void refresh()}><span class:spin={loading}><RefreshCw size={16} /></span></button>
           {#if busy.length}
             <button class="ghost" onclick={() => void act(() => moodleApi.cancel(busy.map((f) => f.id)))}>{tr("Batalkan", "Cancel")}</button>
@@ -170,11 +196,21 @@
         </div>
       </header>
 
-      {#if files.length > 6}
+      {#if files.length > 6 && !showAll}
         <label class="search"><Search size={15} /><input type="search" placeholder={tr("Cari berkas…", "Search files…")} aria-label={tr("Cari berkas", "Search files")} bind:value={query} /></label>
       {/if}
       {#if error}<p class="err" role="alert">{error}</p>{/if}
 
+      {#if showAll}
+        <CourseStructure
+          modules={structure}
+          {files}
+          {links}
+          onsave={(ids) => void save(ids)}
+          onopen={(f) => void open(f)}
+          onurl={(u) => void openUrl(u).catch(() => fail(new Error(tr("Tautan tidak bisa dibuka.", "The link could not be opened."))))}
+        />
+      {:else}
       {#if files.length && otherText}
         <p class="hint">{tr(`Selain berkas, mata pelajaran ini berisi ${otherText} yang belum bisa disimpan offline.`, `Besides files, this course contains ${otherText} that cannot be saved offline yet.`)}</p>
       {/if}
@@ -277,6 +313,7 @@
           {#if foreign > 0}<p class="hint">{tr(`${foreign} berkas ada di server lain dan dilewati demi keamanan.`, `${foreign} files are on another server and were skipped for safety.`)}</p>{/if}
         {/if}
       {/each}
+      {/if}
 
     </section>
   {/if}
@@ -300,6 +337,7 @@
   .title h2 { margin: 0; font-size: 1.35em; overflow-wrap: anywhere; }
   .sub { margin: var(--space-0) 0 0; color: var(--text-muted); }
   .tools { display: flex; align-items: center; gap: var(--space-2); }
+  .flt { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text-muted); cursor: pointer; margin-right: var(--space-2); }
 
   .search { display: flex; align-items: center; gap: var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-pill); padding: var(--space-2) var(--space-3); margin-bottom: var(--space-3); color: var(--text-muted); background: var(--surface); }
   .search input { flex: 1; border: 0; background: none; outline: none; font: inherit; color: var(--text); min-width: 0; }

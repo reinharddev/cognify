@@ -1,3 +1,4 @@
+// @ts-nocheck -- skrip ekstensi browser (bukan bagian app); diimpor tes hanya untuk fungsi murninya.
 // Komunikasi dengan app Cognify di komputer yang sama (127.0.0.1). Tidak ada server di internet.
 // Kunci akses didapat sekali lewat kode 6 angka dari Cognify → Pengaturan → Data.
 
@@ -488,4 +489,345 @@ function extractMeta(withSection) {
   const now = new Date();
   const accessed = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   return { source, section, accessed, contentType: document.contentType };
+}
+
+// ---- Tabel portal sekolah (nilai dan jadwal) ----
+// Dua jenis halaman: "exam" (tugas, ujian, nilai) dan "schedule" (jadwal pelajaran). Tiap jenis punya wadah tabel,
+// dropdown periode, dan fungsi pemuat sendiri di portal. Fungsi yang dijalankan di halaman harus berdiri sendiri
+// (tidak boleh memakai apa pun dari luar), karena diserialisasi oleh executeScript.
+const KINDS = {
+  exam: { box: "#exam_table", selector: "#comboClassExam", loader: "change_exam", tab: "Assignment & Exam", name: "Nilai" },
+  schedule: { box: "#schedule_table", selector: "", loader: "change_schedule_table", tab: "Schedule", name: "Jadwal" },
+};
+
+/** Dijalankan di halaman: dropdown periode, pilihan sekarang, dan periode yang sedang tampil di tabel. */
+function pageInfo(cfg) {
+  const YEARS = /\d{4}\s*-\s*\d{4}/;
+  const hasYears = (x) => [...x.options].some((o) => YEARS.test(o.text));
+  const text = (el) => {
+    const c = el.cloneNode(true);
+    c.querySelectorAll("script,style").forEach((n) => n.remove());
+    c.querySelectorAll("br").forEach((b) => b.replaceWith(" | "));
+    return c.textContent.replace(/\s+/g, " ").trim().slice(0, 500);
+  };
+  // Dropdown milik wadah ini: lewat id, lalu yang onchange-nya memanggil fungsi pemuat, lalu yang sewadah. Dropdown periode
+  // lain di halaman yang sama tidak boleh terpilih.
+  const box = document.querySelector(cfg.box);
+  const sels = [...document.querySelectorAll("select")].filter(hasYears);
+  const sel =
+    (cfg.selector && sels.find((x) => x.matches(cfg.selector))) ||
+    sels.find((x) => (x.getAttribute("onchange") || "").includes(cfg.loader)) ||
+    (box?.parentElement && sels.find((x) => box.parentElement.contains(x))) ||
+    null;
+  const root = box || document.body;
+  const h = root.querySelector("h3") ? text(root.querySelector("h3")) : "";
+  const m = /Period:\s*(.+?)(?:\s*\|?\s*Homeroom|\s*\|?\s*$)/i.exec(text(root));
+  return {
+    hasSelect: !!sel,
+    selectId: sel ? sel.id || sel.name || "" : "",
+    options: sel ? [...sel.options].filter((o) => YEARS.test(o.text)).map((o) => ({ value: o.value, text: text(o) })) : [],
+    current: sel ? sel.value : "",
+    shown: h && m ? `${h} / ${m[1].trim()}` : "",
+  };
+}
+
+/** Dijalankan di halaman: mengklik tab (mis. "Assignment & Exam") seperti pengguna; isinya baru dimuat portal saat tab dibuka. */
+function openTab(label) {
+  const norm = (x) => (x || "").replace(/\s+/g, " ").trim().toLowerCase();
+  const el = [...document.querySelectorAll("a,button,[role=tab]")].find((x) => norm(x.textContent) === norm(label));
+  if (!el) return false;
+  el.click();
+  return true;
+}
+
+/** Dijalankan di halaman: teks tab yang sedang aktif, untuk dikembalikan setelah selesai. */
+function activeTab() {
+  const el = document.querySelector(".nav-tabs li.active > a, .nav-tabs .nav-link.active, [role=tab][aria-selected=true]");
+  return el ? (el.textContent || "").replace(/\s+/g, " ").trim() : "";
+}
+
+/**
+ * Dijalankan di halaman (dunia MAIN): memilih satu periode. mode "loader": fungsi pemuat milik portal dipanggil langsung;
+ * "event": event change native; "jquery": pemicu change milik jQuery halaman. Mengembalikan cara yang dipakai, untuk laporan.
+ */
+function pickOption(value, cfg, mode = "loader") {
+  const YEARS = /\d{4}\s*-\s*\d{4}/;
+  const hasYears = (x) => [...x.options].some((o) => YEARS.test(o.text));
+  const box = document.querySelector(cfg.box);
+  const sels = [...document.querySelectorAll("select")].filter(hasYears);
+  const sel =
+    (cfg.selector && sels.find((x) => x.matches(cfg.selector))) ||
+    sels.find((x) => (x.getAttribute("onchange") || "").includes(cfg.loader)) ||
+    (box?.parentElement && sels.find((x) => box.parentElement.contains(x))) ||
+    null;
+  if (!sel) return { ok: false, via: "tanpa dropdown" };
+  sel.value = value;
+  const loaderType = typeof window[cfg.loader];
+  if (mode === "loader" && loaderType === "function") {
+    window[cfg.loader](value);
+    return { ok: true, via: "loader" };
+  }
+  if (mode === "jquery" && window.jQuery) {
+    window.jQuery(sel).trigger("change");
+    return { ok: true, via: "jquery" };
+  }
+  sel.dispatchEvent(new Event("change", { bubbles: true }));
+  return { ok: true, via: mode === "loader" ? `event (loader ${loaderType})` : "event" };
+}
+
+/**
+ * Dijalankan di halaman: tabel yang sedang tampil beserta periodenya. Sel yang menyatu antar baris (rowspan, mis. hari di
+ * jadwal) dan antar kolom (colspan) diratakan supaya setiap baris punya semua kolom, dan <br> di dalam sel jadi " | ".
+ */
+function readPage(cfg) {
+  const text = (el) => {
+    const c = el.cloneNode(true);
+    c.querySelectorAll("script,style").forEach((n) => n.remove());
+    c.querySelectorAll("br").forEach((b) => b.replaceWith(" | "));
+    return c.textContent.replace(/\s+/g, " ").trim().slice(0, 500);
+  };
+  const root = document.querySelector(cfg.box) || document.body;
+  const h = root.querySelector("h3") ? text(root.querySelector("h3")) : "";
+  const m = /Period:\s*(.+?)(?:\s*\|?\s*Homeroom|\s*\|?\s*$)/i.exec(text(root));
+  const tables = [];
+  for (const table of root.querySelectorAll("table")) {
+    const trs = [...table.querySelectorAll("tr")].filter((tr) => tr.closest("table") === table && !tr.closest("thead, tfoot"));
+    const carry = [];
+    const rows = [];
+    for (const tr of trs) {
+      const cells = [...tr.children].filter((c) => /^T[DH]$/.test(c.tagName));
+      if (!cells.length) continue;
+      const row = [];
+      let ci = 0;
+      const fill = () => {
+        while (carry[ci] && carry[ci].left > 0) {
+          row[ci] = carry[ci].text;
+          carry[ci].left--;
+          ci++;
+        }
+      };
+      for (const cell of cells) {
+        fill();
+        const t = text(cell);
+        const cs = Math.max(1, cell.colSpan || 1);
+        const rs = Math.max(1, cell.rowSpan || 1);
+        for (let k = 0; k < cs; k++) {
+          row[ci] = t;
+          carry[ci] = rs > 1 ? { text: t, left: rs - 1 } : null;
+          ci++;
+        }
+      }
+      fill();
+      rows.push(row);
+    }
+    const head = table.querySelector("thead tr");
+    const headers = head ? [...head.children].map(text) : rows.shift() || [];
+    if (rows.length && tables.length < 8) tables.push({ headers: headers.slice(0, 30), rows: rows.slice(0, 1000).map((r) => r.slice(0, 30)) });
+  }
+  return { shown: h && m ? `${h} / ${m[1].trim()}` : "", tables };
+}
+
+const normPeriod = (x) => x.toLowerCase().replace(/kelas|class/g, "").replace(/\s*\/\s*/g, " / ").replace(/\s+/g, " ").trim();
+export const samePeriod = (a, b) => normPeriod(a) === normPeriod(b);
+
+/**
+ * Memilih tiap periode, menunggu sampai tabel yang tampil memang periode itu (menurut tulisan di atas tabel), membaca, dan
+ * mengirim. `exec(func, args, world)` menjalankan fungsi di halaman, `post(period, tables)` mengirim ke Cognify; keduanya
+ * disuntikkan supaya logika ini bisa diuji tanpa browser ekstensi. Mengembalikan null bila halaman tidak punya dropdown jenis ini.
+ */
+export async function runAllPeriods({ exec, post, kind = "exam", sleep = (ms) => new Promise((r) => setTimeout(r, ms)), timeoutMs = 20000 }) {
+  const cfg = KINDS[kind];
+  let info = await exec(pageInfo, [cfg]);
+  if (!info?.hasSelect && cfg.tab) {
+    // Isi tab baru dimuat portal saat tabnya diklik: klik, lalu tunggu dropdown-nya muncul (paling lama 12 detik).
+    await exec(openTab, [cfg.tab]);
+    for (let waited = 0; waited < 12000 && !info?.hasSelect; waited += 500) {
+      await sleep(500);
+      info = await exec(pageInfo, [cfg]);
+    }
+  }
+  if (!info?.hasSelect || !info.options.length) return null;
+  const verify = info.shown !== ""; // halaman menyebut periodenya sendiri: label dan isi bisa dipastikan cocok
+  let count = 0;
+  const failed = [];
+  const diag = [`${cfg.name}: dropdown ${info.selectId || "tanpa id"}, ${info.options.length} periode, tampil awal: ${info.shown || "kosong"}`];
+  for (const opt of info.options) {
+    // Bila tabel periode ini tidak muncul dalam 7 detik, coba cara pemilihan lain (event native, lalu jQuery) sebelum menyerah.
+    const modes = ["loader", "event", "jquery"];
+    let picked = await exec(pickOption, [opt.value, cfg, modes[0]], "MAIN");
+    const via = [picked?.via ?? "?"];
+    let data = null;
+    let last = "";
+    let seen = "";
+    for (let waited = 0; waited < timeoutMs && !data; waited += 400) {
+      await sleep(400);
+      if (waited > 0 && waited % 7200 === 0 && modes.length > 1) {
+        modes.shift();
+        picked = await exec(pickOption, [opt.value, cfg, modes[0]], "MAIN");
+        via.push(picked?.via ?? "?");
+      }
+      const cur = await exec(readPage, [cfg]);
+      seen = cur?.shown || (cur?.tables?.length ? "?" : "kosong");
+      if (!cur?.tables?.length) continue;
+      const stamp = JSON.stringify(cur.tables);
+      // Terverifikasi: tulisan periode cocok. Tanpa itu: isi tabel sama dua kali berturut-turut (sudah berhenti berubah).
+      const ready = verify ? samePeriod(cur.shown, opt.text) : stamp === last;
+      last = stamp;
+      if (!ready) continue;
+      await sleep(400);
+      const again = await exec(readPage, [cfg]);
+      if (again?.tables?.length && JSON.stringify(again.tables) === stamp) data = again;
+    }
+    if (!data) {
+      failed.push(`${opt.text} (tampil: ${seen || "kosong"})`);
+      diag.push(`  GAGAL ${opt.text}: tampil "${seen || "kosong"}", cara: ${via.join(" > ")}`);
+      continue;
+    }
+    await post(verify ? data.shown : opt.text, data.tables);
+    diag.push(`  OK ${opt.text}: ${data.tables.reduce((n, t) => n + t.rows.length, 0)} baris, cara: ${via.join(" > ")}`);
+    count++;
+  }
+  if (info.current) await exec(pickOption, [info.current, cfg], "MAIN"); // kembalikan pilihan semula
+  return { count, total: info.options.length, failed, diag };
+}
+
+/**
+ * Nilai, jadwal, dan kehadiran, masing-masing dikerjakan terpisah supaya yang satu gagal tidak mematikan yang lain, dan tiap hasil
+ * dilaporkan apa adanya (tidak ada "berhasil" bila tidak ada yang terkirim). `exec(func, args, world)` menjalankan fungsi di halaman;
+ * `post(kind, period, tables)` mengirim satu tabel ke Cognify; keduanya disuntikkan supaya bisa diuji.
+ */
+export async function runEverything({ exec, post, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), timeoutMs = 20000 }) {
+  const startTab = await exec(activeTab);
+  const report = { parts: [], failed: [], attendanceDays: 0, lines: [] };
+  let examOptions = [];
+  for (const kind of ["exam", "schedule"]) {
+    const name = KINDS[kind].name;
+    try {
+      const r = await runAllPeriods({ exec, kind, sleep, timeoutMs, post: (period, tables) => post(kind, period, tables) });
+      if (!r) {
+        report.failed.push(`${name}: tab "${KINDS[kind].tab}" tidak termuat di halaman ini`);
+        report.lines.push(`${name}: tab "${KINDS[kind].tab}" tidak termuat`);
+      }
+      else {
+        report.parts.push({ kind, name, count: r.count, total: r.total });
+        report.lines.push(...r.diag);
+        report.failed.push(...r.failed.map((f) => `${name} ${f}`));
+        if (kind === "exam") examOptions = (await exec(pageInfo, [KINDS.exam]))?.options?.map((o) => o.text) ?? [];
+      }
+    } catch (e) {
+      report.failed.push(`${name}: ${e?.message || e}`);
+    }
+  }
+  try {
+    report.attendanceDays = await sendAttendance({ exec, optionTexts: examOptions, post: (rows) => post("attendance", "", [{ headers: ["Date", "Status", "Check in", "Check out"], rows }]) });
+  } catch (e) {
+    report.failed.push(e?.message || String(e));
+  }
+  if (startTab) await exec(openTab, [startTab]).catch(() => {}); // kembalikan tab semula
+  report.lines.push(`Kehadiran: ${report.attendanceDays} hari`, ...report.failed.filter((f) => !/\(tampil:/.test(f)).map((f) => `Catatan: ${f}`));
+  // Laporan lengkap ikut dikirim ke Cognify supaya penyebab kegagalan bisa dibaca di sana, bukan hanya di popup yang cepat hilang.
+  try {
+    await post("report", "", [{ headers: ["Line"], rows: report.lines.map((l) => [l]) }]);
+  } catch {
+    /* laporan hanya tambahan */
+  }
+  report.sent = report.parts.reduce((n, p) => n + p.count, 0) + (report.attendanceDays ? 1 : 0);
+  report.summary = [
+    ...report.parts.map((p) => `${p.name} ${p.count}/${p.total} periode`),
+    report.attendanceDays ? `Kehadiran ${report.attendanceDays} hari` : "",
+  ].filter(Boolean).join(", ");
+  return report;
+}
+
+/** Semua yang bisa diambil dari portal dikirim ke app Cognify di komputer ini. */
+export async function sendAllPeriods(tab) {
+  const token = await authed();
+  const exec = async (func, args = [], world = "ISOLATED") => (await chrome.scripting.executeScript({ target: { tabId: tab.id }, func, args, world }))[0]?.result;
+  const post = (kind, period, tables) =>
+    call("/bridge/table", { method: "POST", token, body: { url: tab.url, title: tab.title, period: period.slice(0, 120), kind, tables } });
+  const report = await runEverything({ exec, post });
+  if (!report.sent) throw new BridgeError("no_tables", report.failed.join("; ") || t("noTables"));
+  return report;
+}
+
+// ---- Kehadiran ----
+// Data kehadiran bukan tabel di halaman, melainkan JSON kalender yang diminta halaman portal sendiri
+// (.../load_my_attendance/1/0/<id siswa>?start=...&end=...). Permintaan itu dikirim dari dalam halaman portal,
+// jadi login yang sudah ada dipakai browser otomatis; ekstensi tidak membaca cookie dan tidak ada token yang dikirim ke Cognify.
+
+/** Dijalankan di halaman: mengambil kehadiran untuk tiap rentang tanggal. Tidak ada yang dikirim ke luar situs portal. */
+async function readAttendance(ranges) {
+  const html = document.documentElement.innerHTML;
+  // Alamat dasar: utamanya yang tertulis di skrip halaman; bila tidak ada, dibangun dari id siswa yang tampak di halaman.
+  const found = /https?:\/\/[^"'\s<>]*load_my_attendance\/[^"'\s?<>]+/.exec(html);
+  let base = found ? found[0] : "";
+  if (!base) {
+    const reg = (/[?&]reg=([0-9a-f-]{36})/i.exec(html) || /['"]reg['"]\s*:\s*['"]([0-9a-f-]{36})['"]/i.exec(html) || [])[1];
+    if (!reg) return { error: "no_reg" };
+    base = `${location.origin}/index.php/school_dashboard/load_my_attendance/1/0/${reg}`;
+  }
+  const events = [];
+  for (const [start, end] of ranges) {
+    const url = `${base}${base.includes("?") ? "&" : "?"}start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`;
+    let resp;
+    try {
+      resp = await fetch(url, { credentials: "same-origin", headers: { "X-Requested-With": "XMLHttpRequest" } });
+    } catch {
+      return { error: "network" };
+    }
+    if (!resp.ok) return { error: `http_${resp.status}` };
+    let part;
+    try {
+      part = await resp.json();
+    } catch {
+      return { error: "not_json" };
+    }
+    if (Array.isArray(part)) events.push(...part);
+  }
+  return { events };
+}
+
+/** Acara kalender kehadiran → satu baris per hari: [tanggal, status, jam masuk, jam pulang]. Acara jam ("07:03:23 - 15:14:07") dipasangkan ke harinya. */
+export function eventsToRows(events) {
+  const by = new Map();
+  for (const e of Array.isArray(events) ? events : []) {
+    const date = String(e?.start ?? "").slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+    const day = by.get(date) ?? { date, status: "", inT: "", outT: "" };
+    const title = String(e.title ?? "").trim();
+    const time = /^(\d{1,2}:\d{2}(?::\d{2})?)\s*-\s*(\d{1,2}:\d{2}(?::\d{2})?)?$/.exec(title);
+    if (time) {
+      day.inT = time[1];
+      day.outT = time[2] ?? "";
+    } else if (!String(e.id ?? "").endsWith("_time") && title) day.status = title;
+    by.set(date, day);
+  }
+  return [...by.values()].filter((d) => d.status).sort((a, b) => a.date.localeCompare(b.date)).map((d) => [d.date, d.status, d.inT, d.outT]);
+}
+
+/** Rentang minta per setengah tahun dari awal tahun ajaran tertua di dropdown sampai sebulan ke depan: [[start, end], ...] dalam ISO dengan zona waktu setempat. */
+export function attendanceRanges(optionTexts, now = new Date()) {
+  const years = optionTexts.map((x) => /(\d{4})\s*-\s*\d{4}/.exec(x)?.[1]).filter(Boolean).map(Number);
+  const first = years.length ? Math.min(...years) : now.getFullYear() - 1;
+  const off = -now.getTimezoneOffset();
+  const tz = `${off >= 0 ? "+" : "-"}${String(Math.floor(Math.abs(off) / 60)).padStart(2, "0")}:${String(Math.abs(off) % 60).padStart(2, "0")}`;
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T00:00:00${tz}`;
+  const stop = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
+  const ranges = [];
+  for (let start = new Date(first, 6, 1); start < stop; ) {
+    const next = new Date(start.getFullYear(), start.getMonth() + 6, 1);
+    ranges.push([iso(start), iso(next < stop ? next : stop)]);
+    start = next;
+  }
+  return ranges;
+}
+
+/** Kehadiran semua tahun ajaran yang ada di dropdown portal, dikirim ke app Cognify di komputer ini. Mengembalikan jumlah hari. */
+export async function sendAttendance({ exec, post, optionTexts }) {
+  const out = await exec(readAttendance, [attendanceRanges(optionTexts)]);
+  if (out?.error) throw new BridgeError("attendance_failed", `Kehadiran: ${out.error}`);
+  const rows = eventsToRows(out?.events);
+  if (!rows.length) return 0;
+  for (let i = 0; i < rows.length; i += 800) await post(rows.slice(i, i + 800));
+  return rows.length;
 }

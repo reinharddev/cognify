@@ -4,7 +4,7 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { ApiError } from "./errors";
 import { mockCall } from "./mock";
-import type { BridgeStatus, McpInfo, PageSource, NewPage, Page, PageNode, PageUpdate, Proposal, SearchHit, TagCount, TrashItem } from "./types";
+import type { BridgeStatus, McpInfo, PageSource, NewPage, Page, PageNode, PageUpdate, PageVersion, PageVersionInfo, Proposal, SearchHit, TagCount, TrashItem } from "./types";
 
 const STATUS: Record<string, number> = { not_found: 404, invalid: 422, db_error: 500 };
 
@@ -28,6 +28,10 @@ export const workspace = {
     /** Seluruh halaman aktif tanpa isi; susun jadi pohon dengan `buildTree`. */
     tree: () => call<PageNode[]>("page_tree"),
     update: (id: string, update: PageUpdate) => call<Page>("page_update", { id, update }),
+    /** Riwayat versi dokumen (terbaru di atas) dan satu versi lengkap; `versionAdd` menyimpan isi editor sebagai versi. */
+    versions: (id: string) => call<PageVersionInfo[]>("page_versions", { id }),
+    version: (versionId: number) => call<PageVersion>("page_version_get", { versionId }),
+    versionAdd: (id: string, title: string, content: string) => call<void>("page_version_add", { id, title, content }),
     /** `parentId: null` = tingkat teratas; `beforeId` kosong = taruh paling akhir. */
     move: (id: string, parentId: string | null, beforeId: string | null = null) =>
       call<void>("page_move", { id, parentId, beforeId }),

@@ -18,12 +18,22 @@ export interface Prefs {
   weekStart: 0 | 1;
   startPage: StartPage;
   reminders: boolean;
+  /** Pengingat sebelum tiap pelajaran di jadwal sekolah (10 menit sebelumnya). */
+  lessonReminders: boolean;
+  /** Tampilkan jadwal pelajaran dari portal sekolah di Kalender (dan Notch). */
+  showLessons: boolean;
+  /** Menutup jendela hanya menyembunyikannya; Cognify tetap jalan di menu bar supaya pengingat berbunyi. */
+  keepInTray: boolean;
+  /** Bunyi pendek saat notifikasi baru masuk. */
+  notifySound: boolean;
+  /** Notifikasi sistem (di luar app) saat jendela Cognify tidak sedang dilihat. */
+  notifyDesktop: boolean;
   spellcheck: boolean;
   /** Pintasan global untuk catatan melayang baru (Ctrl/Cmd+Alt+N). */
   stickyShortcut: boolean;
   /** Animasi (gerak halus). Mati total bila sistem meminta gerak dikurangi. */
   motion: boolean;
-  /** Pintu MCP; lihat docs/MCP.md. */
+  /** Pintu MCP; lihat docs/arsitektur/mcp-ai.md. */
   mcp: { enabled: boolean; propose: boolean };
 }
 
@@ -35,6 +45,11 @@ export const DEFAULTS: Prefs = {
   weekStart: 1,
   startPage: "home",
   reminders: true,
+  lessonReminders: false,
+  showLessons: true,
+  keepInTray: true,
+  notifySound: true,
+  notifyDesktop: true,
   spellcheck: true,
   stickyShortcut: true,
   motion: true,
@@ -70,7 +85,12 @@ export function sanitize(raw: unknown): Prefs {
     fontSize: Number.isFinite(size) ? Math.min(19, Math.max(13, Math.round(size))) : DEFAULTS.fontSize,
     weekStart: r.weekStart === 0 ? 0 : 1,
     startPage: pick(r.startPage, ["home", "last"] as const, DEFAULTS.startPage),
+    keepInTray: typeof r.keepInTray === "boolean" ? r.keepInTray : DEFAULTS.keepInTray,
+    showLessons: typeof r.showLessons === "boolean" ? r.showLessons : DEFAULTS.showLessons,
+    lessonReminders: typeof r.lessonReminders === "boolean" ? r.lessonReminders : DEFAULTS.lessonReminders,
     reminders: typeof r.reminders === "boolean" ? r.reminders : DEFAULTS.reminders,
+    notifySound: typeof r.notifySound === "boolean" ? r.notifySound : DEFAULTS.notifySound,
+    notifyDesktop: typeof r.notifyDesktop === "boolean" ? r.notifyDesktop : DEFAULTS.notifyDesktop,
     spellcheck: typeof r.spellcheck === "boolean" ? r.spellcheck : DEFAULTS.spellcheck,
     stickyShortcut: typeof r.stickyShortcut === "boolean" ? r.stickyShortcut : DEFAULTS.stickyShortcut,
     motion: typeof r.motion === "boolean" ? r.motion : DEFAULTS.motion,
@@ -123,6 +143,8 @@ class PrefsStore {
     for (const [k, val] of Object.entries(vars)) root.style.setProperty(`--${k}`, val);
     root.style.setProperty("--font", FONTS[v.font].css);
     root.style.setProperty("--fs", `${v.fontSize}px`);
+    // Inti Rust perlu tahu apakah menutup jendela berarti keluar atau sembunyi.
+    void import("@tauri-apps/api/core").then(({ isTauri, invoke }) => (isTauri() ? invoke("set_keep_in_tray", { enabled: v.keepInTray }) : undefined)).catch(() => {});
     try {
       localStorage.setItem(
         BOOT_KEY,

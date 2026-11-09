@@ -1,6 +1,6 @@
 // Menu klik kanan dan pintasan keyboard: simpan teks terpilih, halaman, atau tautan ke Cognify.
 // Hasil ditandai di ikon ekstensi: ✓ tersimpan, ! gagal (detailnya di popup). Tujuan simpan mengikuti pilihan terakhir di popup.
-import { explain, getPrefs, isWeb, saveLink, savePage, saveSelection, selectedText, t } from "./cognify.js";
+import { explain, getPrefs, isWeb, saveLink, savePage, saveSelection, selectedText, sendAllPeriods, t } from "./cognify.js";
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
@@ -52,4 +52,23 @@ chrome.contextMenus.onClicked.addListener((info, tab) => run(tab, info.menuItemI
 chrome.commands.onCommand.addListener(async (command) => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   await run(tab, command === "save-selection" ? "selection" : command === "save-sticky" ? "sticky" : "page");
+});
+
+// Mengirim semua semester butuh beberapa detik; dikerjakan di sini supaya tetap jalan walau popup tertutup.
+chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
+  if (msg?.type !== "send-all") return false;
+  (async () => {
+    try {
+      const tab = await chrome.tabs.get(msg.tabId);
+      // Satu tombol: bila halaman punya dropdown periode, semua periode dikirim; bila tidak, tabel yang tampil saja.
+      const report = await sendAllPeriods(tab);
+      const partial = report.failed.length ? ` (${report.failed.join("; ")})` : "";
+      await flash(tab.id, !partial, `${report.summary}${partial}`);
+      reply({ ok: true, summary: report.summary, partial: partial || undefined });
+    } catch (e) {
+      await flash(msg.tabId, false, explain(e));
+      reply({ ok: false, error: explain(e) });
+    }
+  })();
+  return true;
 });

@@ -6,6 +6,7 @@ use tauri::State;
 use super::calendar::{self, Event, EventInput, Source, SourceInput};
 use super::proposals::{self, Proposal};
 use super::pages::{self, NewPage, Page, PageNode, PageUpdate, SearchHit, TrashItem};
+use super::versions::{self, Version, VersionInfo};
 use super::{Error, Store, settings};
 
 type Res<T> = Result<T, Error>;
@@ -41,6 +42,22 @@ pub fn page_tree(store: State<'_, Store>) -> Res<Vec<PageNode>> {
 #[tauri::command]
 pub fn page_update(store: State<'_, Store>, id: String, update: PageUpdate) -> Res<Page> {
     store.with(|c| pages::update(c, &id, update))
+}
+
+#[tauri::command]
+pub fn page_versions(store: State<'_, Store>, id: String) -> Res<Vec<VersionInfo>> {
+    store.with(|c| versions::list(c, &id))
+}
+
+#[tauri::command]
+pub fn page_version_get(store: State<'_, Store>, version_id: i64) -> Res<Version> {
+    store.with(|c| versions::get(c, version_id))
+}
+
+/// Simpan isi yang sedang ada di editor sebagai versi (dipakai sebelum memulihkan versi lama).
+#[tauri::command]
+pub fn page_version_add(store: State<'_, Store>, id: String, title: String, content: String) -> Res<()> {
+    store.with(|c| versions::add(c, &id, &title, &content))
 }
 
 #[tauri::command]

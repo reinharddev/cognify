@@ -11,6 +11,7 @@
   import { moodle, REMIND_CHOICES } from "$lib/stores/moodle.svelte";
   import { embedConsent } from "$lib/moodle/embedConsent.svelte";
   import Select from "$lib/ui/Select.svelte";
+  import { testReminder } from "$lib/calendar/reminders";
   import type { BridgeStatus, McpInfo } from "$lib/workspace/types";
 
   type Tab = "general" | "appearance" | "preferences" | "moodle" | "mcp" | "data" | "about";
@@ -26,6 +27,17 @@
   const PRESET_EN: Record<string, string> = { peach: "Peach", butter: "Butter", mint: "Mint", sky: "Sky", rose: "Rose", graphite: "Graphite" };
   const FONT_EN: Record<string, string> = { rounded: "Rounded", system: "System" };
   let tab = $state<Tab>("general");
+  let testResult = $state("");
+  async function runTest(delay: number) {
+    if (delay) testResult = tr(`Pindah ke app lain sekarang. Notifikasi dikirim ${delay} detik lagi.`, `Switch to another app now. The notification is sent in ${delay} seconds.`);
+    const r = await testReminder(delay);
+    testResult =
+      r === "ok" ? tr("Notifikasi sistem terkirim. Kalau tidak terlihat, cek Pengaturan Sistem > Notifikasi > Cognify.", "System notification sent. If you did not see it, check System Settings > Notifications > Cognify.")
+      : r === "skipped" ? tr("Tidak dikirim ke sistem karena jendela Cognify sedang dilihat (toast dan lonceng tetap bekerja), atau notifikasi sistem dimatikan.", "Not sent to the system because the Cognify window is in view (toast and bell still work), or system notifications are off.")
+      : r === "denied" ? tr("Izin notifikasi sistem ditolak. Aktifkan di Pengaturan Sistem > Notifikasi.", "System notification permission denied. Enable it in System Settings > Notifications.")
+      : r === "error" ? tr("Pengiriman notifikasi sistem gagal; lihat konsol.", "Sending the system notification failed; see the console.")
+      : tr("Di browser hanya toast dan lonceng yang bekerja.", "In the browser only the toast and bell work.");
+  }
   let mdUrl = $state("");
   let mdUser = $state("");
   let mdPass = $state("");
@@ -217,6 +229,35 @@
           <div><b>{tr("Pengingat acara", "Event reminders")}</b><small>{tr("Notifikasi desktop sebelum acara mulai.", "Desktop notification before an event starts.")}</small></div>
           <input type="checkbox" role="switch" checked={p.reminders} onchange={(e) => prefs.set({ reminders: e.currentTarget.checked })} />
         </label>
+        <label class="row">
+          <div><b>{tr("Pengingat pelajaran", "Lesson reminders")}</b><small>{tr("10 menit sebelum tiap pelajaran di jadwal sekolah (dikirim dari portal lewat ekstensi). Notch ikut membunyikannya.", "10 minutes before each lesson in the school timetable (sent from the portal through the extension). Notch rings it too.")}</small></div>
+          <input type="checkbox" role="switch" checked={p.lessonReminders} onchange={(e) => prefs.set({ lessonReminders: e.currentTarget.checked })} />
+        </label>
+        <h2>{tr("Notifikasi", "Notifications")}</h2>
+        <label class="row">
+          <div><b>{tr("Tetap berjalan saat jendela ditutup", "Keep running when the window is closed")}</b><small>{tr("Menutup jendela hanya menyembunyikannya ke menu bar atau tray, supaya pengingat tetap berbunyi. Keluar lewat menu tray atau Cmd/Ctrl+Q.", "Closing the window only hides it to the menu bar or tray, so reminders keep ringing. Quit from the tray menu or Cmd/Ctrl+Q.")}</small></div>
+          <input type="checkbox" role="switch" checked={p.keepInTray} onchange={(e) => prefs.set({ keepInTray: e.currentTarget.checked })} />
+        </label>
+        <p class="hint">{tr("Semua pengingat masuk ke lonceng di sidebar. Saat jendela Cognify sedang dilihat, yang muncul hanya toast kecil; notifikasi sistem hanya dikirim bila kamu sedang di aplikasi lain.", "All reminders land in the bell in the sidebar. While the Cognify window is in view you only get a small toast; system notifications are sent only when you are in another app.")}</p>
+        <label class="row">
+          <div><b>{tr("Notifikasi sistem", "System notifications")}</b><small>{tr("Kirim ke pusat notifikasi macOS atau Windows saat Cognify tidak sedang dilihat.", "Send to the macOS or Windows notification centre when Cognify is not in view.")}</small></div>
+          <input type="checkbox" role="switch" checked={p.notifyDesktop} onchange={(e) => prefs.set({ notifyDesktop: e.currentTarget.checked })} />
+        </label>
+        <label class="row">
+          <div><b>{tr("Bunyi", "Sound")}</b><small>{tr("Nada pendek saat notifikasi baru masuk.", "A short chime when a new notification arrives.")}</small></div>
+          <input type="checkbox" role="switch" checked={p.notifySound} onchange={(e) => prefs.set({ notifySound: e.currentTarget.checked })} />
+        </label>
+        <div class="row test">
+          <div>
+            <b>{tr("Tes pengingat", "Test reminder")}</b>
+            <small>{tr("Kirim satu notifikasi uji lewat jalur yang sama dengan pengingat asli. \"8 detik\" memberi waktu pindah ke app lain.", "Send one test through the same path as a real reminder. \"8 s\" gives you time to switch to another app.")}</small>
+            {#if testResult}<p class="test-result" role="status">{testResult}</p>{/if}
+          </div>
+          <span class="test-acts">
+            <button class="btn" onclick={() => runTest(0)}>{tr("Kirim tes", "Send test")}</button>
+            <button class="btn" onclick={() => runTest(8)}>{tr("Tes 8 detik", "Test in 8 s")}</button>
+          </span>
+        </div>
       {:else if tab === "moodle"}
         <h2>Moodle</h2>
         <p class="hint">{tr("Untuk kamu yang sekolah atau kuliahnya memakai Moodle. Bawaannya mati. Setelah dinyalakan dan masuk, tugas yang belum dikumpulkan muncul di Kalender, di Notch, dan bisa diingatkan sebelum tenggat.", "For schools and universities that use Moodle. Off by default. Once turned on and signed in, unsubmitted assignments appear in the Calendar and in Notch, with reminders before the deadline.")}</p>
@@ -336,6 +377,8 @@
   .chip i + i { background: var(--sw-s); }
   input[type="range"] { width: 180px; }
   .row.off { opacity: 0.55; }
+  .test-acts { display: flex; flex-wrap: wrap; gap: var(--space-2); justify-content: flex-end; flex: none; }
+  .test-result { margin: var(--space-2) 0 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-2); background: var(--info-soft); color: var(--info); font-size: 0.9em; }
   .where { margin-top: var(--space-3); }
   .code { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--space-3); margin: 0 0 var(--space-2); white-space: pre-wrap; word-break: break-all; font: 0.85em/1.5 var(--font-mono); user-select: all; }
   .hint.warn { color: var(--danger); }

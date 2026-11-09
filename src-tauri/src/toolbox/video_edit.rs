@@ -14,7 +14,7 @@ use std::{
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 use tokio::{process::Command, sync::oneshot};
 
 use crate::toolbox::{
@@ -424,6 +424,18 @@ async fn grab_frame(ffmpeg_bin: &Path, input: &Path, time: f64, width: u32) -> R
 pub async fn video_frame(app: AppHandle, path: String, time: f64, width: u32) -> Result<String, String> {
     let ffmpeg_bin = engine::resolve(&app, "ffmpeg").ok_or_else(|| MISSING_FFMPEG.to_string())?;
     grab_frame(&ffmpeg_bin, Path::new(&path), time, width).await
+}
+
+/// Lets the preview player read one video the user just picked or dropped.
+/// The asset protocol only serves `$APPDATA/images` by default, so each file is
+/// allowed individually and only after the user chose it.
+#[tauri::command]
+pub fn allow_media(app: AppHandle, path: String) -> Result<(), String> {
+    let p = Path::new(&path);
+    if !p.is_file() {
+        return Err("Berkas tidak ditemukan".into());
+    }
+    app.asset_protocol_scope().allow_file(p).map_err(|e| e.to_string())
 }
 
 #[cfg(test)]

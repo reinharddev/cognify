@@ -4,6 +4,8 @@
   import { Download, RefreshCw, Trash2, X } from "@lucide/svelte";
   import { ago } from "$lib/link/format";
   import { calendar } from "$lib/stores/calendar.svelte";
+  import { prefs } from "$lib/stores/prefs.svelte";
+  import { school } from "$lib/stores/school.svelte";
 
   let name = $state("");
   let url = $state("");
@@ -64,6 +66,20 @@
     if (await dialog.confirm(tr(`Hapus kalender "${label}" dari Cognify?`, `Remove calendar "${label}" from Cognify?`), { detail: tr("Acaranya di sumber asli tidak terhapus.", "Its events at the original source are not deleted."), danger: true })) await calendar.removeSource(id);
   }
 </script>
+
+{#if school.lessons.length}
+  <section class="sources lessons">
+    <h2>{tr("Jadwal sekolah", "School timetable")}</h2>
+    <ul>
+      <li>
+        <label class="on"><input type="checkbox" checked={prefs.value.showLessons} onchange={(e) => prefs.set({ showLessons: e.currentTarget.checked })} aria-label={tr("Tampilkan jadwal pelajaran", "Show the lesson timetable")} /></label>
+        <span class="n">{tr("Jadwal pelajaran", "Lesson timetable")}
+          <small>{school.schedulePeriod ?? ""} · {tr("tampil di Kalender, Beranda, dan Notch", "shown in the Calendar, Home and Notch")}</small>
+        </span>
+      </li>
+    </ul>
+  </section>
+{/if}
 
 <section class="sources">
   <h2>{tr("Kalender dari luar", "External calendars")}</h2>

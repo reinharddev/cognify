@@ -1,6 +1,6 @@
 [package]
 name = "cognify"
-version = "0.2.0"
+version = "0.3.0"
 description = "Cognify: manajemen catatan dan alat lokal, offline"
 authors = ["Reinhard"]
 edition = "2024"

@@ -32,7 +32,16 @@ const MAX_HEADERS: usize = 16 * 1024;
 const CODE_TTL: Duration = Duration::from_secs(300);
 const MAX_CODE_TRIES: u8 = 5;
 /// Versi protokol; ekstensi memakainya untuk tahu fitur apa yang ada.
-const PROTOCOL: u32 = 2;
+const PROTOCOL: u32 = 3;
+/// Kunci pengaturan tempat tabel terakhir dari portal sekolah ditaruh sampai dibaca UI ("Nilai").
+pub const SCHOOL_INBOX_KEY: &str = "school.inbox";
+/// Catatan kiriman tabel terakhir (waktu, jenis, periode, jumlah baris) supaya UI bisa menunjukkan bahwa kiriman sampai.
+pub const SCHOOL_LASTPOST_KEY: &str = "school.lastpost";
+/// Laporan lengkap pengiriman terakhir dari ekstensi (baris teks: periode yang berhasil dan yang gagal beserta alasannya).
+pub const SCHOOL_REPORT_KEY: &str = "school.report";
+const MAX_TABLE_BODY: usize = 2 * 1024 * 1024;
+/// Kiriman tabel yang boleh menunggu dibaca UI (satu per semester).
+const MAX_INBOX: usize = 24;
 
 struct Code {
     value: String,
@@ -705,11 +714,14 @@ fn handle(store: &Store, bridge: &Bridge, req: &Request) -> Outcome {
     let body: Value = if req.body.is_empty() { Value::Null } else { serde_json::from_slice(&req.body).unwrap_or(Value::Null) };
     match (req.method.as_str(), path) {
         ("POST", "/bridge/pair") => pair(store, bridge, &body),
-        (_, "/bridge/status" | "/bridge/targets" | "/bridge/clip" | "/bridge/pdf-info") if !authorized(store, req.token.as_deref()) => {
+        (_, "/bridge/status" | "/bridge/targets" | "/bridge/clip" | "/bridge/pdf-info" | "/bridge/table") if !authorized(store, req.token.as_deref()) => {
             Outcome::error(401, "unauthorized", "Ekstensi belum dipasangkan.")
         }
         ("GET", "/bridge/status") => Outcome::reply(200, json!({ "ok": true, "protocol": PROTOCOL })),
         ("GET", "/bridge/targets") => targets(store),
+        ("POST", "/bridge/table") if req.body.len() > MAX_TABLE_BODY => Outcome::error(413, "too_large", "Tabel terlalu besar."),
+        ("POST", "/bridge/table") if !allow_clip(bridge) => Outcome::error(429, "too_fast", "Terlalu cepat. Tunggu sebentar lalu coba lagi."),
+        ("POST", "/bridge/table") => table(store, &body),
         ("POST", "/bridge/clip") if req.body.len() > MAX_CLIP_BODY => Outcome::error(413, "too_large", "Isi terlalu besar."),
         ("POST", "/bridge/pdf-info") if !allow_clip(bridge) => Outcome::error(429, "too_fast", "Terlalu cepat. Tunggu sebentar lalu coba lagi."),
         ("POST", "/bridge/pdf-info") => pdf_info(&body),
@@ -719,6 +731,63 @@ fn handle(store: &Store, bridge: &Bridge, req: &Request) -> Outcome {
         ("POST", "/bridge/clip") => clip(store, &body),
         _ => Outcome::error(404, "not_found", "Tidak ada."),
     }
+}
+
+/// Tabel dari halaman portal sekolah yang dibuka pengguna. Hanya bentuk mentah (judul kolom dan sel teks) yang
+/// disimpan; UI yang menafsirkannya. Isi tidak dicatat di log.
+fn table(store: &Store, body: &Value) -> Outcome {
+    let tables = body.get("tables").and_then(Value::as_array);
+    let ok = tables.is_some_and(|t| {
+        !t.is_empty()
+            && t.len() <= 8
+            && t.iter().all(|x| {
+                x.get("headers").and_then(Value::as_array).is_some_and(|h| h.len() <= 30 && h.iter().all(Value::is_string))
+                    && x.get("rows").and_then(Value::as_array).is_some_and(|r| {
+                        r.len() <= 1000 && r.iter().all(|row| row.as_array().is_some_and(|c| c.len() <= 30 && c.iter().all(Value::is_string)))
+                    })
+            })
+    });
+    if !ok {
+        return Outcome::error(422, "invalid", "Bentuk tabel tidak dikenali.");
+    }
+    // Jenis kiriman: "exam" (tugas, ujian, nilai), "schedule" (jadwal pelajaran), atau "attendance" (kehadiran per hari); yang lain dianggap "exam".
+    let kind = match body.get("kind").and_then(Value::as_str) {
+        Some("schedule") => "schedule",
+        Some("attendance") => "attendance",
+        Some("report") => "report",
+        _ => "exam",
+    };
+    if kind == "report" {
+        // Laporan teks, bukan data sekolah: disimpan terpisah (maksimal 200 baris) untuk ditampilkan di halaman Nilai.
+        let lines: Vec<String> = tables
+            .and_then(|t| t.first())
+            .and_then(|t| t.get("rows"))
+            .and_then(Value::as_array)
+            .map(|rows| rows.iter().filter_map(|r| r.get(0).and_then(Value::as_str)).take(200).map(|l| l.chars().take(300).collect()).collect())
+            .unwrap_or_default();
+        let at = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_millis() as u64);
+        return match store.with(|c| settings::set(c, SCHOOL_REPORT_KEY, &json!({ "at": at, "lines": lines }).to_string())) {
+            Ok(()) => Outcome::reply(200, json!({ "ok": true, "report": lines.len() })),
+            Err(e) => err_from(e),
+        };
+    }
+    let payload = json!({ "url": body.get("url").and_then(Value::as_str).unwrap_or(""), "title": body.get("title").and_then(Value::as_str).unwrap_or(""), "period": body.get("period").and_then(Value::as_str).unwrap_or("").chars().take(120).collect::<String>(), "kind": kind, "tables": tables });
+    // Beberapa kiriman beruntun (mis. semua semester) menumpuk sampai UI membacanya; yang terlama dibuang bila lebih dari MAX_INBOX.
+    let saved = store.with(|c| {
+        let mut list: Vec<Value> = settings::get(c, SCHOOL_INBOX_KEY)?.and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default();
+        list.push(payload.clone());
+        if list.len() > MAX_INBOX {
+            list.drain(..list.len() - MAX_INBOX);
+        }
+        settings::set(c, SCHOOL_INBOX_KEY, &Value::Array(list).to_string())
+    });
+    if let Err(e) = saved {
+        return err_from(e);
+    }
+    let rows: usize = tables.map_or(0, |t| t.iter().map(|x| x.get("rows").and_then(Value::as_array).map_or(0, Vec::len)).sum());
+    let note = json!({ "at": std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_millis() as u64), "kind": kind, "period": payload["period"], "rows": rows });
+    let _ = store.with(|c| settings::set(c, SCHOOL_LASTPOST_KEY, &note.to_string()));
+    Outcome::reply(200, json!({ "ok": true, "tables": tables.map_or(0, Vec::len) }))
 }
 
 fn serve(app: &AppHandle, mut stream: TcpStream) {
@@ -735,6 +804,9 @@ fn serve(app: &AppHandle, mut stream: TcpStream) {
     write_reply(&mut stream, req.origin.as_deref(), req.private_network, &out.reply);
     if out.changed {
         let _ = app.emit(sticky::PAGES_CHANGED, ());
+    }
+    if req.method == "POST" && req.path.split('?').next() == Some("/bridge/table") && out.reply.status == 200 {
+        let _ = app.emit("school-imported", ());
     }
     if let Some((id, content)) = out.synced {
         // Jendela (catatan melayang atau halaman di jendela utama) yang sedang membuka halaman ini ikut berubah.
@@ -996,6 +1068,40 @@ mod tests {
         ] {
             assert_eq!(handle(&store, &bridge, &req("POST", "/bridge/clip", Some(&token), body)).reply.status, 422);
         }
+    }
+
+    #[test]
+    fn table_is_stored_for_the_ui_and_bad_shapes_are_refused() {
+        let (store, bridge) = setup();
+        let token = pair_now(&store, &bridge);
+        let good = json!({ "url": "https://x.sch.id/a", "title": "t", "period": "12.2 / First / 2026-2027", "tables": [{ "headers": ["Type"], "rows": [["Assignment"]] }] });
+        let out = handle(&store, &bridge, &req("POST", "/bridge/table", Some(&token), good));
+        assert_eq!(out.reply.status, 200);
+        let saved = store.with(|c| settings::get(c, SCHOOL_INBOX_KEY)).unwrap().unwrap();
+        assert!(saved.starts_with('[') && saved.contains("Assignment") && saved.contains("2026-2027"));
+        // Kiriman kedua menumpuk, tidak menimpa.
+        let second = json!({ "period": "11.2 / Second / 2025-2026", "tables": [{ "headers": ["Type"], "rows": [["Daily Exam"]] }] });
+        assert_eq!(handle(&store, &bridge, &req("POST", "/bridge/table", Some(&token), second)).reply.status, 200);
+        let both: Vec<Value> = serde_json::from_str(&store.with(|c| settings::get(c, SCHOOL_INBOX_KEY)).unwrap().unwrap()).unwrap();
+        assert_eq!(both.len(), 2);
+        let sched = json!({ "kind": "schedule", "period": "12.2 / First / 2026-2027", "tables": [{ "headers": ["Day"], "rows": [["Monday"]] }] });
+        assert_eq!(handle(&store, &bridge, &req("POST", "/bridge/table", Some(&token), sched)).reply.status, 200);
+        let all: Vec<Value> = serde_json::from_str(&store.with(|c| settings::get(c, SCHOOL_INBOX_KEY)).unwrap().unwrap()).unwrap();
+        assert_eq!(all.last().unwrap()["kind"], "schedule");
+        let att = json!({ "kind": "attendance", "tables": [{ "headers": ["Date", "Status"], "rows": [["2026-09-29", "Present"]] }] });
+        assert_eq!(handle(&store, &bridge, &req("POST", "/bridge/table", Some(&token), att)).reply.status, 200);
+        let last: Vec<Value> = serde_json::from_str(&store.with(|c| settings::get(c, SCHOOL_INBOX_KEY)).unwrap().unwrap()).unwrap();
+        assert_eq!(last.last().unwrap()["kind"], "attendance");
+        let rep = json!({ "kind": "report", "tables": [{ "headers": ["Line"], "rows": [["Nilai: OK"], ["Nilai 11.2: GAGAL"]] }] });
+        assert_eq!(handle(&store, &bridge, &req("POST", "/bridge/table", Some(&token), rep)).reply.status, 200);
+        let saved = store.with(|c| settings::get(c, SCHOOL_REPORT_KEY)).unwrap().unwrap();
+        assert!(saved.contains("Nilai 11.2: GAGAL"));
+        let inbox: Vec<Value> = serde_json::from_str(&store.with(|c| settings::get(c, SCHOOL_INBOX_KEY)).unwrap().unwrap()).unwrap();
+        assert!(inbox.iter().all(|b| b["kind"] != "report")); // laporan tidak masuk antrean data
+        let bad = json!({ "tables": [{ "headers": [1], "rows": [] }] });
+        assert_eq!(handle(&store, &bridge, &req("POST", "/bridge/table", Some(&token), bad)).reply.status, 422);
+        let none = handle(&store, &bridge, &req("POST", "/bridge/table", None, json!({}))).reply.status;
+        assert_eq!(none, 401);
     }
 
     #[test]

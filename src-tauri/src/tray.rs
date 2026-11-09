@@ -1,6 +1,6 @@
 //! Ikon menu bar / system tray (PRD #17): akses cepat tanpa membuka jendela dulu.
 //!
-//! Menu: Buka Cognify, Catatan cepat, Belajar, Pengingat, Pantau clipboard (centang),
+//! Menu: Buka Cognify, Catatan melayang, Pengingat (membuka Kalender), Pantau clipboard (centang),
 //! jumlah pengingat hari ini (diperbarui UI lewat `tray_update`), Keluar.
 //! Item navigasi memunculkan jendela lalu mengirim event `tray-navigate` berisi path halaman.
 //!
@@ -43,14 +43,13 @@ pub fn show_main(app: &AppHandle) {
 pub fn setup(app: &AppHandle) -> tauri::Result<()> {
     let open = MenuItem::with_id(app, "open", "Buka Cognify", true, None::<&str>)?;
     let note = MenuItem::with_id(app, "note", "Catatan melayang baru", true, None::<&str>)?;
-    let study = MenuItem::with_id(app, "study", "Belajar", true, None::<&str>)?;
     let reminders = MenuItem::with_id(app, "reminders", "Pengingat hari ini", true, None::<&str>)?;
     let clipboard = CheckMenuItem::with_id(app, "clipboard", "Pantau clipboard", true, false, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Keluar", true, None::<&str>)?;
     let sep = || PredefinedMenuItem::separator(app);
     let menu = Menu::with_items(
         app,
-        &[&open, &sep()?, &note, &study, &sep()?, &reminders, &clipboard, &sep()?, &quit],
+        &[&open, &sep()?, &note, &sep()?, &reminders, &clipboard, &sep()?, &quit],
     )?;
 
     let state = app.state::<Tray>();
@@ -72,8 +71,7 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
                     }
                     None
                 }
-                "study" => Some("/study"),
-                "reminders" => Some("/reminders"),
+                "reminders" => Some("/calendar"),
                 "clipboard" => {
                     let watcher = app.state::<ClipboardWatcher>();
                     let enabled = !watcher.enabled();

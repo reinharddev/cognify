@@ -1,6 +1,7 @@
-//! Hubungan ke Cognify Notch lewat berkas di folder bersama (lihat docs/NOTCH_LINK.md).
+//! Hubungan ke Cognify Notch lewat berkas di folder bersama (lihat docs/notch/protokol-tautan.md).
 //! Cognify menulis persetujuan (`link.json`) dan membaca data (`notch-data.json`); tanpa jaringan.
 
+pub mod inbox;
 pub mod model;
 
 use std::fs;
@@ -17,6 +18,7 @@ const FOLDER: &str = "Cognify Link";
 const CONSENT: &str = "link.json";
 const DATA: &str = "notch-data.json";
 const AGENDA: &str = "cognify-agenda.json";
+const HUB: &str = "cognify-hub.json";
 const MAX_AGENDA_BYTES: usize = 1024 * 1024;
 pub const CHANGED_EVENT: &str = "notch-data-changed";
 
@@ -140,12 +142,15 @@ pub fn set_share_clipboard(dir: &Path, on: bool) -> Result<(), String> {
 }
 
 pub fn disconnect(dir: &Path) -> Result<(), String> {
-    for name in [CONSENT, DATA, AGENDA, "link.json.tmp", "notch-data.json.tmp", "cognify-agenda.json.tmp"] {
+    for name in [CONSENT, DATA, AGENDA, HUB, "link.json.tmp", "notch-data.json.tmp", "cognify-agenda.json.tmp", "cognify-hub.json.tmp"] {
         match fs::remove_file(dir.join(name)) {
             Ok(()) => {}
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
             Err(e) => return Err(format!("Gagal memutuskan: {e}")),
         }
+    }
+    for sub in [inbox::INBOX, inbox::RESULTS] {
+        let _ = fs::remove_dir_all(dir.join(sub));
     }
     Ok(())
 }
@@ -159,6 +164,16 @@ pub fn write_agenda(dir: &Path, json: &str) -> Result<(), String> {
     }
     serde_json::from_str::<serde_json::Value>(json).map_err(|e| format!("Agenda bukan JSON: {e}"))?;
     write_atomic(dir, AGENDA, json.as_bytes())
+}
+
+/// Ringkasan untuk Notch (jadwal hari ini, dokumen sematan dan terbaru, Alat). Aturannya sama dengan agenda.
+pub fn write_hub(dir: &Path, json: &str) -> Result<(), String> {
+    read_consent(dir).ok_or("Belum terhubung ke Cognify Notch.")?;
+    if json.len() > MAX_AGENDA_BYTES {
+        return Err("Ringkasan terlalu besar.".into());
+    }
+    serde_json::from_str::<serde_json::Value>(json).map_err(|e| format!("Ringkasan bukan JSON: {e}"))?;
+    write_atomic(dir, HUB, json.as_bytes())
 }
 
 /// Data terbaru dari Notch, atau `None` bila belum terhubung atau belum ada berkas. Bagian clipboard
@@ -279,12 +294,81 @@ pub fn link_write_agenda(app: AppHandle, json: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn link_write_hub(app: AppHandle, json: String) -> Result<(), String> {
+    write_hub(&shared_dir(&app)?, &json)
+}
+
+#[tauri::command]
 pub fn link_data(app: AppHandle) -> Result<Option<NotchData>, String> {
     read_data(&shared_dir(&app)?)
 }
 
 fn mtime(path: &Path) -> Option<SystemTime> {
     fs::metadata(path).and_then(|m| m.modified()).ok()
+}
+
+/// Jalankan perintah dari Notch (lihat `inbox`). Hanya selagi terhubung.
+fn run_inbox(app: &AppHandle, dir: &Path) {
+    use crate::store::pages::{self, NewPage};
+    use crate::store::Store;
+    use crate::tray::{show_main, NAVIGATE_EVENT};
+    use inbox::Command;
+
+    if read_consent(dir).is_none() {
+        return;
+    }
+    inbox::sweep_results(dir);
+    for cmd in inbox::take(dir) {
+        let navigate = |path: String| {
+            show_main(app);
+            let _ = app.emit(NAVIGATE_EVENT, path);
+        };
+        let new_doc = |title: Option<String>, text: Option<String>| -> Option<String> {
+            let text = text.unwrap_or_default();
+            let store = app.state::<Store>();
+            let page = store
+                .with(|c| {
+                    pages::create(
+                        c,
+                        NewPage {
+                            parent_id: None,
+                            kind: "doc".into(),
+                            title: title.filter(|t| !t.trim().is_empty()).or_else(|| Some(inbox::title_of(&text)).filter(|t| !t.is_empty())),
+                            content: (!text.is_empty()).then(|| inbox::doc_json(&text)),
+                            plain_text: Some(text.clone()),
+                        },
+                    )
+                })
+                .ok()?;
+            let _ = app.emit(crate::sticky::PAGES_CHANGED, ());
+            Some(page.node.id)
+        };
+        match cmd {
+            Command::Open { path } => navigate(path),
+            Command::Tool { id } => navigate(format!("/tools/{id}")),
+            Command::NewDoc { title, text } => {
+                if let Some(id) = new_doc(title, text) {
+                    navigate(format!("/p/{id}"));
+                }
+            }
+            Command::NoteToDoc { text, title } => {
+                // Catatan cepat: dokumen dibuat diam-diam, tanpa mengganggu pekerjaan yang sedang terbuka.
+                new_doc(title, Some(text));
+            }
+            Command::NewSticky => {
+                let _ = crate::sticky::new_note(app);
+            }
+            Command::Search { id, q } => {
+                let store = app.state::<Store>();
+                let hits = store.with(|c| pages::search(c, &q, 8)).unwrap_or_default();
+                let json: Vec<serde_json::Value> = hits
+                    .into_iter()
+                    .map(|h| serde_json::json!({"id": h.id, "title": h.title, "kind": h.kind, "snippet": h.snippet}))
+                    .collect();
+                let _ = inbox::write_results(dir, &id, &q, &json);
+            }
+        }
+    }
 }
 
 /// Memberi tahu UI saat berkas persetujuan atau data berubah. Hanya dua panggilan `stat` per putaran.
@@ -294,7 +378,10 @@ pub fn start(app: AppHandle) {
         let mut last = (mtime(&dir.join(CONSENT)), mtime(&dir.join(DATA)));
         loop {
             let connected = dir.join(CONSENT).exists();
-            std::thread::sleep(Duration::from_secs(if connected { 2 } else { 5 }));
+            std::thread::sleep(Duration::from_secs(if connected { 1 } else { 5 }));
+            if connected {
+                run_inbox(&app, &dir);
+            }
             let now = (mtime(&dir.join(CONSENT)), mtime(&dir.join(DATA)));
             if now != last {
                 last = now;

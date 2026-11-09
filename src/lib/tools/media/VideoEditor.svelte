@@ -1,25 +1,40 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { invoke } from '@tauri-apps/api/core';
+	import { onMount, tick as nextTick, untrack } from 'svelte';
+	import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 	import { listen } from '@tauri-apps/api/event';
 	import { open } from '@tauri-apps/plugin-dialog';
 	import { revealItemInDir } from '@tauri-apps/plugin-opener';
-	import { ArrowDown, ArrowUp, Check, Music, Plus, TriangleAlert, X } from '@lucide/svelte';
-	import DropZone from '$lib/components/DropZone.svelte';
+	import { Check, Music, Pause, Play, Plus, Redo2, Scissors, Trash2, TriangleAlert, Undo2, X } from '@lucide/svelte';
 	import FolderPicker from '$lib/components/FolderPicker.svelte';
 	import Select from '$lib/ui/Select.svelte';
 	import { tr } from '$lib/i18n.svelte';
-	import { extOf, fileName, formatClock, listenFileDrop, parseTime } from '../util';
+	import { extOf, fileName, formatClock, listenFileDrop } from '../util';
+	import { canSplit, lengthOf, locate, moveItem, nearest, offsets, reorderIndex, rulerStep, splitAt, tileTimes, totalOf, trimEnd, trimStart, type Seg } from './timeline';
 
 	type Info = { durationSec: number; width: number; height: number; hasAudio: boolean };
-	type Clip = { id: string; path: string; name: string; info?: Info; error?: string; startText: string; endText: string; startThumb: string | null; endThumb: string | null };
+	type Clip = Seg & { path: string; name: string; info: Info };
+	type Thumb = { t: number; url: string };
 	type Result = { output: string; expectedSec: number; actualSec: number };
+	type Drag = { kind: 'scrub'; id?: undefined } | { kind: 'music'; id?: undefined; x0: number; orig: number; moved: boolean } | { kind: 'move'; id: string; x0: number; moved: boolean } | { kind: 'trim'; id: string; side: 'l' | 'r'; x0: number; orig: number; moved: boolean };
 
 	const VIDEO = ['mp4', 'mov', 'mkv', 'avi', 'webm', 'm4v', 'flv', 'wmv', 'mpg', 'mpeg'];
 	const AUDIO = ['mp3', 'm4a', 'wav', 'aac', 'flac', 'ogg', 'opus', 'wma'];
+	const TILE = 80;
+	const uid = () => crypto.randomUUID();
 
 	let clips = $state<Clip[]>([]);
-	let music = $state<{ path: string; name: string; duration: number | null; error?: string } | null>(null);
+	let failed = $state<string[]>([]);
+	let selId = $state<string | null>(null);
+	let playhead = $state(0);
+	let playing = $state(false);
+	let pps = $state(40);
+	let previewOk = $state(true);
+	let still = $state<string | null>(null);
+	let strips = $state<Record<string, Thumb[]>>({});
+	let past = $state<string[]>([]);
+	let future = $state<string[]>([]);
+
+	let music = $state<{ path: string; name: string; duration: number | null; error?: string; peaks: number[]; start: number } | null>(null);
 	let mode = $state<'replace' | 'mix'>('mix');
 	let musicVolume = $state(70);
 	let videoVolume = $state(100);
@@ -34,6 +49,17 @@
 	let error = $state<string | null>(null);
 	let jobId = '';
 
+	let vid: HTMLVideoElement | undefined;
+	let aud: HTMLAudioElement | undefined;
+	let lane = $state<HTMLDivElement>();
+	let scroller = $state<HTMLDivElement>();
+	let loadedPath = '';
+	let playIdx = 0;
+	let settling = false;
+	let drag: Drag | null = null;
+	let stillTimer: ReturnType<typeof setTimeout> | undefined;
+	const loadingStrips = new Set<string>();
+
 	const sizes = $derived<{ value: typeof size; label: string }[]>([
 		{ value: 'first', label: tr('Sama dengan klip pertama', 'Same as the first clip') },
 		{ value: 'p1080', label: '1080p' },
@@ -41,52 +67,214 @@
 		{ value: 'p480', label: '480p' }
 	]);
 
-	// ── Potongan tiap klip ──
-	const range = (c: Clip) => {
-		const start = parseTime(c.startText);
-		const endRaw = parseTime(c.endText);
-		if (start === null || endRaw === null || !c.info) return { ok: false as const, why: tr('Waktu tidak terbaca', 'Time not readable') };
-		const end = Math.min(endRaw, c.info.durationSec);
-		if (end - start < 0.1) return { ok: false as const, why: tr('Rentang terlalu pendek atau di luar durasi', 'Range too short or past the end') };
-		return { ok: true as const, start, end, length: end - start };
-	};
-	const total = $derived(clips.reduce((sum, c) => {
-		const r = range(c);
-		return sum + (r.ok ? r.length : 0);
-	}, 0));
-	const problem = $derived(clips.some((c) => !c.info || c.error || !range(c).ok));
-	const canExport = $derived(clips.length > 0 && !problem && !running && !music?.error);
+	const offs = $derived(offsets(clips));
+	const total = $derived(totalOf(clips));
+	const here = $derived(locate(clips, playhead));
+	const selected = $derived(clips.find((c) => c.id === selId) ?? null);
+	const splittable = $derived(!!here && canSplit(clips[here.index], here.local));
+	const laneW = $derived(total * pps + TILE);
+	const ticks = $derived.by(() => {
+		const step = rulerStep(pps);
+		return Array.from({ length: Math.floor(Math.max(laneW, 2400) / pps / step) + 1 }, (_, k) => k * step);
+	});
+	const canExport = $derived(clips.length > 0 && !running && !music?.error);
 
-	async function thumbs(c: Clip) {
-		const r = range(c);
-		if (!c.info || !r.ok) return;
-		const grab = (time: number) => invoke<string>('video_frame', { path: c.path, time, width: 192 }).catch(() => null);
-		const [a, b] = await Promise.all([grab(r.start), grab(Math.max(r.start, r.end - 0.1))]);
-		c.startThumb = a;
-		c.endThumb = b;
+	// ── Riwayat (urungkan / ulangi) ──
+	const snap = () => JSON.stringify({ clips, musicStart: music?.start ?? 0 });
+	function commit() {
+		past = [...past.slice(-99), snap()];
+		future = [];
+	}
+	function restore(json: string) {
+		stopPlay();
+		const saved = JSON.parse(json) as { clips: Clip[]; musicStart: number };
+		clips = saved.clips;
+		if (music) music.start = saved.musicStart;
+		if (selId && !clips.some((c) => c.id === selId)) selId = null;
+		playhead = Math.min(playhead, totalOf(clips));
+		result = null;
+		showFrame();
+	}
+	function undo() {
+		if (!past.length) return;
+		future = [...future, snap()];
+		const last = past[past.length - 1];
+		past = past.slice(0, -1);
+		restore(last);
+	}
+	function redo() {
+		if (!future.length) return;
+		past = [...past, snap()];
+		const next = future[future.length - 1];
+		future = future.slice(0, -1);
+		restore(next);
 	}
 
+	// ── Pratinjau ──
+	function ensureSrc(path: string) {
+		if (!vid || loadedPath === path) return false;
+		loadedPath = path;
+		previewOk = true;
+		vid.src = convertFileSrc(path);
+		return true;
+	}
+
+	function showFrame() {
+		const l = locate(clips, playhead);
+		if (!l) {
+			if (vid) vid.removeAttribute('src');
+			loadedPath = '';
+			still = null;
+			return;
+		}
+		const c = clips[l.index];
+		if (previewOk) {
+			if (!vid) return;
+			if (ensureSrc(c.path)) settle();
+			vid.currentTime = l.local;
+		} else {
+			clearTimeout(stillTimer);
+			stillTimer = setTimeout(() => {
+				invoke<string>('video_frame', { path: c.path, time: l.local, width: 640 }).then((u) => (still = u)).catch(() => (still = null));
+			}, 120);
+		}
+	}
+
+	/** Ignore the old clip's time until the player has finished jumping (with a timeout as a safety net). */
+	function settle() {
+		settling = true;
+		setTimeout(() => (settling = false), 500);
+	}
+
+	function stopPlay() {
+		playing = false;
+		vid?.pause();
+		aud?.pause();
+	}
+
+	function play() {
+		if (!previewOk || !clips.length || !vid) return;
+		if (playhead >= total - 0.05) playhead = 0;
+		const l = locate(clips, playhead);
+		if (!l) return;
+		playIdx = l.index;
+		if (ensureSrc(clips[l.index].path)) settle();
+		vid.currentTime = l.local;
+		void vid.play();
+		playing = true;
+		syncAudio(true);
+		requestAnimationFrame(tick);
+	}
+
+	function tick() {
+		if (!playing || !vid) return;
+		const c = clips[playIdx];
+		if (!c) return stopPlay();
+		const t = vid.currentTime;
+		if (!settling && (t >= c.end - 0.04 || vid.ended)) {
+			const n = clips[playIdx + 1];
+			if (!n) {
+				playhead = total;
+				return stopPlay();
+			}
+			playIdx++;
+			const contiguous = n.path === loadedPath && Math.abs(n.start - c.end) < 0.1;
+			if (!contiguous) {
+				if (ensureSrc(n.path) || Math.abs(vid.currentTime - n.start) > 0.01) settle();
+				vid.currentTime = n.start;
+			}
+			void vid.play();
+		} else if (!settling) {
+			playhead = offs[playIdx] + Math.max(0, t - c.start);
+		}
+		syncAudio();
+		if (scroller) {
+			const x = playhead * pps;
+			if (x > scroller.scrollLeft + scroller.clientWidth - TILE / 2) scroller.scrollLeft = x - TILE / 2;
+		}
+		requestAnimationFrame(tick);
+	}
+
+	/** Keeps the music preview in step with the playhead: silent before its start, looping or ending like the export. */
+	function syncAudio(force = false) {
+		if (!aud || !music || music.error || !music.duration) return;
+		const rel = playhead - music.start;
+		if (rel < 0 || (!loopMusic && rel >= music.duration)) {
+			if (!aud.paused) aud.pause();
+			return;
+		}
+		const want = loopMusic ? rel % music.duration : rel;
+		if (force || Math.abs(aud.currentTime - want) > 0.3) aud.currentTime = want;
+		if (playing && aud.paused) void aud.play();
+	}
+
+	function seek(t: number) {
+		stopPlay();
+		playhead = Math.min(Math.max(t, 0), total);
+		showFrame();
+	}
+
+	function togglePlay() {
+		if (playing) stopPlay();
+		else play();
+	}
+
+	// ── Bingkai kecil di garis waktu ──
+	async function loadStrip(path: string, duration: number) {
+		if (strips[path] || loadingStrips.has(path)) return;
+		loadingStrips.add(path);
+		const n = Math.min(Math.max(Math.round(duration / 3), 6), 24);
+		const times = Array.from({ length: n }, (_, i) => (duration * (i + 0.5)) / n);
+		const got: Thumb[] = [];
+		for (let i = 0; i < times.length; i += 3) {
+			const batch = await Promise.all(times.slice(i, i + 3).map((t) => invoke<string>('video_frame', { path, time: t, width: 160 }).then((url) => ({ t, url })).catch(() => null)));
+			for (const b of batch) if (b) got.push(b);
+			strips[path] = [...got];
+		}
+		loadingStrips.delete(path);
+	}
+
+	function tiles(c: Clip) {
+		const strip = strips[c.path];
+		if (!strip?.length) return [];
+		const tilePx = Math.max(TILE, (lengthOf(c) * pps) / 80);
+		const times = strip.map((s) => s.t);
+		return tileTimes(c, pps, tilePx).map((t, k) => ({ left: k * tilePx, width: tilePx, url: strip[nearest(times, t)].url }));
+	}
+
+	// ── Menyusun klip ──
 	async function addClip(path: string) {
-		const clip: Clip = { id: crypto.randomUUID(), path, name: fileName(path), startText: '0:00.0', endText: '', startThumb: null, endThumb: null };
-		clips.push(clip);
 		result = null;
 		error = null;
-		const mine = clips[clips.length - 1];
 		try {
-			mine.info = await invoke<Info>('video_info', { path });
-			mine.endText = formatClock(mine.info.durationSec);
-			void thumbs(mine);
+			const info = await invoke<Info>('video_info', { path });
+			await invoke('allow_media', { path });
+			const first = clips.length === 0;
+			commit();
+			const clip: Clip = { id: uid(), path, name: fileName(path), info, start: 0, end: info.durationSec, duration: info.durationSec };
+			clips = [...clips, clip];
+			selId = clip.id;
+			if (first) {
+				await nextTick(); // the timeline only exists once there is a clip, so its width is known now
+				pps = Math.min(Math.max(((scroller?.clientWidth ?? 600) - TILE) / info.durationSec, 8), 120);
+				playhead = 0;
+				showFrame();
+			}
+			void loadStrip(path, info.durationSec);
 		} catch (e) {
-			mine.error = String(e);
+			failed = [...failed, `${fileName(path)}: ${e}`];
 		}
 	}
 
 	async function setMusic(path: string) {
 		result = null;
-		music = { path, name: fileName(path), duration: null };
+		music = { path, name: fileName(path), duration: null, peaks: [], start: 0 };
 		try {
 			const duration = await invoke<number>('audio_info', { path });
+			await invoke('allow_media', { path });
 			if (music?.path === path) music.duration = duration;
+			const peaks = await invoke<number[]>('audio_peaks', { path, buckets: 600 }).catch(() => []);
+			if (music?.path === path) music.peaks = peaks;
 		} catch (e) {
 			if (music?.path === path) music.error = String(e);
 		}
@@ -110,16 +298,131 @@
 		if (typeof picked === 'string') void setMusic(picked);
 	}
 
-	function move(i: number, by: -1 | 1) {
-		const j = i + by;
-		if (j < 0 || j >= clips.length) return;
-		[clips[i], clips[j]] = [clips[j], clips[i]];
+	function split() {
+		stopPlay();
+		const l = locate(clips, playhead);
+		if (!l || !canSplit(clips[l.index], l.local)) return;
+		const out = splitAt(clips, l.index, l.local, [uid(), uid()]);
+		if (!out) return;
+		commit();
+		clips = out;
+		selId = out[l.index + 1].id;
 		result = null;
 	}
 
-	function remove(id: string) {
-		clips = clips.filter((c) => c.id !== id);
+	function removeSelected() {
+		if (!selId) return;
+		stopPlay();
+		commit();
+		clips = clips.filter((c) => c.id !== selId);
+		selId = null;
+		playhead = Math.min(playhead, totalOf(clips));
 		result = null;
+		showFrame();
+	}
+
+	// ── Menyeret di garis waktu ──
+	const xOf = (e: PointerEvent) => e.clientX - (lane?.getBoundingClientRect().left ?? 0);
+
+	function onDown(e: PointerEvent) {
+		if (running || !lane || e.button !== 0) return;
+		const target = e.target as HTMLElement;
+		if (target.closest('button')) return;
+		const handle = target.closest<HTMLElement>('[data-handle]');
+		const block = target.closest<HTMLElement>('[data-clip]');
+		const x = xOf(e);
+		lane.focus();
+		lane.setPointerCapture(e.pointerId);
+		if (music && target.closest('[data-music]')) {
+			selId = null;
+			drag = { kind: 'music', x0: x, orig: music.start, moved: false };
+			return;
+		}
+		const c = block ? clips.find((k) => k.id === block.dataset.clip) : undefined;
+		if (c && handle) {
+			selId = c.id;
+			const side = handle.dataset.handle as 'l' | 'r';
+			drag = { kind: 'trim', id: c.id, side, x0: x, orig: side === 'l' ? c.start : c.end, moved: false };
+		} else if (c) {
+			selId = c.id;
+			drag = { kind: 'move', id: c.id, x0: x, moved: false };
+			seek(x / pps);
+		} else {
+			selId = null;
+			drag = { kind: 'scrub' };
+			seek(x / pps);
+		}
+	}
+
+	function onMove(e: PointerEvent) {
+		if (!drag) return;
+		const x = xOf(e);
+		if (drag.kind === 'scrub') return seek(x / pps);
+		if (drag.kind === 'music') {
+			if (!music) return;
+			if (!drag.moved) {
+				if (Math.abs(x - drag.x0) < 4) return;
+				drag.moved = true;
+				commit();
+			}
+			result = null;
+			music.start = Math.min(Math.max(drag.orig + (x - drag.x0) / pps, 0), Math.max(total - 0.1, 0));
+			if (playing) syncAudio(true);
+			return;
+		}
+		const i = clips.findIndex((c) => c.id === drag!.id);
+		if (i < 0) return;
+		if (!drag.moved) {
+			if (Math.abs(x - drag.x0) < 4) return;
+			drag.moved = true;
+			stopPlay();
+			commit();
+		}
+		result = null;
+		if (drag.kind === 'move') {
+			const to = reorderIndex(clips.map((c) => lengthOf(c) * pps), i, x);
+			if (to !== i) clips = moveItem(clips, i, to);
+		} else {
+			const c = clips[i];
+			const delta = (x - drag.x0) / pps;
+			if (drag.side === 'l') {
+				clips[i].start = trimStart(c, drag.orig + delta);
+				playhead = offs[i];
+			} else {
+				clips[i].end = trimEnd(c, drag.orig + delta);
+				playhead = Math.max(offs[i], offs[i] + lengthOf(clips[i]) - 0.05);
+			}
+			showFrame();
+		}
+	}
+
+	function onUp() {
+		drag = null;
+	}
+
+	function onKey(e: KeyboardEvent) {
+		const el = e.target as HTMLElement;
+		if (el.closest('input, textarea, select, [contenteditable="true"]')) return;
+		const mod = e.metaKey || e.ctrlKey;
+		if (mod && e.key.toLowerCase() === 'z') {
+			e.preventDefault();
+			if (e.shiftKey) redo();
+			else undo();
+		} else if (mod || e.altKey) {
+			return;
+		} else if (e.key === ' ' && !el.closest('button')) {
+			e.preventDefault();
+			togglePlay();
+		} else if (e.key.toLowerCase() === 's') {
+			e.preventDefault();
+			split();
+		} else if (e.key === 'Delete' || e.key === 'Backspace') {
+			e.preventDefault();
+			removeSelected();
+		} else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+			e.preventDefault();
+			seek(playhead + (e.key === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 1 : 0.1));
+		}
 	}
 
 	async function run() {
@@ -127,16 +430,14 @@
 		percent = 0;
 		result = null;
 		error = null;
-		jobId = crypto.randomUUID();
+		stopPlay();
+		jobId = uid();
 		try {
 			result = await invoke<Result>('export_video_project', {
 				req: {
 					jobId,
-					clips: clips.map((c) => {
-						const r = range(c);
-						return { path: c.path, start: r.ok ? r.start : 0, end: r.ok ? r.end : 0 };
-					}),
-					music: music && !music.error ? { path: music.path, mode, musicVolume: musicVolume / 100, videoVolume: videoVolume / 100, loopMusic, fadeOut } : null,
+					clips: clips.map((c) => ({ path: c.path, start: c.start, end: c.end })),
+					music: music && !music.error ? { path: music.path, mode, musicVolume: musicVolume / 100, videoVolume: videoVolume / 100, loopMusic, fadeOut, musicStart: music.start } : null,
 					size,
 					outDir
 				}
@@ -149,58 +450,140 @@
 
 	const cancel = () => invoke('cancel_job', { jobId });
 
+	$effect(() => {
+		if (vid) vid.volume = !music || music.error || mode === 'mix' ? Math.min(music ? videoVolume / 100 : 1, 1) : 0;
+		if (aud) {
+			aud.volume = Math.min(musicVolume / 100, 1);
+			aud.loop = loopMusic;
+		}
+	});
+
+	/** Waveform path for the visible part of the music bar (repeats when the music loops). */
+	function wave(width: number): string {
+		if (!music?.peaks.length || !music.duration || width < 4) return '';
+		const n = Math.min(Math.floor(width / 3), 1200);
+		const secs = width / pps;
+		let d = '';
+		for (let i = 0; i < n; i++) {
+			const t = (i / n) * secs;
+			const peak = music.peaks[Math.min(Math.floor(((t % music.duration) / music.duration) * music.peaks.length), music.peaks.length - 1)];
+			const h = Math.max(peak * 100, 4);
+			d += `M${i * 3 + 1.5} ${50 - h / 2}V${50 + h / 2}`;
+		}
+		return d;
+	}
+
+	const musicWidth = $derived(music && !music.error ? Math.max(0, (loopMusic || music.duration === null ? total - music.start : Math.min(music.duration, total - music.start)) * pps) : 0);
+
 	onMount(() => {
 		const progress = listen<{ jobId: string; percent: number }>('job-progress', (e) => {
 			if (e.payload.jobId === jobId) percent = e.payload.percent;
 		});
 		const stopDrop = listenFileDrop(addPaths, (h) => (dragging = h));
+		window.addEventListener('keydown', onKey);
 		return () => {
 			progress.then((fn) => fn());
 			stopDrop();
+			window.removeEventListener('keydown', onKey);
+			clearTimeout(stillTimer);
+			untrack(stopPlay);
 		};
 	});
 </script>
 
-<DropZone {dragging} label={tr('Seret video (dan musik) ke sini, atau', 'Drop videos (and music) here, or')} buttonLabel={tr('Pilih video', 'Choose videos')} onchoose={pickVideos} />
-<p class="hint">{tr('Susun beberapa klip menjadi satu video: potong tiap klip, tambahkan musik dari MP3, lalu ekspor sebagai MP4. Klip pertama menentukan ukuran gambar; klip lain diberi bingkai hitam bila bentuknya berbeda.', 'Put several clips together into one video: trim each clip, add music from an MP3, then export as MP4. The first clip sets the picture size; other clips get black bars if their shape differs.')}</p>
+{#each failed as f, i (f)}
+	<div class="bad fail"><TriangleAlert size={14} /> <span>{f}</span> <button class="icon-btn" aria-label={tr('Tutup', 'Dismiss')} onclick={() => (failed = failed.filter((_, k) => k !== i))}><X size={14} /></button></div>
+{/each}
 
-{#if clips.length}
-	<h3>{tr('Klip', 'Clips')} <span class="dim">· {tr(`${clips.length} klip, total ${formatClock(total)}`, `${clips.length} clips, ${formatClock(total)} in total`)}</span></h3>
-	<ol class="clips">
-		{#each clips as c, i (c.id)}
-			{@const r = range(c)}
-			<li>
-				<div class="thumbs">
-					{#if c.startThumb}<img src={c.startThumb} alt={tr('Awal potongan', 'Cut start')} />{:else}<span class="ph"></span>{/if}
-					{#if c.endThumb}<img src={c.endThumb} alt={tr('Akhir potongan', 'Cut end')} />{:else}<span class="ph"></span>{/if}
-				</div>
-				<div class="body">
-					<div class="top">
-						<span class="num">{i + 1}</span>
-						<span class="name" title={c.path}>{c.name}</span>
-						{#if c.info}<span class="dim">{formatClock(c.info.durationSec)} · {c.info.width}×{c.info.height}{c.info.hasAudio ? '' : ` · ${tr('tanpa suara', 'no sound')}`}</span>{/if}
-					</div>
-					{#if c.error}
-						<span class="bad"><TriangleAlert size={14} /> {c.error}</span>
-					{:else if !c.info}
-						<span class="dim">{tr('Membaca video…', 'Reading the video…')}</span>
-					{:else}
-						<div class="times">
-							<label>{tr('Mulai', 'Start')} <input type="text" bind:value={c.startText} disabled={running} onchange={() => thumbs(c)} aria-label={tr('Mulai potongan', 'Cut start')} /></label>
-							<label>{tr('Selesai', 'End')} <input type="text" bind:value={c.endText} disabled={running} onchange={() => thumbs(c)} aria-label={tr('Akhir potongan', 'Cut end')} /></label>
-							{#if r.ok}<span class="dim">{tr('Dipakai', 'Used')}: <strong>{formatClock(r.length)}</strong></span>{:else}<span class="bad">{r.why}</span>{/if}
+<audio bind:this={aud} src={music && !music.error ? convertFileSrc(music.path) : undefined} preload="auto"></audio>
+
+<div class="stage" class:empty={!clips.length} class:drop={dragging}>
+	<!-- svelte-ignore a11y_media_has_caption -->
+	<video
+		bind:this={vid}
+		class:hidden={!previewOk || !clips.length}
+		playsinline
+		preload="auto"
+		onerror={() => {
+			if (!loadedPath) return;
+			previewOk = false;
+			stopPlay();
+			showFrame();
+		}}
+		onseeked={() => (settling = false)}
+	></video>
+	{#if clips.length && !previewOk}
+		{#if still}<img src={still} alt={tr('Bingkai di kepala putar', 'Frame at the playhead')} />{/if}
+		<p class="note">{tr('Format ini tidak bisa diputar di pratinjau, tetapi bingkainya tetap tampil dan ekspor tetap berjalan.', 'This format cannot play in the preview, but frames still show and export still works.')}</p>
+	{:else if !clips.length}
+		<p class="note">{tr('Klik garis waktu di bawah untuk menambah video, atau seret video ke sini.', 'Click the timeline below to add a video, or drop one here.')}</p>
+	{/if}
+</div>
+
+<div class="bar-tools">
+		<button class="icon-btn big" aria-label={playing ? tr('Jeda', 'Pause') : tr('Putar', 'Play')} disabled={!previewOk || !clips.length || running} onclick={togglePlay}>
+			{#if playing}<Pause size={18} />{:else}<Play size={18} />{/if}
+		</button>
+		<span class="clock">{formatClock(playhead)} <span class="dim">/ {formatClock(total)}</span></span>
+		<span class="sep"></span>
+		<button class="btn" disabled={!splittable || running} onclick={split} title={tr('Belah di kepala putar (S)', 'Split at the playhead (S)')}><Scissors size={14} /> {tr('Belah', 'Split')}</button>
+		<button class="btn" disabled={!selId || running} onclick={removeSelected} title={tr('Hapus klip terpilih (Delete)', 'Delete the selected clip (Delete)')}><Trash2 size={14} /> {tr('Hapus', 'Delete')}</button>
+		<button class="icon-btn" aria-label={tr('Urungkan', 'Undo')} disabled={!past.length || running} onclick={undo}><Undo2 size={16} /></button>
+		<button class="icon-btn" aria-label={tr('Ulangi', 'Redo')} disabled={!future.length || running} onclick={redo}><Redo2 size={16} /></button>
+		<label class="zoom"><span class="dim">{tr('Zoom', 'Zoom')}</span> <input type="range" min="8" max="200" step="2" bind:value={pps} aria-label={tr('Zoom garis waktu', 'Timeline zoom')} /></label>
+	</div>
+
+	<div class="scroller" bind:this={scroller}>
+		<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+		<div
+			class="lane"
+			bind:this={lane}
+			style:width="{laneW}px"
+			role="application"
+			tabindex="0"
+			aria-label={tr('Garis waktu video', 'Video timeline')}
+			onpointerdown={onDown}
+			onpointermove={onMove}
+			onpointerup={onUp}
+			onpointercancel={onUp}
+		>
+			<div class="ruler">
+				{#each ticks as t (t)}
+					<span class="tick" style:left="{t * pps}px">{formatClock(t).replace(/\.0$/, '')}</span>
+				{/each}
+			</div>
+			<div class="track">
+				{#if !clips.length}
+					<button class="add-slot" onclick={pickVideos} disabled={running}><Plus size={16} /> {tr('Klik untuk menambah video', 'Click to add a video')}</button>
+				{/if}
+				{#each clips as c, i (c.id)}
+					<div class="clip" class:sel={c.id === selId} data-clip={c.id} style:left="{offs[i] * pps}px" style:width="{lengthOf(c) * pps}px" title={c.name}>
+						<div class="tiles">
+							{#each tiles(c) as t (t.left)}<img src={t.url} alt="" draggable="false" style:left="{t.left}px" style:width="{t.width}px" />{/each}
 						</div>
-					{/if}
+						<span class="label">{c.name} · {formatClock(lengthOf(c))}</span>
+						<span class="handle l" data-handle="l"></span>
+						<span class="handle r" data-handle="r"></span>
+					</div>
+				{/each}
+			</div>
+			{#if !music}
+				<div class="track music-track"><button class="add-slot" onclick={pickMusic} disabled={running}><Music size={14} /> {tr('Klik untuk menambah musik', 'Click to add music')}</button></div>
+			{:else if !music.error}
+				<div class="track music-track">
+					<div class="mbar" data-music style:left="{music.start * pps}px" style:width="{musicWidth}px" title={music.name}>
+						<svg class="wave" viewBox="0 0 {Math.max(Math.min(Math.floor(musicWidth / 3), 1200) * 3, 1)} 100" preserveAspectRatio="none" aria-hidden="true"><path d={wave(musicWidth)} /></svg>
+						<span class="mname"><Music size={13} /> {music.name}</span>
+					</div>
 				</div>
-				<div class="acts">
-					<button class="icon-btn" aria-label={tr('Naikkan', 'Move up')} disabled={i === 0 || running} onclick={() => move(i, -1)}><ArrowUp size={15} /></button>
-					<button class="icon-btn" aria-label={tr('Turunkan', 'Move down')} disabled={i === clips.length - 1 || running} onclick={() => move(i, 1)}><ArrowDown size={15} /></button>
-					<button class="icon-btn" aria-label={tr('Hapus klip', 'Remove clip')} disabled={running} onclick={() => remove(c.id)}><X size={15} /></button>
-				</div>
-			</li>
-		{/each}
-	</ol>
-	<div class="row"><button class="btn" onclick={pickVideos} disabled={running}><Plus size={14} /> {tr('Tambah klip', 'Add a clip')}</button></div>
+			{/if}
+			<div class="playhead" style:left="{playhead * pps}px"></div>
+		</div>
+	</div>
+	<div class="row">
+		<button class="btn" onclick={pickVideos} disabled={running}><Plus size={14} /> {tr('Tambah klip', 'Add a clip')}</button>
+		{#if selected}<span class="dim">{selected.name}: {formatClock(selected.start)} {tr('sampai', 'to')} {formatClock(selected.end)} ({formatClock(lengthOf(selected))}{selected.info.hasAudio ? '' : `, ${tr('tanpa suara', 'no sound')}`})</span>{/if}
+	</div>
 
 	<h3>{tr('Musik', 'Music')}</h3>
 	{#if !music}
@@ -248,13 +631,11 @@
 		{:else}
 			<button class="btn primary" onclick={run} disabled={!canExport}>{tr('Ekspor MP4', 'Export MP4')}</button>
 		{/if}
-		{#if problem && !running}<span class="bad">{tr('Periksa waktu potong di klip yang bertanda merah.', 'Check the cut times on the clips marked in red.')}</span>{/if}
 	</div>
 	{#if running}
 		<div class="bar" class:indeterminate={percent < 0}><div style:width="{Math.max(percent, 0)}%"></div></div>
 		<p class="dim">{percent >= 0 ? `${Math.round(percent)}%` : ''} {tr('Memproses video…', 'Processing the video…')}</p>
 	{/if}
-{/if}
 
 {#if result}
 	<div class="result">
@@ -266,24 +647,51 @@
 {#if error}<pre class="error">{error}</pre>{/if}
 
 <style>
-	.hint { margin: var(--space-3) 0 0; color: var(--text-dim); font-size: 13px; max-width: 680px; }
 	h3 { margin: var(--space-5) 0 var(--space-2); font-size: 1em; }
 	.dim { color: var(--text-dim); font-size: 13px; font-weight: 400; }
 	.bad { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--danger); font-size: 13px; }
-	.clips { list-style: none; margin: 0 0 var(--space-3); padding: 0; display: grid; gap: var(--space-3); }
-	.clips li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--space-3); align-items: center; padding: var(--space-3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-3); }
-	.thumbs { display: flex; gap: var(--space-1); }
-	.thumbs img, .ph { width: 96px; height: 54px; object-fit: cover; border-radius: var(--radius-1); background: var(--surface-2); display: block; }
-	.body { min-width: 0; display: grid; gap: var(--space-2); }
-	.top { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
-	.num { width: 20px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+	.fail { margin-top: var(--space-2); display: flex; }
+	.stage { position: relative; display: grid; place-items: center; height: 300px; margin-top: var(--space-4); background: var(--surface-2); border-radius: var(--radius-3); overflow: hidden; }
+	.stage video, .stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+	.stage video.hidden { visibility: hidden; }
+	.stage.drop { outline: 2px dashed var(--accent-strong); outline-offset: -2px; }
+	.add-slot { display: flex; align-items: center; justify-content: center; gap: var(--space-2); position: absolute; inset: 0 var(--space-3); border: 1px dashed var(--border-strong); border-radius: var(--radius-2); background: var(--surface-2); color: var(--text-muted); cursor: pointer; white-space: nowrap; }
+	.add-slot:hover:not(:disabled) { color: var(--text); border-color: var(--accent-strong); }
+	.note { position: relative; margin: 0; padding: var(--space-2) var(--space-3); color: var(--text-dim); font-size: 13px; text-align: center; max-width: 440px; }
+	.stage:not(.empty) .note { align-self: end; margin-bottom: var(--space-2); background: color-mix(in srgb, var(--surface) 85%, transparent); color: var(--text); border-radius: var(--radius-2); }
+	.bar-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: var(--space-3) 0; }
+	.clock { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 128px; }
+	.sep { width: 1px; height: 20px; background: var(--border); margin: 0 var(--space-1); }
+	.zoom { display: inline-flex; align-items: center; gap: var(--space-2); margin-left: auto; }
+	.zoom input { width: 120px; }
+	.scroller { overflow-x: auto; overflow-y: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-3); }
+	.lane { position: relative; min-width: 100%; box-sizing: border-box; padding-bottom: var(--space-3); min-height: 136px; touch-action: none; user-select: none; -webkit-user-select: none; outline: none; cursor: default; }
+	.lane:focus-visible { box-shadow: inset 0 0 0 2px var(--accent-strong); }
+	.ruler { position: relative; height: 24px; border-bottom: 1px solid var(--border); cursor: pointer; }
+	.tick { position: absolute; top: 0; height: 100%; padding-left: var(--space-1); border-left: 1px solid var(--border-strong); color: var(--text-dim); font-size: 11px; line-height: 24px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+	.track { position: relative; height: 64px; margin-top: var(--space-2); }
+	.clip { position: absolute; top: 0; height: 100%; box-sizing: border-box; overflow: hidden; background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--radius-2); cursor: grab; }
+	.clip.sel { border-color: var(--accent-strong); box-shadow: 0 0 0 2px var(--accent-strong); z-index: 1; }
+	.tiles { position: absolute; inset: 0; }
+	.tiles img { position: absolute; top: 0; height: 100%; object-fit: cover; pointer-events: none; }
+	.label { position: absolute; left: var(--space-2); bottom: var(--space-1); max-width: calc(100% - var(--space-4)); padding: 0 var(--space-1); background: color-mix(in srgb, var(--surface) 85%, transparent); color: var(--text); border-radius: var(--radius-1); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+	.handle { position: absolute; top: 0; bottom: 0; width: 10px; background: var(--accent-strong); opacity: 0; cursor: col-resize; }
+	.handle.l { left: 0; }
+	.handle.r { right: 0; }
+	.clip:hover .handle, .clip.sel .handle { opacity: 0.9; }
+	.music-track { height: 28px; }
+	.mbar { position: absolute; top: 0; height: 100%; box-sizing: border-box; overflow: hidden; background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--radius-2); font-size: 12px; white-space: nowrap; cursor: grab; }
+	.wave { position: absolute; inset: 0; width: 100%; height: 100%; }
+	.wave path { stroke: var(--accent-strong); stroke-width: 1.4; fill: none; opacity: 0.7; }
+	.mname { position: relative; display: inline-flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-2); pointer-events: none; }
+	.playhead { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--danger); pointer-events: none; z-index: 2; }
+	.playhead::before { content: ''; position: absolute; top: 0; left: -4px; width: 10px; height: 10px; background: var(--danger); border-radius: var(--radius-1); }
 	.name { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 600; }
-	.times { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
-	.times label { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text-muted); }
-	.times input { width: 84px; padding: var(--space-1) var(--space-2); border: 1px solid var(--border-strong); border-radius: var(--radius-2); background: var(--surface); color: var(--text); font: inherit; font-variant-numeric: tabular-nums; }
-	.acts { display: flex; flex-direction: column; gap: var(--space-0); }
+	.top { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
 	.icon-btn { display: inline-grid; place-items: center; padding: var(--space-1); border: 0; border-radius: var(--radius-1); background: none; color: var(--text-dim); }
+	.icon-btn.big { padding: var(--space-2); background: var(--surface-2); color: var(--text); border-radius: var(--radius-pill); }
 	.icon-btn:hover:not(:disabled) { background: var(--surface-2); color: var(--text); }
+	.icon-btn:disabled { opacity: 0.4; }
 	.row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-2); }
 	.music { display: grid; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-3); }
 	.seg { display: flex; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-1); width: fit-content; background: var(--surface-2); border-radius: var(--radius-3); }

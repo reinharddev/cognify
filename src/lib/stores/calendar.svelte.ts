@@ -8,6 +8,9 @@ import { parseIcs } from "$lib/calendar/ics";
 import type { CalEvent, CalSource, EventInput, Occurrence, SourceInput } from "$lib/calendar/types";
 import { notchLink } from "./link.svelte";
 import { moodle } from "./moodle.svelte";
+import { lessonsOn, lessonTimes } from "$lib/school/schedule";
+import { prefs } from "./prefs.svelte";
+import { school, SCHOOL_REMIND_MIN } from "./school.svelte";
 
 const REFRESH_MS = 30 * 60_000;
 
@@ -128,6 +131,34 @@ class CalendarStore {
           calendar: it.course ? `Moodle, ${it.course}` : "Moodle", color: null, eventId: null, meeting: null,
           notes: it.url ?? "", remindMin: moodle.remindMin,
         });
+      }
+    }
+    // Tugas dan ujian dari portal sekolah yang belum dinilai (yang sudah bernilai dianggap selesai).
+    for (const it of school.items) {
+      if (it.score !== null || it.due === null || it.due < from || it.due > to) continue;
+      out.push({
+        key: `school:${it.key}`, title: `${it.subject}: ${it.description || it.kind}`, start: it.due, end: null, allDay: false, origin: "school",
+        calendar: `${tr("Sekolah", "School")}, ${it.kind}`, color: null, eventId: null, meeting: null, notes: "", remindMin: SCHOOL_REMIND_MIN,
+      });
+    }
+    // Jadwal pelajaran: hanya periode yang berlaku sekarang, mulai awal pekan ini sampai 8 pekan ke depan (portal tidak
+    // memberi tanggal libur, jadi masa lalu dan jauh ke depan tidak ditebak).
+    if (school.schedulePeriod && prefs.value.showLessons) {
+      const weekStart = new Date();
+      weekStart.setHours(0, 0, 0, 0);
+      weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+      const lo = Math.max(from, weekStart.getTime());
+      const hi = Math.min(to, weekStart.getTime() + 8 * 7 * 86_400_000);
+      for (let t = new Date(lo); t.getTime() <= hi; t = new Date(t.getFullYear(), t.getMonth(), t.getDate() + 1)) {
+        for (const l of lessonsOn(school.lessons, school.schedulePeriod, t)) {
+          const { start, end } = lessonTimes(l, t);
+          if (end < from || start > to) continue;
+          out.push({
+            key: `lesson:${l.key}:${start}`, title: l.subject, start, end, allDay: false, origin: "lesson",
+            calendar: l.room ? `${tr("Pelajaran", "Lesson")}, ${l.room}` : tr("Pelajaran", "Lesson"), color: "var(--cat-4)", eventId: null, meeting: null,
+            notes: l.teachers.join(", "), remindMin: prefs.value.lessonReminders ? 10 : null,
+          });
+        }
       }
     }
     return out.sort((x, y) => x.start - y.start || x.title.localeCompare(y.title));

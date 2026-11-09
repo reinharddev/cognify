@@ -8,6 +8,7 @@
   import { clock as clockOf, startOfDay, addDays } from "$lib/calendar/dates";
   import { dueLabel } from "$lib/link/format";
   import { calendar } from "$lib/stores/calendar.svelte";
+  import LessonsToday from "$lib/components/LessonsToday.svelte";
   import { plainText as tablePlain, prTemplate, scheduleTemplate, serialize as tableJson, type TableData } from "$lib/table/model";
   import { blankTemplate, plainTextOf, templateList, type Template } from "$lib/workspace/templates";
 
@@ -45,6 +46,7 @@
     const now = Date.now();
     return calendar
       .occurrences(from, addDays(from, 1) - 1)
+      .filter((o) => o.origin !== "lesson") // pelajaran punya kartu sendiri di atas
       .filter((o) => o.allDay || (o.end ?? o.start) >= now)
       .slice(0, 4);
   });
@@ -58,6 +60,8 @@
 <div class="home">
   {#if ws.loaded}
     <h1>{greeting()}</h1>
+
+    <LessonsToday />
 
     <section>
       <h2>{tr("Mulai", "Start")}</h2>

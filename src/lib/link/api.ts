@@ -95,6 +95,9 @@ export const link = {
   writeAgenda: async (json: string): Promise<void> => {
     if (isTauri()) await invoke("link_write_agenda", { json });
   },
+  writeHub: async (json: string): Promise<void> => {
+    if (isTauri()) await invoke("link_write_hub", { json });
+  },
   data: async (): Promise<NotchData | null> => (isTauri() ? invoke("link_data") : preview.data()),
   onChanged: async (cb: () => void): Promise<UnlistenFn> => (isTauri() ? listen(CHANGED, cb) : () => {}),
 };

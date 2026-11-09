@@ -1,4 +1,4 @@
-// Agenda Cognify untuk Notch (berkas cognify-agenda.json di folder bersama; lihat docs/NOTCH_LINK.md).
+// Agenda Cognify untuk Notch (berkas cognify-agenda.json di folder bersama; lihat docs/notch/protokol-tautan.md).
 // Notch Windows memakainya sebagai pilihan sumber kalender, di samping tautan Google Calendar atau Outlook.
 
 import type { Occurrence } from "$lib/calendar/types";
@@ -43,9 +43,9 @@ export function buildAgenda(occurrences: Occurrence[], now: number): AgendaFile 
       ...(o.end !== null && Number.isFinite(o.end) ? { end: new Date(o.end).toISOString() } : {}),
       allDay: o.allDay,
       ...(o.calendar ? { calendar: o.calendar.slice(0, 80) } : {}),
-      ...(o.origin === "moodle" ? { kind: "task" as const } : {}),
+      ...(o.origin === "moodle" || o.origin === "school" ? { kind: "task" as const } : {}),
       // Menit sebelum mulai saat pengingat berbunyi; hanya acara buatan pengguna dan tugas Moodle yang punya pengingat.
-      ...((o.origin === "local" || o.origin === "moodle") && o.remindMin !== null && o.remindMin >= 0 ? { remindMin: Math.min(Math.round(o.remindMin), 10080) } : {}),
+      ...((o.origin === "local" || o.origin === "moodle" || o.origin === "school" || o.origin === "lesson") && o.remindMin !== null && o.remindMin >= 0 ? { remindMin: Math.min(Math.round(o.remindMin), 10080) } : {}),
     }));
   return { schema: 1, updatedAt: new Date(now).toISOString(), events };
 }

@@ -87,8 +87,15 @@
 		border: var(--edge-w) solid var(--edge);
 		border-radius: var(--radius);
 		background: var(--surface);
+		color: var(--text);
 		box-shadow: var(--lift);
 		transition: transform var(--dur-1), box-shadow var(--dur-1);
+	}
+
+	.card strong {
+		font-size: 15px;
+		font-weight: 600;
+		line-height: 1.25;
 	}
 
 	.card:hover {
