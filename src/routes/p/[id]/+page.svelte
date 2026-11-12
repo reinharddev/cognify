@@ -11,7 +11,7 @@
   import Board from "$lib/components/Board.svelte";
   import NoteArrows from "$lib/components/NoteArrows.svelte";
   import DocNotes from "$lib/components/DocNotes.svelte";
-  import { newNote, readLocked, readNotes, withNotes, type DocNote } from "$lib/workspace/docNotes";
+  import { exportableNotes, newNote, readLocked, readNotes, withNotes, type DocNote } from "$lib/workspace/docNotes";
   import Editor from "$lib/components/Editor.svelte";
   import TableEditor from "$lib/table/TableEditor.svelte";
   import TagEditor from "$lib/components/TagEditor.svelte";
@@ -19,8 +19,9 @@
   import { createAutosave } from "$lib/autosave";
   import { pickSavePath } from "$lib/savePath";
   import { contextMenu } from "$lib/stores/contextmenu.svelte";
-  import { toMarkdown } from "$lib/editor/markdown";
+  import { boardIds, toMarkdown, type MdOptions } from "$lib/editor/markdown";
   import { imageForExport, imagesReady } from "$lib/editor/image";
+  import { boardToPng } from "$lib/whiteboard/excalidraw";
   import { prefs } from "$lib/stores/prefs.svelte";
   import { ws } from "$lib/stores/workspace.svelte";
   import { workspace } from "$lib/workspace/api";
@@ -213,6 +214,16 @@
     }
   }
 
+  /** Catatan melayang sebagai teks biasa di akhir PDF; di layar bagian ini tersembunyi. */
+  const printNotes = $derived(exportableNotes(notes));
+
+  /** Papan dokumen ini sebagai PNG (untuk Word dan Markdown); null bila kosong. */
+  async function boardImage(pageId: string) {
+    const title = ws.nodes.find((n) => n.id === pageId && n.kind === "board")?.title || tr("Papan", "Board");
+    const png = await boardToPng((await workspace.pages.get(pageId)).content);
+    return png ? { title, ...png } : null;
+  }
+
   const fileBase = () => (current?.title || tr("dokumen", "document")).replace(/[\\/:*?"<>|]+/g, " ").trim() || "dokumen";
 
   /** Ekspor dokumen ke Markdown atau Word (.docx); keduanya dibuat di perangkat ini dari isi dokumen. */
@@ -220,16 +231,30 @@
     if (!current) return;
     notice = null;
     await flush();
-    const raw = lastJson || current.content;
+    const raw = withNotes(lastJson || current.content, notes, locked);
     const path = await pickSavePath(`${fileBase()}.${format}`, format === "md" ? { name: "Markdown", extensions: ["md"] } : { name: "Word", extensions: ["docx"] });
     if (!path) return;
     try {
       if (!isTauri()) throw new Error(tr("Ekspor hanya tersedia di aplikasi Cognify.", "Export is only available in the Cognify app."));
-      if (format === "md") await invoke("write_text_file", { path, content: toMarkdown(raw, current.title) });
-      else {
+      if (format === "md") {
+        // Papan jadi PNG di folder "<nama>.assets" di samping berkas .md; tanpa papan, tetap satu berkas.
+        const boards: NonNullable<MdOptions["boards"]> = {};
+        const stem = path.replace(/\.md$/i, "");
+        const folder = stem.split(/[\\/]/).pop() + ".assets";
+        let n = 0;
+        for (const pid of boardIds(raw)) {
+          const img = await boardImage(pid).catch(() => null);
+          const title = img?.title ?? ws.nodes.find((x) => x.id === pid)?.title ?? tr("Papan", "Board");
+          if (!img) { boards[pid] = { title, path: null }; continue; }
+          const name = `${++n}-${title.replace(/[\\/:*?"<>|]+/g, " ").trim() || "papan"}.png`;
+          await invoke("write_base64_file", { path: `${stem}.assets/${name}`, data: await toBase64(new Blob([img.data as BlobPart], { type: "image/png" })) });
+          boards[pid] = { title, path: `${folder}/${name}` };
+        }
+        await invoke("write_text_file", { path, content: toMarkdown(raw, current.title, { boards, notesHeading: tr("Catatan", "Notes") }) });
+      } else {
         await imagesReady;
         const { docxBlob } = await import("$lib/editor/docx");
-        await invoke("write_base64_file", { path, data: await toBase64(await docxBlob(raw, { title: current.title, resolveImage: imageForExport })) });
+        await invoke("write_base64_file", { path, data: await toBase64(await docxBlob(raw, { title: current.title, resolveImage: imageForExport, resolveBoard: boardImage, notesHeading: tr("Catatan", "Notes") })) });
       }
       notice = tr(`Dokumen disimpan di ${path}`, `Document saved to ${path}`);
     } catch (e) {
@@ -310,6 +335,15 @@
         <TableEditor content={current.content} onchange={(json, plain) => queue({ content: json, plainText: plain })} />
       {/key}
     {/if}
+    {#if current.kind === "doc" && printNotes.length}
+      <section class="print-notes" aria-hidden="true">
+        <h2>{tr("Catatan", "Notes")}</h2>
+        {#each printNotes as n}
+          {#if n.title}<p class="pn-title">{n.title}</p>{/if}
+          {#if n.text}<p class="pn-text">{n.text}</p>{/if}
+        {/each}
+      </section>
+    {/if}
   </div>
   {#if current.kind === "doc" && backlinks.length}
     <section class="back" data-noprint>
@@ -330,6 +364,14 @@
 {/if}
 
 <style>
+  .print-notes { display: none; }
+  @media print {
+    .print-notes { display: block; margin-top: var(--space-5); }
+    .print-notes h2 { font-size: 1.25em; margin: 0 0 var(--space-2); }
+    .print-notes p { margin: 0 0 var(--space-2); }
+    .pn-title { font-weight: 700; }
+    .pn-text { white-space: pre-line; }
+  }
   .stage {
     position: relative;
     min-height: 100%;

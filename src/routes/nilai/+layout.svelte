@@ -15,11 +15,12 @@
     { href: "/nilai/statistik", label: tr("Statistik", "Statistics") },
     { href: "/nilai/tugas", label: tr("Tugas", "Tasks") },
     { href: "/nilai/kehadiran", label: tr("Kehadiran", "Attendance") },
+    { href: "/nilai/sdc", label: "SDC" },
     { href: "/nilai/hitungan", label: tr("Hitungan", "Calculation") },
   ]);
   const on = (t: { href: string; exact?: boolean }) => (t.exact ? path === t.href : path.startsWith(t.href));
   // Hitungan dan panduan impor tetap bisa dibuka walau data belum ada.
-  const needsData = $derived(!path.startsWith("/nilai/hitungan") && !path.startsWith("/nilai/kehadiran"));
+  const needsData = $derived(!path.startsWith("/nilai/hitungan") && !path.startsWith("/nilai/kehadiran") && !path.startsWith("/nilai/sdc"));
 </script>
 
 <div class="nl">
@@ -53,7 +54,7 @@
   <p class="muted lastpost" role="status">
     {#if school.lastPost}
       {tr("Kiriman terakhir dari ekstensi", "Last send from the extension")}: {new Date(school.lastPost.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-      · {({ exam: tr("nilai", "grades"), schedule: tr("jadwal", "timetable"), attendance: tr("kehadiran", "attendance") } as Record<string, string>)[school.lastPost.kind] ?? school.lastPost.kind}
+      · {({ exam: tr("nilai", "grades"), schedule: tr("jadwal", "timetable"), attendance: tr("kehadiran", "attendance"), sdc: "SDC" } as Record<string, string>)[school.lastPost.kind] ?? school.lastPost.kind}
       {school.lastPost.period ? `· ${school.lastPost.period}` : ""} · {school.lastPost.rows} {tr("baris", "rows")}
     {:else}
       {tr("Belum ada kiriman dari ekstensi.", "Nothing has been sent from the extension yet.")}

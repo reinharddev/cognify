@@ -1,6 +1,6 @@
 <script lang="ts">
   import { tr } from "$lib/i18n.svelte";
-  import { goto } from "$app/navigation";
+  import { openHref } from "$lib/openHref";
   import { Bell, BellOff, CalendarClock, CheckCheck, GraduationCap, Info, Trash2, X } from "@lucide/svelte";
   import { notifications, type AppNotification } from "$lib/stores/notifications.svelte";
   import { clock, longDate } from "$lib/calendar/dates";
@@ -24,7 +24,7 @@
     notifications.markRead(n.id);
     if (n.href) {
       notifications.open = false;
-      await goto(n.href);
+      await openHref(n.href);
     }
   }
 </script>

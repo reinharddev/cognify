@@ -55,7 +55,7 @@ export function startAgendaShare(): () => void {
     $effect(() => {
       if (!notchLink.connected) return;
       // Membaca acara dan sumber supaya efek ini berjalan lagi saat salah satunya berubah.
-      void [JSON.stringify(calendar.events), calendar.sources.map((s) => `${s.id}${s.fetchedAt}${s.enabled}`).join(), moodle.active, moodle.remindMin, moodle.items.map((i) => `${i.id}${i.due}${i.submitted}`).join(), school.lessons.length, ws.nodes.map((n) => `${n.id}${n.title}${n.favorite}${n.updatedAt}`).join(), school.schedulePeriod, prefs.value.lessonReminders, prefs.value.showLessons];
+      void [JSON.stringify(calendar.events), calendar.sources.map((s) => `${s.id}${s.fetchedAt}${s.enabled}`).join(), moodle.active, moodle.remindMin, moodle.items.map((i) => `${i.id}${i.due}${i.submitted}`).join(), school.activeLessons.map((l) => `${l.key}${l.end}${l.subject}`).join(), school.exams.map((e) => `${e.id}${e.at}`).join(), school.activeClass, ws.nodes.map((n) => `${n.id}${n.title}${n.favorite}${n.updatedAt}`).join(), school.schedulePeriod, prefs.value.lessonReminders, prefs.value.showLessons];
       clearTimeout(timer);
       timer = setTimeout(() => void write(), DEBOUNCE_MS);
     });

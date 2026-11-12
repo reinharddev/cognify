@@ -117,3 +117,37 @@ describe("ekspor Word", () => {
     expect(xml).toContain("<w:tbl>");
   });
 });
+
+describe("ekspor catatan melayang dan papan", () => {
+  const notes = [
+    { id: "n1", title: "Artificial Intelligence", text: "AI atau Kecerdasan Buatan", color: 0, x: 0, y: 0, rot: 0 },
+    { id: "n2", title: "", text: "", color: 0, x: 0, y: 0, rot: 0 },
+  ];
+  const doc = { type: "doc", notes, content: [P(T("isi")), { type: "boardBlock", attrs: { pageId: "b1" } }] };
+  const raw = JSON.stringify(doc);
+
+  it("Markdown: catatan jadi teks biasa di akhir, catatan kosong dibuang", () => {
+    const md = toMarkdown(raw, "", { notesHeading: "Catatan" });
+    expect(md).toContain("## Catatan\n\n**Artificial Intelligence**\n\nAI atau Kecerdasan Buatan");
+    expect(md.indexOf("isi")).toBeLessThan(md.indexOf("## Catatan"));
+    expect(md.match(/\*\*/g)?.length).toBe(2);
+  });
+  it("Markdown: papan jadi gambar bertaut, atau keterangan bila gagal", () => {
+    expect(toMarkdown(raw, "", { boards: { b1: { title: "AI", path: "Doc.assets/1-AI.png" } } })).toContain("![AI](Doc.assets/1-AI.png)");
+    expect(toMarkdown(raw, "", { boards: { b1: { title: "AI", path: null } } })).toContain("*[Papan: AI]*");
+    expect(toMarkdown(raw)).toContain("*[papan]*");
+  });
+  it("Markdown: dokumen tanpa catatan tidak mendapat bagian Catatan", () => {
+    expect(toMarkdown(JSON.stringify({ type: "doc", content: [P(T("x"))] }))).not.toContain("Catatan");
+  });
+  it("Word: catatan dan gambar papan masuk ke dokumen", async () => {
+    const d = await import("docx");
+    const png = Uint8Array.from(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64"));
+    const buf = await d.Packer.toBuffer(await buildDocx(raw, { resolveBoard: async () => ({ title: "AI", data: png, width: 100, height: 50 }) }));
+    const zip = await (await import("jszip")).default.loadAsync(buf);
+    const xml = await zip.file("word/document.xml")!.async("string");
+    expect(xml).toContain("Artificial Intelligence");
+    expect(xml).toContain("AI atau Kecerdasan Buatan");
+    expect(Object.keys(zip.files).some((f) => f.startsWith("word/media/"))).toBe(true);
+  });
+});

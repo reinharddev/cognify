@@ -1,6 +1,16 @@
 # Catatan rilis Cognify, dua bahasa (id: Indonesia, en: English), terbaru di atas.
 # Format dan aturan: docs/rilis/aturan-catatan-rilis.md. Tiap versi wajib punya kedua bahasa.
 
+0.4.0
+id: Baru: jadwal sekolah dari PDF. Unggah jadwal induk atau jadwal pekan ujian (STS, SAS); jadwal ujian menggantikan jadwal biasa pada tanggalnya, dan jadwal portal bisa dimatikan di Kalender.
+id: Baru: ekstensi untuk portal CIS berpindah halaman sendiri dan ikut membaca Self Development Challenge (SDC). Tab SDC di Nilai menampilkan progres, menit per hari, dan pengingat kerjakan serta isi progres.
+id: Baru: ekspor dokumen membawa catatan melayang sebagai teks, dan papan jadi gambar di Word dan Markdown.
+id: Perbaikan: catatan melayang tidak lagi menutupi teks saat disimpan ke PDF.
+en: New: school timetable from PDF. Upload the master timetable or an exam-week timetable (STS, SAS); an exam timetable replaces the regular one on its dates, and the portal timetable can be turned off in the Calendar.
+en: New: the extension for the CIS portal moves between pages by itself and also reads the Self Development Challenge (SDC). The SDC tab in Grades shows progress, minutes per day, and reminders to work on it and to fill in progress.
+en: New: document export carries floating notes as text, and boards become images in Word and Markdown.
+en: Fix: floating notes no longer cover the text when saving to PDF.
+
 0.3.0
 id: Baru: editor dokumen (cari, daftar isi, komentar, riwayat versi, ekspor Word dan Markdown), Editor Video dengan garis waktu, dan sambungan Notch yang lebih luas (hub dan inbox).
 id: Perbaikan: menu menu bar tidak lagi membuka halaman kosong.

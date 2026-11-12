@@ -739,13 +739,151 @@ export async function runEverything({ exec, post, sleep = (ms) => new Promise((r
   return report;
 }
 
+// ---- Portal CIS (Sekolah Ciputra Kasih) ----
+// Murid sering memakai tombol kirim dari halaman mana saja di portal. Di situs ini ekstensi lebih dulu membawa tab ke halaman
+// Academic (tempat nilai, jadwal, dan kehadiran), mengirimnya, lalu pindah ke halaman Self Development Challenge (SDC) dan
+// membaca tabel progres mingguannya. Tab berakhir di halaman awal SDC, tempat murid mengisi progres sendiri.
+
+export const CIS = { origin: "https://student.citrakasih.sch.id", academic: "/student_info/academic", sdc: "/index.php/school_self_development/my_commitment" };
+
+export function isCis(url) {
+  try {
+    return new URL(url).origin === CIS.origin;
+  } catch {
+    return false;
+  }
+}
+
+/** Izin akses ke situs portal (hanya bila belum ada), supaya ekstensi tetap bisa membaca halaman sesudah tab berpindah. Panggil dari klik pengguna. */
+export async function ensureSiteAccess(origin = CIS.origin) {
+  const origins = [`${origin}/*`];
+  try {
+    if (await chrome.permissions.contains({ origins })) return true;
+    return await chrome.permissions.request({ origins });
+  } catch {
+    return false;
+  }
+}
+
+/** Dijalankan di halaman daftar SDC: periode dan tiap baris tantangan dengan tautan view dan Progress-nya. */
+function readSdcList() {
+  const text = (el) => (el?.innerText || el?.textContent || "").replace(/\s+/g, " ").trim();
+  const period = (/\d+\.\d+\s*\/\s*\w+\s*\/\s*\d{4}\s*-\s*\d{4}/.exec(document.body.innerText) || [""])[0];
+  const rows = [];
+  for (const tr of document.querySelectorAll("table tr")) {
+    const links = [...tr.querySelectorAll("a[href]")];
+    const progress = links.find((a) => /my_commitment\/view_progress\//.test(a.href));
+    const view = links.find((a) => /my_commitment\/view\//.test(a.href));
+    if (!progress && !view) continue;
+    rows.push({ name: text(tr.children[0]).replace(/\s*Theme:.*$/i, ""), view: view ? view.href : "", progress: progress ? progress.href : "" });
+  }
+  return { period, rows };
+}
+
+/**
+ * Dijalankan di halaman Progress SDC: tabel mingguan. Tiap baris: [judul dengan target per minggu, uraian cara, menit minggu 1, 2, ...].
+ * Isian menit dibaca dari nilai kolom isian (bukan dari teks sel, yang kosong). Baris terakhir "@closes" memuat kapan tiap minggu
+ * ditutup (keterangan "Closed at 2026-11-16 13:09:00" di tiap kotak minggu); minggu CIS berjalan Senin sampai Senin.
+ */
+function readSdcProgress() {
+  const table = [...document.querySelectorAll("table")].find((x) => /Week\s*-\s*1/i.test(x.innerText));
+  if (!table) return { headers: [], rows: [] };
+  const headers = [...table.querySelectorAll("th")].map((h) => h.innerText.replace(/\s+/g, " ").trim());
+  const rows = [];
+  for (const tr of table.querySelectorAll("tr")) {
+    const cells = [...tr.children].filter((c) => c.tagName === "TD");
+    if (cells.length < 2) continue;
+    const lines = cells[0].innerText.split("\n").map((l) => l.trim()).filter(Boolean);
+    rows.push([lines[0] || "", lines.slice(1).join(" ").slice(0, 400), ...cells.slice(1).map((c) => {
+      const field = c.querySelector("input,textarea,select");
+      return (field ? String(field.value) : c.innerText).trim().slice(0, 20);
+    })]);
+  }
+  const first = [...table.querySelectorAll("tr")].find((tr) => [...tr.children].filter((c) => c.tagName === "TD").length > 1);
+  if (first) {
+    const closes = [...first.children].filter((c) => c.tagName === "TD").slice(1).map((c) => (/Closed at\s*(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})/.exec(c.getAttribute("title") || "") || [])[1] || "");
+    if (closes.some(Boolean)) rows.push(["@closes", "", ...closes]);
+  }
+  return { headers, rows };
+}
+
+/**
+ * Membaca progres SDC: halaman daftar SDC, tautan Progress tantangan yang bukan "Revision", lalu tabel mingguannya; mengirimnya
+ * sebagai kind "sdc"; dan berakhir di halaman daftar SDC. `nav(url)` memindahkan tab dan menunggu halaman termuat.
+ */
+export async function runSdc({ exec, post, nav }) {
+  const listUrl = CIS.origin + CIS.sdc;
+  await nav(listUrl);
+  const list = await exec(readSdcList);
+  const rows = (list?.rows ?? []).filter((r) => r.progress);
+  const pick = rows.find((r) => !/revision|revisi/i.test(r.name)) ?? rows[0];
+  if (!pick) throw new BridgeError("sdc_none", "SDC: tidak ada tantangan dengan halaman Progress");
+  await nav(pick.progress);
+  const prog = await exec(readSdcProgress);
+  if (!prog?.rows?.length) throw new BridgeError("sdc_empty", "SDC: tabel progres tidak terbaca");
+  await post("sdc", list.period || "", [{ headers: prog.headers.slice(0, 30), rows: prog.rows.slice(0, 50).map((r) => r.slice(0, 30)) }]);
+  await nav(listUrl);
+  return { period: list.period || "", challenges: prog.rows.length };
+}
+
+/**
+ * Alur satu tombol di portal CIS: ke halaman Academic bila tab belum di sana, kirim nilai, jadwal, dan kehadiran, lalu SDC.
+ * Bagian yang gagal dilaporkan, tidak menghentikan bagian lain.
+ */
+export async function runCis({ tabUrl, nav, exec, post, sleep }) {
+  let onAcademic = false;
+  try {
+    onAcademic = new URL(tabUrl).pathname.startsWith(CIS.academic);
+  } catch {
+    /* anggap belum di Academic */
+  }
+  if (!onAcademic) await nav(CIS.origin + CIS.academic);
+  const report = await runEverything({ exec, post, sleep });
+  try {
+    const sdc = await runSdc({ exec, post, nav });
+    report.sdc = sdc;
+    report.sent += 1;
+    report.summary = [report.summary, `SDC ${sdc.challenges} tantangan`].filter(Boolean).join(", ");
+  } catch (e) {
+    report.failed.push(e?.message || String(e));
+  }
+  return report;
+}
+
+/** Tunggu tab selesai dimuat (paling lama `timeoutMs`), lalu beri jeda singkat untuk isi yang dimuat skrip halaman. */
+function waitForLoad(tabId, timeoutMs = 25000) {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      chrome.tabs.onUpdated.removeListener(listener);
+      clearTimeout(timer);
+      setTimeout(resolve, 900);
+    };
+    const listener = (id, info) => id === tabId && info.status === "complete" && finish();
+    chrome.tabs.onUpdated.addListener(listener);
+    const timer = setTimeout(finish, timeoutMs);
+  });
+}
+
 /** Semua yang bisa diambil dari portal dikirim ke app Cognify di komputer ini. */
 export async function sendAllPeriods(tab) {
   const token = await authed();
   const exec = async (func, args = [], world = "ISOLATED") => (await chrome.scripting.executeScript({ target: { tabId: tab.id }, func, args, world }))[0]?.result;
   const post = (kind, period, tables) =>
     call("/bridge/table", { method: "POST", token, body: { url: tab.url, title: tab.title, period: period.slice(0, 120), kind, tables } });
-  const report = await runEverything({ exec, post });
+  let report;
+  if (isCis(tab.url)) {
+    const nav = async (url) => {
+      const loaded = waitForLoad(tab.id);
+      await chrome.tabs.update(tab.id, { url });
+      await loaded;
+    };
+    report = await runCis({ tabUrl: tab.url, nav, exec, post });
+  } else {
+    report = await runEverything({ exec, post });
+  }
   if (!report.sent) throw new BridgeError("no_tables", report.failed.join("; ") || t("noTables"));
   return report;
 }

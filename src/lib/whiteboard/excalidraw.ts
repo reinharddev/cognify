@@ -291,6 +291,31 @@ function paints(e: Record<string, unknown>): boolean {
   return Number(e.width) > 0.5 || Number(e.height) > 0.5;
 }
 
+/** Isi papan (JSON halaman) sebagai PNG untuk ekspor dokumen; null bila papan kosong atau bukan papan. Ukuran dalam piksel layar (PNG-nya 2x). */
+export async function boardToPng(raw: string): Promise<{ data: Uint8Array; width: number; height: number } | null> {
+  let v: { elements?: unknown; appState?: Record<string, unknown>; files?: unknown };
+  try {
+    v = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!v || !Array.isArray(v.elements)) return null;
+  const visible = (v.elements as Record<string, unknown>[]).filter(paints);
+  if (!visible.length) return null;
+  const blob = await exportToBlob({
+    elements: visible as never,
+    appState: { exportBackground: true, viewBackgroundColor: (v.appState?.viewBackgroundColor as string) ?? "#ffffff", exportWithDarkMode: false } as never,
+    files: (v.files ?? {}) as never,
+    exportPadding: 24,
+    mimeType: "image/png",
+    getDimensions: (w: number, h: number) => ({ width: w * 2, height: h * 2, scale: 2 }),
+  });
+  const bmp = await createImageBitmap(blob);
+  const size = { width: Math.round(bmp.width / 2), height: Math.round(bmp.height / 2) };
+  bmp.close();
+  return { data: new Uint8Array(await blob.arrayBuffer()), ...size };
+}
+
 /** Gambar papan sebagai SVG tanpa membuka editornya (untuk blok papan di dokumen). */
 export async function sceneToSvg(scene: WhiteboardScene): Promise<string> {
   const visible = (scene.elements as Record<string, unknown>[]).filter(paints);

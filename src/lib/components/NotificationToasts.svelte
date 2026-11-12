@@ -1,6 +1,6 @@
 <script lang="ts">
   import { tr } from "$lib/i18n.svelte";
-  import { goto } from "$app/navigation";
+  import { openHref } from "$lib/openHref";
   import { CalendarClock, GraduationCap, Info, X } from "@lucide/svelte";
   import { notifications } from "$lib/stores/notifications.svelte";
 
@@ -16,7 +16,7 @@
         onclick={async () => {
           notifications.markRead(t.id);
           notifications.dismissToast(t.id);
-          if (t.href) await goto(t.href);
+          if (t.href) await openHref(t.href);
         }}
       >
         <span class="tile k-{t.kind}"><Icon size={16} /></span>

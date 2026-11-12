@@ -4,7 +4,7 @@
   import { school } from "$lib/stores/school.svelte";
   import { prefs } from "$lib/stores/prefs.svelte";
   import { ws } from "$lib/stores/workspace.svelte";
-  import { lessonsOn, lessonTimes } from "$lib/school/schedule";
+  import { lessonTimes } from "$lib/school/schedule";
   import { planLessonNote, noteTitle } from "$lib/school/lessonNotes";
   import { openLessonNote } from "$lib/school/openNote";
   import { semesterOf, summarizeAttendance } from "$lib/school/attendance";
@@ -26,9 +26,9 @@
     };
   });
 
-  const period = $derived(school.schedulePeriod);
+  const period = $derived(school.schedulePeriod ?? (school.exams.length ? "exam" : null));
   const today = $derived(new Date(now));
-  const lessons = $derived(prefs.value.showLessons ? lessonsOn(school.lessons, period, today) : []);
+  const lessons = $derived(prefs.value.showLessons ? school.lessonsFor(today) : []);
   const rows = $derived(
     lessons.map((l) => {
       const { start, end } = lessonTimes(l, today);
@@ -45,7 +45,7 @@
     if (!period || !prefs.value.showLessons || lessons.length) return null;
     for (let i = 1; i <= 7; i++) {
       const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
-      const first = lessonsOn(school.lessons, period, d)[0];
+      const first = school.lessonsFor(d)[0];
       if (first) return { first, date: d };
     }
     return null;

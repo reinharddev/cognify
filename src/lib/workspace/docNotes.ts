@@ -46,6 +46,13 @@ export function withNotes(json: string, notes: DocNote[], locked = false): strin
   }
 }
 
+/** Catatan yang punya isi, untuk diekspor sebagai teks biasa (PDF, Word, Markdown). Posisi dan warna tidak ikut. */
+export function exportableNotes(notes: DocNote[]): { title: string; text: string }[] {
+  return notes
+    .map((n) => ({ title: (n.title ?? "").trim(), text: (n.text ?? "").trim() }))
+    .filter((n) => n.title || n.text);
+}
+
 export function newNote(index: number, width: number): DocNote {
   return {
     id: crypto.randomUUID(),

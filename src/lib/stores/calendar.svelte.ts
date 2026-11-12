@@ -8,7 +8,7 @@ import { parseIcs } from "$lib/calendar/ics";
 import type { CalEvent, CalSource, EventInput, Occurrence, SourceInput } from "$lib/calendar/types";
 import { notchLink } from "./link.svelte";
 import { moodle } from "./moodle.svelte";
-import { lessonsOn, lessonTimes } from "$lib/school/schedule";
+import { lessonTimes } from "$lib/school/schedule";
 import { prefs } from "./prefs.svelte";
 import { school, SCHOOL_REMIND_MIN } from "./school.svelte";
 
@@ -142,15 +142,11 @@ class CalendarStore {
       });
     }
     // Jadwal pelajaran: hanya periode yang berlaku sekarang, mulai awal pekan ini sampai 8 pekan ke depan (portal tidak
-    // memberi tanggal libur, jadi masa lalu dan jauh ke depan tidak ditebak).
-    if (school.schedulePeriod && prefs.value.showLessons) {
-      const weekStart = new Date();
-      weekStart.setHours(0, 0, 0, 0);
-      weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
-      const lo = Math.max(from, weekStart.getTime());
-      const hi = Math.min(to, weekStart.getTime() + 8 * 7 * 86_400_000);
-      for (let t = new Date(lo); t.getTime() <= hi; t = new Date(t.getFullYear(), t.getMonth(), t.getDate() + 1)) {
-        for (const l of lessonsOn(school.lessons, school.schedulePeriod, t)) {
+    // memberi tanggal libur, jadi masa lalu dan jauh ke depan tidak ditebak). Pekan ujian (STS, SAS) punya tanggal pasti, jadi
+    // tampil di tanggalnya saja, kapan pun, dan menggantikan jadwal biasa pada hari itu.
+    if (prefs.value.showLessons) {
+      const pushLessons = (t: Date) => {
+        for (const l of school.lessonsFor(t)) {
           const { start, end } = lessonTimes(l, t);
           if (end < from || start > to) continue;
           out.push({
@@ -159,6 +155,18 @@ class CalendarStore {
             notes: l.teachers.join(", "), remindMin: prefs.value.lessonReminders ? 10 : null,
           });
         }
+      };
+      const weekStart = new Date();
+      weekStart.setHours(0, 0, 0, 0);
+      weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+      const lo = Math.max(from, weekStart.getTime());
+      const hi = Math.min(to, weekStart.getTime() + 8 * 7 * 86_400_000);
+      if (school.schedulePeriod) {
+        for (let t = new Date(lo); t.getTime() <= hi; t = new Date(t.getFullYear(), t.getMonth(), t.getDate() + 1)) pushLessons(t);
+      }
+      for (const t of school.examDates()) {
+        const inLoop = !!school.schedulePeriod && t.getTime() >= new Date(lo).setHours(0, 0, 0, 0) && t.getTime() <= hi;
+        if (!inLoop) pushLessons(t);
       }
     }
     return out.sort((x, y) => x.start - y.start || x.title.localeCompare(y.title));

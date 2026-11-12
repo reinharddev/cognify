@@ -6,7 +6,10 @@ import { isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { workspace } from "$lib/workspace/api";
 import { mergeItems, parseTables, type RawTable, type SchoolItem } from "$lib/school/parse";
-import { currentPeriod, mergeLessons, parseSchedule, type Lesson } from "$lib/school/schedule";
+import { currentPeriod, lessonsOn, mergeLessons, parseSchedule, type Lesson } from "$lib/school/schedule";
+import { lessonsFromTimetable, parseTimetable, type PdfItem, type Timetable } from "$lib/school/timetable";
+import { examLessons, parseExamWeek, type ExamSchedule } from "$lib/school/examWeek";
+import { parseSdc, type Sdc } from "$lib/school/sdc";
 import { mergeAttendance, parseAttendance, semesterOf, type AttendanceDay } from "$lib/school/attendance";
 import { detectMajor } from "$lib/school/majors";
 import { DEFAULT_CALC, applyFilter, levelOf, overview, subjectStats, terms, years, type CalcSettings } from "$lib/school/stats";
@@ -17,6 +20,11 @@ const ITEMS_KEY = "school.items";
 const INBOX_KEY = "school.inbox";
 const CALC_KEY = "school.calc";
 const SCHEDULE_KEY = "school.schedule";
+const TIMETABLE_KEY = "school.timetable";
+const SOURCE_KEY = "school.schedule.source";
+const EXAMS_KEY = "school.exams";
+const CLASS_KEY = "school.myClass";
+const SDC_KEY = "school.sdc";
 const ATTENDANCE_KEY = "school.attendance";
 const LASTPOST_KEY = "school.lastpost";
 const REPORT_KEY = "school.report";
@@ -41,8 +49,22 @@ class SchoolStore {
   );
   /** Jadwal pelajaran semua periode yang pernah dikirim. */
   lessons = $state<Lesson[]>([]);
+  /** Jadwal induk yang diunggah pengguna (PDF), dengan kelas yang dipakai. Jadwal portal sering berbeda dari yang berlaku di kelas. */
+  timetable = $state<{ tt: Timetable; cls: string; name: string; at: number } | null>(null);
+  /** Progres Self Development Challenge dari portal (dikirim ekstensi). */
+  sdc = $state<Sdc | null>(null);
+  /** Jadwal pekan ujian (STS, SAS, ...) yang diunggah. Pada tanggalnya, ini menggantikan jadwal biasa. */
+  exams = $state<ExamSchedule[]>([]);
+  /** Kelas pengguna di PDF jadwal (induk dan ujian memakai kelas yang sama). */
+  myClass = $state("");
+  readonly activeClass = $derived(this.myClass || this.timetable?.cls || "");
+  /** Sumber jadwal yang tampil di Kalender, Beranda, dan Notch. Ekstensi tetap menyimpan jadwal portal apa pun pilihannya. */
+  scheduleSource = $state<"portal" | "upload">("portal");
+  readonly uploadedLessons = $derived(this.timetable ? lessonsFromTimetable(this.timetable.tt, this.timetable.cls) : []);
+  /** Jadwal yang dipakai untuk tampilan: unggahan bila dipilih dan ada, selain itu jadwal portal. */
+  readonly activeLessons = $derived(this.scheduleSource === "upload" && this.timetable ? this.uploadedLessons : this.lessons);
   /** Periode jadwal yang berlaku sekarang (tahun ajaran terbaru, semester terbaru). */
-  readonly schedulePeriod = $derived(currentPeriod(this.lessons));
+  readonly schedulePeriod = $derived(currentPeriod(this.activeLessons));
   /** Hasil impor terakhir untuk ditampilkan di halaman Nilai. */
   last = $state<{ at: number; added: number; updated: number } | null>(null);
   /** Pengaturan hitungan (KKM, target, bobot). */
@@ -141,6 +163,31 @@ class SchoolStore {
       /* mulai kosong */
     }
     try {
+      const raw = await workspace.settings.get(TIMETABLE_KEY);
+      const t = raw ? (JSON.parse(raw) as { tt?: Timetable; cls?: string; name?: string; at?: number }) : null;
+      if (t?.tt && Array.isArray(t.tt.slots) && Array.isArray(t.tt.classes)) {
+        this.timetable = { tt: t.tt, cls: t.cls && t.tt.classes.includes(t.cls) ? t.cls : (t.tt.classes[0] ?? ""), name: t.name ?? "", at: t.at ?? 0 };
+      }
+      this.scheduleSource = (await workspace.settings.get(SOURCE_KEY)) === "upload" && this.timetable ? "upload" : "portal";
+    } catch {
+      /* tanpa jadwal unggahan */
+    }
+    try {
+      const raw = await workspace.settings.get(SDC_KEY);
+      const v = raw ? (JSON.parse(raw) as Sdc) : null;
+      this.sdc = v && Array.isArray(v.challenges) && v.challenges.length ? v : null;
+    } catch {
+      /* tanpa data SDC */
+    }
+    try {
+      const raw = await workspace.settings.get(EXAMS_KEY);
+      const list = raw ? (JSON.parse(raw) as ExamSchedule[]) : [];
+      this.exams = list.filter((e) => e && typeof e.id === "string" && Array.isArray(e.days) && Array.isArray(e.classes));
+      this.myClass = (await workspace.settings.get(CLASS_KEY)) ?? "";
+    } catch {
+      /* tanpa jadwal ujian */
+    }
+    try {
       const raw = await workspace.settings.get(CALC_KEY);
       if (raw) {
         const c = JSON.parse(raw) as Partial<CalcSettings>;
@@ -205,7 +252,8 @@ class SchoolStore {
       /* kiriman rusak: dibuang di bawah */
     }
     try {
-      const exam = batches.filter((b) => b.kind !== "schedule" && b.kind !== "attendance");
+      const exam = batches.filter((b) => b.kind !== "schedule" && b.kind !== "attendance" && b.kind !== "sdc");
+      const sdcBatches = batches.filter((b) => b.kind === "sdc");
       const sched = batches.filter((b) => b.kind === "schedule");
       const att = batches.filter((b) => b.kind === "attendance");
       const fresh = exam.flatMap((b) => parseTables(b.tables ?? [], b.period ?? ""));
@@ -225,6 +273,12 @@ class SchoolStore {
         await workspace.settings.set(SCHEDULE_KEY, JSON.stringify(this.lessons));
         const periods = new Set(freshLessons.map((l) => l.period)).size;
         body = [body, tr(`Jadwal ${periods} periode.`, `Timetable for ${periods} period(s).`)].filter(Boolean).join(" ");
+      }
+      const freshSdc = sdcBatches.map((b) => parseSdc(b.tables ?? [], b.period ?? "")).filter((x) => x !== null).at(-1) ?? null;
+      if (freshSdc) {
+        this.sdc = freshSdc;
+        await workspace.settings.set(SDC_KEY, JSON.stringify(freshSdc));
+        body = [body, tr(`SDC ${freshSdc.challenges.length} tantangan.`, `SDC: ${freshSdc.challenges.length} challenges.`)].filter(Boolean).join(" ");
       }
       const freshDays = att.flatMap((b) => parseAttendance(b.tables ?? []));
       if (freshDays.length) {
@@ -277,6 +331,111 @@ class SchoolStore {
     return [...by.entries()].map(([key, v]) => ({ key, label: v.label, count: v.count, subjects: [...v.subjects].sort((a, b) => a.localeCompare(b)) })).sort((a, b) => a.label.localeCompare(b.label));
   });
 
+  /** Kelas di jadwal induk yang paling mungkin milik pengguna: kelas dari jadwal portal bila ada di tabel. */
+  #guessClass(tt: Timetable, previous?: string): string {
+    if (previous && tt.classes.includes(previous)) return previous;
+    const fromPortal = this.lessons.map((l) => l.grade).find((g) => tt.classes.includes(g));
+    return fromPortal ?? tt.classes[0] ?? "";
+  }
+
+  /**
+   * Unggah PDF jadwal: jenisnya dikenali otomatis, jadwal induk (semua kelas, per hari dalam sepekan) atau jadwal pekan ujian
+   * (per tanggal). Yang sudah ada diganti: jadwal induk selalu, jadwal ujian bila labelnya atau tanggalnya sama.
+   * Melempar galat yang bisa ditampilkan.
+   */
+  async importPdf(pages: PdfItem[][], name: string): Promise<{ kind: "timetable" | "exam"; label: string; replaced: boolean }> {
+    const errors: string[] = [];
+    for (const items of pages) {
+      try {
+        const tt = parseTimetable(items);
+        const replaced = this.timetable !== null;
+        const cls = this.#guessClass(tt, this.myClass || this.timetable?.cls);
+        this.timetable = { tt, cls, name, at: Date.now() };
+        this.myClass = cls;
+        this.scheduleSource = "upload";
+        await this.#saveTimetable();
+        return { kind: "timetable", label: tt.year, replaced };
+      } catch (e) {
+        errors.push(e instanceof Error ? e.message : String(e));
+      }
+    }
+    for (const items of pages) {
+      try {
+        const parsed = parseExamWeek(items);
+        const dates = new Set(parsed.days.map((d) => d.date));
+        const clash = (e: ExamSchedule) => e.id === parsed.id || e.label.toLowerCase() === parsed.label.toLowerCase() || e.days.some((d) => dates.has(d.date));
+        const replaced = this.exams.some(clash);
+        this.exams = [...this.exams.filter((e) => !clash(e)), { ...parsed, name, at: Date.now() }].sort((a, b) => (a.days[0]?.date ?? "").localeCompare(b.days[0]?.date ?? ""));
+        if (!this.myClass && parsed.classes[0]) this.myClass = this.timetable?.cls ?? parsed.classes[0];
+        await this.#saveExams();
+        return { kind: "exam", label: parsed.label, replaced };
+      } catch (e) {
+        errors.push(e instanceof Error ? e.message : String(e));
+      }
+    }
+    throw new Error(
+      tr("PDF ini tidak dikenali sebagai jadwal pelajaran induk atau jadwal pekan ujian. ", "This PDF is not recognized as a master timetable or an exam-week timetable. ") + (errors[errors.length - 1] ?? ""),
+    );
+  }
+
+  async #saveExams() {
+    await workspace.settings.set(EXAMS_KEY, JSON.stringify(this.exams));
+    await workspace.settings.set(CLASS_KEY, this.myClass);
+  }
+
+  async removeExam(id: string) {
+    this.exams = this.exams.filter((e) => e.id !== id);
+    await this.#saveExams();
+  }
+
+  /** Semua kelas yang ada di PDF yang diunggah (jadwal induk lebih dulu). */
+  readonly pdfClasses = $derived([...new Set([...(this.timetable?.tt.classes ?? []), ...this.exams.flatMap((e) => e.classes)])]);
+
+  /** Pelajaran pada satu tanggal: jadwal pekan ujian bila tanggal itu termasuk, selain itu jadwal biasa. */
+  lessonsFor(date: Date): Lesson[] {
+    const cls = this.activeClass;
+    if (cls) {
+      for (const e of this.exams) {
+        if (!e.classes.includes(cls)) continue;
+        const hit = examLessons(e, cls, date);
+        if (hit) return hit;
+      }
+    }
+    return lessonsOn(this.activeLessons, this.schedulePeriod, date);
+  }
+
+  /** Tanggal pekan ujian untuk kelas pengguna (supaya Kalender menampilkannya walau di luar jendela jadwal biasa). */
+  examDates(): Date[] {
+    const cls = this.activeClass;
+    if (!cls) return [];
+    return this.exams.filter((e) => e.classes.includes(cls)).flatMap((e) => e.days.map((d) => new Date(`${d.date}T00:00:00`)));
+  }
+
+  async #saveTimetable() {
+    await workspace.settings.set(TIMETABLE_KEY, this.timetable ? JSON.stringify(this.timetable) : "");
+    await workspace.settings.set(SOURCE_KEY, this.scheduleSource);
+  }
+
+  /** Kelas pengguna di semua PDF yang diunggah. */
+  async setMyClass(cls: string) {
+    if (!this.pdfClasses.includes(cls)) return;
+    this.myClass = cls;
+    if (this.timetable?.tt.classes.includes(cls)) this.timetable = { ...this.timetable, cls };
+    await this.#saveTimetable();
+    await this.#saveExams();
+  }
+
+  async setScheduleSource(source: "portal" | "upload") {
+    this.scheduleSource = source === "upload" && this.timetable ? "upload" : "portal";
+    await this.#saveTimetable();
+  }
+
+  async removeTimetable() {
+    this.timetable = null;
+    this.scheduleSource = "portal";
+    await this.#saveTimetable();
+  }
+
   /** Hapus satu periode (mis. kiriman dari halaman yang salah). */
   async removePeriod(key: string) {
     this.items = this.items.filter((i) => (i.period || "?") !== key);
@@ -293,6 +452,11 @@ class SchoolStore {
     await workspace.settings.set(ITEMS_KEY, "[]");
     this.lessons = [];
     await workspace.settings.set(SCHEDULE_KEY, "[]");
+    await this.removeTimetable();
+    this.sdc = null;
+    await workspace.settings.set(SDC_KEY, "");
+    this.exams = [];
+    await this.#saveExams();
     this.attendance = [];
     await workspace.settings.set(ATTENDANCE_KEY, "[]");
     // Daftar jurusan ikut dikosongkan dan kembali otomatis, supaya tidak tersisa dari data yang sudah dibuang.

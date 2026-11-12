@@ -6,6 +6,9 @@ import { calendar } from "$lib/stores/calendar.svelte";
 import { notifications } from "$lib/stores/notifications.svelte";
 import { prefs } from "$lib/stores/prefs.svelte";
 import { clock, longDate } from "./dates";
+import { school } from "$lib/stores/school.svelte";
+import { dueSdcReminders } from "$lib/school/sdc";
+import { tr } from "$lib/i18n.svelte";
 
 const KEY = "cognify.reminded";
 const TICK_MS = 30_000;
@@ -107,6 +110,23 @@ export function startReminders(enabled: () => boolean = () => true): () => void 
     busy = true;
     try {
       const now = Date.now();
+      // SDC: kerjakan hari ini, dan isi progres di portal (klik membuka halaman SDC di browser).
+      const sdcDue = dueSdcReminders(new Date(now), school.sdc, prefs.value, reminded, {
+        dailyTitle: tr("SDC hari ini", "SDC today"),
+        progressTitle: tr("Isi progres SDC di CIS", "Fill in your SDC progress on CIS"),
+        progressBody: (w) => {
+          const when = w.closesAt ? new Date(w.closesAt).toLocaleString([], { weekday: "long", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+          return w.index && when
+            ? tr(`Minggu ${w.index} ditutup ${when}. Ketuk untuk membuka SDC di CIS, lalu pilih Progress.`, `Week ${w.index} closes ${when}. Tap to open SDC on CIS, then choose Progress.`)
+            : tr("Ketuk untuk membuka halaman SDC di CIS, lalu pilih Progress.", "Tap to open the SDC page on CIS, then choose Progress.");
+        },
+        minutesShort: tr("mnt", "min"),
+      });
+      for (const r of sdcDue) {
+        reminded.add(r.key);
+        await deliver({ kind: "info", title: r.title, body: r.body, href: r.href });
+      }
+      if (sdcDue.length) persist();
       const missed = missedReminders(now, reminded);
       for (const o of missed) {
         reminded.add(o.key);

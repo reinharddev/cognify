@@ -53,6 +53,10 @@ pub fn write_text_file(path: String, content: String) -> Result<(), String> {
 #[tauri::command]
 pub fn write_base64_file(path: String, data: String) -> Result<(), String> {
     let bytes = STANDARD.decode(data.trim()).map_err(|_| "Data gambar tidak valid".to_string())?;
+    if let Some(parent) = std::path::Path::new(&path).parent() {
+        // Folder gambar di samping ekspor Markdown dibuat bila belum ada.
+        fs::create_dir_all(parent).map_err(|e| format!("Gagal menyimpan: {e}"))?;
+    }
     fs::write(&path, bytes).map_err(|e| format!("Gagal menyimpan: {e}"))
 }
 

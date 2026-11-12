@@ -116,7 +116,7 @@
   });
 </script>
 
-<svg class="arrows" aria-hidden="true">
+<svg class="arrows" aria-hidden="true" data-noprint>
   <defs>
     {#each drawn as a (a.key)}
       <!-- Samar di dekat teks, makin jelas mendekati catatan. -->

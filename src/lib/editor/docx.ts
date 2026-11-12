@@ -2,11 +2,16 @@
 // supaya tidak menambah berat awal app. Tanpa jaringan.
 
 import { parseDoc, type JNode } from "./markdown";
+import { exportableNotes, readNotes } from "../workspace/docNotes";
 
 export interface DocxOptions {
   title?: string;
   /** Baca byte gambar dari `src` dokumen (mis. `img:nama.png`); null bila tidak bisa dibaca. */
   resolveImage?: (src: string) => Promise<{ data: Uint8Array; type: "png" | "jpg" | "gif" | "bmp"; width: number; height: number } | null>;
+  /** Gambar papan (PNG) untuk blok papan; null bila papan kosong atau gagal digambar. */
+  resolveBoard?: (pageId: string) => Promise<{ title: string; data: Uint8Array; width: number; height: number } | null>;
+  /** Judul bagian catatan di akhir dokumen. */
+  notesHeading?: string;
 }
 
 type D = typeof import("docx");
@@ -143,6 +148,17 @@ export async function buildDocx(raw: string, opts: DocxOptions = {}) {
           } else out.push(new d.Paragraph({ children: [new d.TextRun({ text: "[gambar]", italics: true })] }));
           break;
         }
+        case "boardBlock": {
+          const id = String(n.attrs?.pageId ?? "");
+          if (!id) break;
+          const img = opts.resolveBoard ? await opts.resolveBoard(id).catch(() => null) : null;
+          if (img) {
+            const w = Math.min(img.width, 560);
+            out.push(new d.Paragraph({ alignment: d.AlignmentType.CENTER, children: [new d.ImageRun({ data: img.data, type: "png", transformation: { width: w, height: Math.round((img.height * w) / Math.max(img.width, 1)) } })] }));
+            if (img.title) out.push(new d.Paragraph({ alignment: d.AlignmentType.CENTER, children: [new d.TextRun({ text: img.title, italics: true })] }));
+          } else out.push(new d.Paragraph({ children: [new d.TextRun({ text: "[papan]", italics: true })] }));
+          break;
+        }
         default:
           break;
       }
@@ -151,6 +167,17 @@ export async function buildDocx(raw: string, opts: DocxOptions = {}) {
   };
 
   const body = await flow(doc.content);
+  // Catatan melayang jadi teks biasa di akhir dokumen.
+  const notes = exportableNotes(readNotes(raw));
+  if (notes.length) {
+    body.push(new d.Paragraph({ heading: d.HeadingLevel.HEADING_2, children: [new d.TextRun(opts.notesHeading ?? "Catatan")] }));
+    for (const n of notes) {
+      if (n.title) body.push(new d.Paragraph({ children: [new d.TextRun({ text: n.title, bold: true })] }));
+      for (const para of n.text.split(/\n{2,}/).filter(Boolean)) {
+        body.push(new d.Paragraph({ children: para.split("\n").map((line, i) => new d.TextRun({ text: line, break: i ? 1 : undefined })) }));
+      }
+    }
+  }
   const levels = Array.from({ length: 6 }, (_, level) => ({ level, format: d.LevelFormat.DECIMAL, text: `%${level + 1}.`, alignment: d.AlignmentType.LEFT, style: { paragraph: { indent: { left: 720 + level * 360, hanging: 360 } } } }));
   return new d.Document({
     title: opts.title,

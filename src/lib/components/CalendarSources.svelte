@@ -1,7 +1,8 @@
 <script lang="ts">
   import { tr } from "$lib/i18n.svelte";
   import { dialog } from "$lib/stores/dialog.svelte";
-  import { Download, RefreshCw, Trash2, X } from "@lucide/svelte";
+  import { Download, FileUp, RefreshCw, Trash2, X } from "@lucide/svelte";
+  import Select from "$lib/ui/Select.svelte";
   import { ago } from "$lib/link/format";
   import { calendar } from "$lib/stores/calendar.svelte";
   import { prefs } from "$lib/stores/prefs.svelte";
@@ -62,24 +63,103 @@
     importing = true;
   }
 
+  let timetableInput = $state<HTMLInputElement>();
+  let timetableBusy = $state(false);
+  let timetableError = $state<string | null>(null);
+  let timetableNote = $state<string | null>(null);
+
+  async function pickTimetable(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = "";
+    timetableError = null;
+    timetableNote = null;
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) return void (timetableError = tr("Berkas terlalu besar (maksimal 10 MB).", "The file is too large (10 MB at most)."));
+    timetableBusy = true;
+    try {
+      const { readPdfItems } = await import("$lib/school/pdfItems");
+      const done = await school.importPdf(await readPdfItems(await file.arrayBuffer()), file.name);
+      timetableNote =
+        done.kind === "exam"
+          ? done.replaced ? tr(`Jadwal ${done.label} diganti.`, `The ${done.label} timetable was replaced.`) : tr(`Jadwal ${done.label} ditambahkan.`, `The ${done.label} timetable was added.`)
+          : done.replaced ? tr("Jadwal pelajaran induk diganti.", "The master timetable was replaced.") : tr("Jadwal pelajaran induk ditambahkan.", "The master timetable was added.");
+    } catch (err) {
+      timetableError = err instanceof Error ? err.message : tr("Jadwal tidak bisa dibaca dari PDF ini.", "The timetable could not be read from this PDF.");
+    } finally {
+      timetableBusy = false;
+    }
+  }
+
+  const MONTH = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+  const dateRange = (a: string, b: string) => {
+    const [ya, ma, da] = a.split("-").map(Number);
+    const [yb, mb, db] = b.split("-").map(Number);
+    return a === b ? `${da} ${MONTH[ma - 1]} ${ya}` : `${da}${ma === mb && ya === yb ? "" : ` ${MONTH[ma - 1]}`} - ${db} ${MONTH[mb - 1]} ${yb}`;
+  };
+
+  async function removeExam(id: string, label: string) {
+    if (await dialog.confirm(tr(`Hapus jadwal ${label}?`, `Remove the ${label} timetable?`), { detail: tr("Kalender kembali memakai jadwal biasa pada tanggal itu.", "The calendar goes back to the regular timetable on those dates."), danger: true })) await school.removeExam(id);
+  }
+
+  async function removeTimetable() {
+    if (await dialog.confirm(tr("Hapus jadwal unggahan?", "Remove the uploaded timetable?"), { detail: tr("Kalender kembali memakai jadwal dari portal bila ada.", "The calendar goes back to the portal timetable, if there is one."), danger: true })) await school.removeTimetable();
+  }
+
   async function remove(id: string, label: string) {
     if (await dialog.confirm(tr(`Hapus kalender "${label}" dari Cognify?`, `Remove calendar "${label}" from Cognify?`), { detail: tr("Acaranya di sumber asli tidak terhapus.", "Its events at the original source are not deleted."), danger: true })) await calendar.removeSource(id);
   }
 </script>
 
-{#if school.lessons.length}
-  <section class="sources lessons">
-    <h2>{tr("Jadwal sekolah", "School timetable")}</h2>
-    <ul>
+<section class="sources lessons">
+  <h2>{tr("Jadwal sekolah", "School timetable")}</h2>
+  <p class="muted">{tr("Jadwal di portal kadang berbeda dari yang berlaku di kelas. Unggah PDF jadwal induk sekolah untuk memakai jadwal yang benar, atau PDF jadwal ujian (STS, SAS) yang menggantikan jadwal biasa pada tanggalnya. Jenisnya dikenali otomatis, dan mengunggah ulang menggantikan yang lama. Ekstensi tetap menerima jadwal portal; hanya sumber yang dipilih yang tampil di Kalender, Beranda, dan Notch.", "The portal timetable sometimes differs from the real one. Upload the school's master timetable PDF to use the right one, or an exam timetable PDF (STS, SAS) that replaces the regular one on its dates. The type is detected automatically, and uploading again replaces the old one. The extension keeps receiving the portal timetable; only the chosen source shows in the Calendar, Home and Notch.")}</p>
+  <ul>
+    <li>
+      <label class="on"><input type="checkbox" checked={prefs.value.showLessons} onchange={(e) => prefs.set({ showLessons: e.currentTarget.checked })} aria-label={tr("Tampilkan jadwal pelajaran", "Show the lesson timetable")} /></label>
+      <span class="n">{tr("Tampilkan jadwal pelajaran", "Show the lesson timetable")}
+        <small>{school.schedulePeriod ?? tr("Belum ada jadwal", "No timetable yet")}</small>
+      </span>
+    </li>
+    <li>
+      <label class="on"><input type="radio" name="schedule-source" checked={school.scheduleSource === "portal"} disabled={!school.lessons.length && school.scheduleSource !== "portal"} onchange={() => school.setScheduleSource("portal")} aria-label={tr("Jadwal dari portal sekolah", "Timetable from the school portal")} /></label>
+      <span class="n">{tr("Dari portal sekolah (CIS)", "From the school portal (CIS)")}
+        <small>{school.lessons.length ? tr(`${school.lessons.length} pelajaran dari ekstensi`, `${school.lessons.length} lessons from the extension`) : tr("Belum ada kiriman dari ekstensi", "Nothing from the extension yet")}</small>
+      </span>
+    </li>
+    <li>
+      <label class="on"><input type="radio" name="schedule-source" checked={school.scheduleSource === "upload"} disabled={!school.timetable} onchange={() => school.setScheduleSource("upload")} aria-label={tr("Jadwal dari PDF unggahan", "Timetable from the uploaded PDF")} /></label>
+      <span class="n">{tr("Dari PDF unggahan", "From the uploaded PDF")}
+        <small>{school.timetable ? `${school.timetable.name} · ${tr("kelas", "class")} ${school.activeClass}` : tr("Belum ada PDF", "No PDF yet")}</small>
+      </span>
+      {#if school.timetable}
+        <button class="danger" title={tr("Hapus jadwal unggahan", "Remove the uploaded timetable")} aria-label={tr("Hapus jadwal unggahan", "Remove the uploaded timetable")} onclick={removeTimetable}><Trash2 size={14} /></button>
+      {/if}
+    </li>
+    {#each school.exams as e (e.id)}
       <li>
-        <label class="on"><input type="checkbox" checked={prefs.value.showLessons} onchange={(e) => prefs.set({ showLessons: e.currentTarget.checked })} aria-label={tr("Tampilkan jadwal pelajaran", "Show the lesson timetable")} /></label>
-        <span class="n">{tr("Jadwal pelajaran", "Lesson timetable")}
-          <small>{school.schedulePeriod ?? ""} · {tr("tampil di Kalender, Beranda, dan Notch", "shown in the Calendar, Home and Notch")}</small>
+        <span class="n">{tr("Jadwal ujian", "Exam timetable")}: {e.label}
+          <small>{e.days[0] ? dateRange(e.days[0].date, e.days[e.days.length - 1].date) : ""} · {e.name}{school.activeClass && !e.classes.includes(school.activeClass) ? ` · ${tr("kelasmu tidak ada di PDF ini", "your class is not in this PDF")}` : ""}</small>
         </span>
+        <button class="danger" title={tr("Hapus jadwal ujian", "Remove the exam timetable")} aria-label="{tr("Hapus jadwal ujian", "Remove the exam timetable")} {e.label}" onclick={() => removeExam(e.id, e.label)}><Trash2 size={14} /></button>
       </li>
-    </ul>
-  </section>
-{/if}
+    {/each}
+    {#if school.pdfClasses.length}
+      <li class="cls">
+        <span class="n">{tr("Kelas saya", "My class")}
+          <small>{tr("Pilih kelasmu di jadwal induk.", "Pick your class in the master timetable.")}</small>
+        </span>
+        <Select value={school.activeClass} options={school.pdfClasses.map((c) => ({ value: c, label: c }))} label={tr("Kelas saya", "My class")} onchange={(v) => school.setMyClass(v)} />
+      </li>
+    {/if}
+  </ul>
+  <input bind:this={timetableInput} type="file" accept="application/pdf,.pdf" onchange={pickTimetable} aria-label={tr("Berkas PDF jadwal", "Timetable PDF file")} hidden />
+  <button type="button" class="import" disabled={timetableBusy} onclick={() => timetableInput?.click()}><FileUp size={15} /> {timetableBusy ? tr("Membaca PDF…", "Reading the PDF…") : school.timetable || school.exams.length ? tr("Unggah atau ganti PDF jadwal", "Upload or replace a timetable PDF") : tr("Unggah PDF jadwal", "Upload a timetable PDF")}</button>
+  {#if timetableError}<p class="err">{timetableError}</p>{/if}
+  {#if timetableNote}<p class="muted note" role="status">{timetableNote}</p>{/if}
+  <p class="muted note">{tr("PDF dibaca di perangkat ini dan tidak dikirim ke mana pun.", "The PDF is read on this device and is not sent anywhere.")}</p>
+</section>
+
 
 <section class="sources">
   <h2>{tr("Kalender dari luar", "External calendars")}</h2>
@@ -172,7 +252,8 @@
     border-bottom: 1px solid var(--border);
   }
   .on input {
-    width: auto;
+    width: 18px;
+    height: 18px;
   }
   .n {
     flex: 1;
@@ -197,6 +278,20 @@
   li button:hover {
     background: var(--surface-2);
     color: var(--text);
+  }
+  li.cls {
+    flex-direction: column;
+    align-items: stretch;
+    border-bottom: none;
+  }
+  /* Kontrol bulat digambar di app.css (18 px); jangan diubah lebarnya atau jadi gepeng. */
+  li input[type="radio"] {
+    width: 18px;
+    height: 18px;
+  }
+  .import:disabled {
+    opacity: 0.5;
+    cursor: wait;
   }
   li .danger:hover {
     color: var(--danger);

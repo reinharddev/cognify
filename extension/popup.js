@@ -1,4 +1,4 @@
-import { explain, getPrefs, isWeb, pair, saveLink, savePage, saveSelection, selectedText, setPrefs, status, t, targets } from "./cognify.js";
+import { ensureSiteAccess, explain, getPrefs, isCis, isWeb, pair, saveLink, savePage, saveSelection, selectedText, setPrefs, status, t, targets } from "./cognify.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -181,6 +181,8 @@ action($("save-selection"), async (tab) => saveSelection(tab, await selectedText
 // Satu tombol untuk portal sekolah: semua periode bila ada dropdown, atau tabel yang sedang tampil. Dikerjakan di background.js.
 $("send-tables").dataset.saved = "savedTables";
 action($("send-tables"), async (tab) => {
+  // Di portal CIS ekstensi berpindah halaman sendiri (Academic, lalu SDC); izin akses situsnya diminta di sini, dari klik pengguna.
+  if (isCis(tab.url)) await ensureSiteAccess();
   const r = await chrome.runtime.sendMessage({ type: "send-all", tabId: tab.id });
   if (!r?.ok) throw new Error(r?.error || "gagal");
   if (r.partial) throw new Error(`Terkirim: ${r.summary}. Yang gagal${r.partial}`);

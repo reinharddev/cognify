@@ -750,10 +750,11 @@ fn table(store: &Store, body: &Value) -> Outcome {
     if !ok {
         return Outcome::error(422, "invalid", "Bentuk tabel tidak dikenali.");
     }
-    // Jenis kiriman: "exam" (tugas, ujian, nilai), "schedule" (jadwal pelajaran), atau "attendance" (kehadiran per hari); yang lain dianggap "exam".
+    // Jenis kiriman: "exam" (tugas, ujian, nilai), "schedule" (jadwal pelajaran), "attendance" (kehadiran per hari), "sdc" (progres Self Development Challenge); yang lain dianggap "exam".
     let kind = match body.get("kind").and_then(Value::as_str) {
         Some("schedule") => "schedule",
         Some("attendance") => "attendance",
+        Some("sdc") => "sdc",
         Some("report") => "report",
         _ => "exam",
     };
@@ -1092,6 +1093,10 @@ mod tests {
         assert_eq!(handle(&store, &bridge, &req("POST", "/bridge/table", Some(&token), att)).reply.status, 200);
         let last: Vec<Value> = serde_json::from_str(&store.with(|c| settings::get(c, SCHOOL_INBOX_KEY)).unwrap().unwrap()).unwrap();
         assert_eq!(last.last().unwrap()["kind"], "attendance");
+        let sdc = json!({ "kind": "sdc", "period": "12.2 / First / 2026-2027", "tables": [{ "headers": ["Challenge"], "rows": [["PoCC Informatika (3 jam 30 menit per minggu)", "membuat website", "30"]] }] });
+        assert_eq!(handle(&store, &bridge, &req("POST", "/bridge/table", Some(&token), sdc)).reply.status, 200);
+        let with_sdc: Vec<Value> = serde_json::from_str(&store.with(|c| settings::get(c, SCHOOL_INBOX_KEY)).unwrap().unwrap()).unwrap();
+        assert_eq!(with_sdc.last().unwrap()["kind"], "sdc");
         let rep = json!({ "kind": "report", "tables": [{ "headers": ["Line"], "rows": [["Nilai: OK"], ["Nilai 11.2: GAGAL"]] }] });
         assert_eq!(handle(&store, &bridge, &req("POST", "/bridge/table", Some(&token), rep)).reply.status, 200);
         let saved = store.with(|c| settings::get(c, SCHOOL_REPORT_KEY)).unwrap().unwrap();

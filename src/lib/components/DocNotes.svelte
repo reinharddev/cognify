@@ -42,7 +42,7 @@
   };
 </script>
 
-<div class="layer" bind:this={layer}>
+<div class="layer" bind:this={layer} data-noprint>
   {#each notes as n (n.id)}
     <div
       class="note"

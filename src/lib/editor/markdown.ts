@@ -1,6 +1,15 @@
 // Dokumen (JSON Tiptap) menjadi Markdown. Hanya membaca JSON, tanpa editor, jadi bisa diuji dan dipakai di mana saja.
 // Yang tidak punya padanan Markdown (komentar, blok kalender, papan, dan tugas Moodle) dilewati; gambar lokal jadi teks keterangan.
 
+import { exportableNotes, readNotes } from "../workspace/docNotes";
+
+export interface MdOptions {
+  /** Judul bagian catatan di akhir dokumen. */
+  notesHeading?: string;
+  /** Papan yang sudah jadi gambar: id papan ke judul dan alamat berkas relatif (null bila gagal dibuat). */
+  boards?: Record<string, { title: string; path: string | null }>;
+}
+
 export interface JNode {
   type?: string;
   text?: string;
@@ -67,6 +76,19 @@ function table(node: JNode): string {
   return [line(rows[0]), `| ${Array.from({ length: width }, () => "---").join(" | ")} |`, ...rows.slice(1).map(line)].join("\n");
 }
 
+let ctx: MdOptions = {};
+
+/** Id papan yang dipakai dokumen, berurutan dan tanpa duplikat. */
+export function boardIds(raw: string): string[] {
+  const ids: string[] = [];
+  const walk = (n: JNode) => {
+    if (n.type === "boardBlock" && n.attrs?.pageId && !ids.includes(String(n.attrs.pageId))) ids.push(String(n.attrs.pageId));
+    (n.content ?? []).forEach(walk);
+  };
+  walk(parseDoc(raw));
+  return ids;
+}
+
 function block(n: JNode): string {
   switch (n.type) {
     case "paragraph":
@@ -106,6 +128,13 @@ function block(n: JNode): string {
       return `$$\n${String(n.attrs?.latex ?? "")}\n$$`;
     case "image":
       return "*[gambar]*";
+    case "boardBlock": {
+      const id = String(n.attrs?.pageId ?? "");
+      if (!id) return "";
+      const b = ctx.boards?.[id];
+      if (!b) return "*[papan]*";
+      return b.path ? `![${esc(b.title)}](${encodeURI(b.path)})` : `*[Papan: ${esc(b.title)}]*`;
+    }
     default:
       return ""; // blok kalender, papan, tugas Moodle, dan lainnya
   }
@@ -116,7 +145,20 @@ function blocks(nodes: JNode[] | undefined, sep = "\n\n"): string {
 }
 
 /** Dokumen Markdown lengkap, dimulai dengan judul halaman bila ada. */
-export function toMarkdown(raw: string, title = ""): string {
-  const body = blocks(parseDoc(raw).content);
+export function toMarkdown(raw: string, title = "", opts: MdOptions = {}): string {
+  ctx = opts;
+  let body: string;
+  try {
+    body = blocks(parseDoc(raw).content);
+  } finally {
+    ctx = {};
+  }
+  // Catatan melayang jadi teks biasa di akhir dokumen.
+  const notes = exportableNotes(readNotes(raw));
+  if (notes.length) {
+    const lines = (t: string) => esc(t).split(/\n{2,}/).map((p) => p.replace(/\n/g, "  \n")).join("\n\n");
+    const section = notes.map((n) => [n.title ? `**${esc(n.title)}**` : "", n.text ? lines(n.text) : ""].filter(Boolean).join("\n\n")).join("\n\n");
+    body = [body, `## ${opts.notesHeading ?? "Catatan"}`, section].filter(Boolean).join("\n\n");
+  }
   return (title.trim() ? `# ${title.trim()}\n\n` : "") + body + "\n";
 }

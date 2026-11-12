@@ -24,6 +24,10 @@ Menyimpan teks terpilih, tautan, atau seluruh halaman web ke Cognify. Hanya berb
 
 Pintasan bisa diubah di pengaturan ekstensi browser (`chrome://extensions/shortcuts`).
 
+## Portal CIS (Sekolah Ciputra Kasih)
+
+Di `student.citrakasih.sch.id` tombol kirim bekerja dari halaman mana pun: ekstensi membawa tab ke halaman Academic (nilai, jadwal, kehadiran), lalu ke Self Development Challenge dan membaca progres mingguannya, dan berakhir di halaman awal SDC. Pertama kali, browser meminta izin akses ke situs portal. Yang dibaca hanya halaman yang kamu lihat sendiri; ekstensi tidak mengisi atau mengirim formulir apa pun di portal.
+
 ## Keamanan
 
 - Jembatan hanya jalan saat dinyalakan di Cognify. Origin selain ekstensi browser dan Host selain loopback ditolak.

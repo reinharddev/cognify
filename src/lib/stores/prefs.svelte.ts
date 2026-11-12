@@ -22,6 +22,14 @@ export interface Prefs {
   lessonReminders: boolean;
   /** Tampilkan jadwal pelajaran dari portal sekolah di Kalender (dan Notch). */
   showLessons: boolean;
+  /** Pengingat kerjakan SDC hari ini (target harian tiap tantangan) dan jamnya ("HH:MM"). */
+  sdcDaily: boolean;
+  sdcDailyTime: string;
+  /** Pengingat isi progres SDC di portal: mati, tiap Minggu, atau tiap hari, dan jamnya. */
+  sdcProgress: "off" | "weekly" | "daily";
+  sdcProgressTime: string;
+  /** Hari kerja tiap tantangan SDC (nama tantangan ke daftar hari, 0 Minggu); yang belum diatur berarti semua hari. */
+  sdcDays: Record<string, number[]>;
   /** Menutup jendela hanya menyembunyikannya; Cognify tetap jalan di menu bar supaya pengingat berbunyi. */
   keepInTray: boolean;
   /** Bunyi pendek saat notifikasi baru masuk. */
@@ -47,6 +55,11 @@ export const DEFAULTS: Prefs = {
   reminders: true,
   lessonReminders: false,
   showLessons: true,
+  sdcDaily: true,
+  sdcDailyTime: "16:00",
+  sdcProgress: "weekly",
+  sdcProgressTime: "19:00",
+  sdcDays: {},
   keepInTray: true,
   notifySound: true,
   notifyDesktop: true,
@@ -88,6 +101,20 @@ export function sanitize(raw: unknown): Prefs {
     keepInTray: typeof r.keepInTray === "boolean" ? r.keepInTray : DEFAULTS.keepInTray,
     showLessons: typeof r.showLessons === "boolean" ? r.showLessons : DEFAULTS.showLessons,
     lessonReminders: typeof r.lessonReminders === "boolean" ? r.lessonReminders : DEFAULTS.lessonReminders,
+    sdcDaily: typeof r.sdcDaily === "boolean" ? r.sdcDaily : DEFAULTS.sdcDaily,
+    sdcDailyTime: typeof r.sdcDailyTime === "string" && /^([01]?\d|2[0-3]):[0-5]\d$/.test(r.sdcDailyTime) ? r.sdcDailyTime : DEFAULTS.sdcDailyTime,
+    sdcProgress: pick(r.sdcProgress, ["off", "weekly", "daily"] as const, DEFAULTS.sdcProgress),
+    sdcDays: (() => {
+      const out: Record<string, number[]> = {};
+      if (r.sdcDays && typeof r.sdcDays === "object") {
+        for (const [k, v] of Object.entries(r.sdcDays as Record<string, unknown>)) {
+          const days = Array.isArray(v) ? [...new Set(v.filter((d): d is number => Number.isInteger(d) && d >= 0 && d <= 6))] : [];
+          if (days.length) out[k.slice(0, 120)] = days;
+        }
+      }
+      return out;
+    })(),
+    sdcProgressTime: typeof r.sdcProgressTime === "string" && /^([01]?\d|2[0-3]):[0-5]\d$/.test(r.sdcProgressTime) ? r.sdcProgressTime : DEFAULTS.sdcProgressTime,
     reminders: typeof r.reminders === "boolean" ? r.reminders : DEFAULTS.reminders,
     notifySound: typeof r.notifySound === "boolean" ? r.notifySound : DEFAULTS.notifySound,
     notifyDesktop: typeof r.notifyDesktop === "boolean" ? r.notifyDesktop : DEFAULTS.notifyDesktop,
