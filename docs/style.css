@@ -489,3 +489,17 @@ footer { max-width: 1100px; margin: 0 auto; padding: 50px 28px 40px; display: fl
 .x-explore.scrolly { height: calc(var(--n) * var(--per) * 100vh + 100vh); padding-bottom: 0; }
 .x-explore.scrolly .x-wrap { position: sticky; top: 56px; }
 .x-explore.scrolly .x-note { margin-top: 14px; }
+
+/* ---------- Paket gabungan di bagian Unduh ---------- */
+.get .bundle { background: var(--accent); color: #000; border-radius: 28px; padding: 30px 30px 28px; margin: 0 0 22px; max-width: 760px; width: 100%; position: relative; text-align: center; }
+.get .bundle .rec { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); background: #fff; color: #000; font-weight: 800; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; padding: 5px 16px; border-radius: 99px; }
+.get .bundle h3 { font-size: clamp(30px, 4vw, 44px); margin-bottom: 8px; }
+.get .bundle p { color: rgba(0,0,0,.75); font-size: 16px; margin: 0 auto 18px; max-width: 560px; }
+.get .bundle .btn.accent { background: #000; color: #fff; border-color: #000; }
+.get .opts { width: 100%; max-width: 760px; margin: 0 0 6px; }
+.get .opts summary { cursor: pointer; font-weight: 700; color: rgba(255,255,255,.85); padding: 8px 0; list-style: none; }
+.get .opts summary::before { content: "+ "; }
+.get .opts[open] summary::before { content: "− "; }
+.get .opt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; padding: 14px 0 4px; }
+.get .opt-grid b { display: block; margin-bottom: 8px; color: #fff; }
+@media (max-width: 560px) { .get .opt-grid { grid-template-columns: 1fr; } }
