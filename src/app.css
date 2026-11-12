@@ -106,6 +106,11 @@
         20 − 12 = 8,   12 − 8 = 4,   32 − 20 = 12.
      Di CSS: induk menetapkan --r-out dan --pad, anak diberi kelas .concentric (lihat bawah). */
   --u: 4px;
+  /* Kartu bergaya Cognify Notch (hitam, kaca): sama di tema terang dan gelap, dipakai kartu pembaruan. */
+  --notch-bg: #0b0b10;
+  --notch-text: #f3f2f8;
+  --notch-warn: #ffc666;
+
   --space-0: 2px;
   --space-1: 4px;
   --space-2: 8px;

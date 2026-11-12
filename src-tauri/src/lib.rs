@@ -9,6 +9,7 @@ mod mcp;
 mod store;
 mod toolbox;
 mod sticky;
+mod updater;
 mod tray;
 
 use std::sync::atomic::Ordering;
@@ -43,6 +44,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(toolbox::ffmpeg::Jobs::default())
         .manage(toolbox::office::OfficeLock::default())
+        .manage(updater::Updater::default())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
@@ -84,6 +86,10 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            updater::update_supported,
+            updater::update_check,
+            updater::update_download,
+            updater::update_apply,
             moodle::moodle_status,
             moodle::moodle_set_enabled,
             moodle::moodle_connect,

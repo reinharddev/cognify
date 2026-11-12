@@ -18,6 +18,8 @@
   import { prefs } from "$lib/stores/prefs.svelte";
   import { notifications } from "$lib/stores/notifications.svelte";
   import NotificationToasts from "$lib/components/NotificationToasts.svelte";
+  import UpdateCard from "$lib/components/UpdateCard.svelte";
+  import { update } from "$lib/stores/update.svelte";
   import { proposals } from "$lib/stores/proposals.svelte";
   import { startAgendaShare } from "$lib/stores/agendaShare.svelte";
   import { moodle } from "$lib/stores/moodle.svelte";
@@ -70,6 +72,7 @@
         if (last && ws.nodes.some((n) => n.id === last)) await goto(`/p/${last}`, { replaceState: true });
       }
     })();
+    const stopUpdate = update.start();
     const stopReminders = startReminders(() => prefs.value.reminders);
     const stopProposals = proposals.start();
     const stopAgenda = startAgendaShare();
@@ -90,6 +93,7 @@
       void stopNav?.then((off) => off());
       void stopPages?.then((off) => off());
       clearTimeout(refreshTimer);
+      stopUpdate();
       stopReminders();
       stopProposals();
       stopAgenda();
@@ -213,6 +217,7 @@
 <ContextMenu />
 <DialogHost />
 <NotificationToasts />
+{#if !isSticky}<UpdateCard />{/if}
 
 <style>
   .shell {

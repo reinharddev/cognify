@@ -1,6 +1,14 @@
 # Catatan rilis Cognify, dua bahasa (id: Indonesia, en: English), terbaru di atas.
 # Format dan aturan: docs/rilis/aturan-catatan-rilis.md. Tiap versi wajib punya kedua bahasa.
 
+0.5.0
+id: Baru: Cognify kini bisa memeriksa dan memasang pembaruannya sendiri. Kartu unduhan bergaya Notch menampilkan kemajuan, catatan "apa yang baru", dan tombol Perbarui sekarang atau Pasang saat ditutup.
+id: Baru: Pengaturan > Tentang punya tombol Cek pembaruan, serta saklar Periksa otomatis dan Unduh dan pasang otomatis (bawaan nyala, bisa dimatikan). Yang diminta hanya daftar rilis dan berkas rilis di GitHub; tidak ada data tentang komputer atau catatanmu yang dikirim.
+id: Mac: pembaruan memeriksa tanda tangan Developer ID sebelum memasang dan memulihkan app lama bila gagal.
+en: New: Cognify can now check for and install its own updates. A Notch-style download card shows progress, "what's new" notes, and Update now or Install on close buttons.
+en: New: Settings > About has a Check for updates button, plus Check automatically and Download and install automatically switches (on by default, can be turned off). Only the release list and release files on GitHub are requested; nothing about your computer or notes is sent.
+en: Mac: updates verify the Developer ID signature before installing and restore the old app if anything fails.
+
 0.4.0
 id: Baru: jadwal sekolah dari PDF. Unggah jadwal induk atau jadwal pekan ujian (STS, SAS); jadwal ujian menggantikan jadwal biasa pada tanggalnya, dan jadwal portal bisa dimatikan di Kalender.
 id: Baru: ekstensi untuk portal CIS berpindah halaman sendiri dan ikut membaca Self Development Challenge (SDC). Tab SDC di Nilai menampilkan progres, menit per hari, dan pengingat kerjakan serta isi progres.

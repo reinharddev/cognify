@@ -11,6 +11,8 @@
   import { moodle, REMIND_CHOICES } from "$lib/stores/moodle.svelte";
   import { embedConsent } from "$lib/moodle/embedConsent.svelte";
   import Select from "$lib/ui/Select.svelte";
+  import { update, formatSize } from "$lib/stores/update.svelte";
+  import { openHref } from "$lib/openHref";
   import { testReminder } from "$lib/calendar/reminders";
   import type { BridgeStatus, McpInfo } from "$lib/workspace/types";
 
@@ -344,6 +346,33 @@
         <h2>{tr("Tentang", "About")}</h2>
         <p class="hint">Cognify{version ? ` ${version}` : ""}. {tr("Ruang catatan untuk belajar dan semua kegiatanmu. Gratis, tanpa akun.", "A notes space for studying and everything you do. Free, no account.")}</p>
         <p class="hint">{tr("Sedang dikerjakan: fitur dan tampilannya masih bisa berubah.", "Work in progress: features and looks may still change.")}</p>
+        {#if isTauri()}
+          <h2>{tr("Pembaruan", "Updates")}</h2>
+          <div class="row">
+            <div>
+              <b>{tr("Cek pembaruan", "Check for updates")}</b>
+              <small>{update.text || (update.lastChecked ? tr("Terakhir diperiksa ", "Last checked ") + new Date(update.lastChecked).toLocaleString() : tr("Belum pernah diperiksa.", "Never checked."))}</small>
+            </div>
+            <div class="upd-actions">
+              <button class="plain" disabled={update.stage === "checking" || update.stage === "downloading" || update.stage === "installing"} onclick={() => update.check(true)}>{update.stage === "checking" ? tr("Memeriksa…", "Checking…") : tr("Cek pembaruan", "Check for updates")}</button>
+              {#if update.stage === "found" || update.stage === "ready"}
+                {#if update.selfUpdate}
+                  <button class="plain strong" onclick={() => update.installNow()}>{update.stage === "ready" ? tr("Mulai ulang dan perbarui", "Restart and update") : tr(`Perbarui ke ${update.version}`, `Update to ${update.version}`)}{update.size && update.stage === "found" ? ` (${formatSize(update.size)})` : ""}</button>
+                {:else}
+                  <button class="plain strong" onclick={() => openHref(update.url)}>{tr("Buka halaman unduhan", "Open download page")}</button>
+                {/if}
+              {/if}
+            </div>
+          </div>
+          <label class="row">
+            <div><b>{tr("Periksa pembaruan otomatis", "Check for updates automatically")}</b><small>{tr("Cognify memeriksa rilis di GitHub 30 detik setelah dibuka, lalu sekali sehari. Yang diminta hanya daftar versi dan berkas rilis; tidak ada data tentang komputer atau catatanmu yang dikirim.", "Cognify checks the releases on GitHub 30 seconds after it opens, then once a day. Only the version list and release files are requested; nothing about your computer or notes is sent.")}</small></div>
+            <input type="checkbox" role="switch" checked={update.checkOn} onchange={(e) => update.setCheck(e.currentTarget.checked)} />
+          </label>
+          <label class="row" class:off={!update.checkOn}>
+            <div><b>{tr("Unduh dan pasang otomatis", "Download and install automatically")}</b><small>{update.checkOn ? tr("Versi baru diunduh di latar belakang dan dipasang saat Cognify ditutup. Mati: kamu yang memilih kapan memperbarui.", "New versions download in the background and install when you close Cognify. Off: you choose when to update.") : tr("Nyalakan pemeriksaan otomatis dulu.", "Turn on automatic checking first.")}</small></div>
+            <input type="checkbox" role="switch" checked={update.autoOn} disabled={!update.checkOn} onchange={(e) => update.setAuto(e.currentTarget.checked)} />
+          </label>
+        {/if}
       {/if}
     </div>
   </div>
@@ -387,6 +416,10 @@
   .md input { padding: var(--space-2) var(--space-3); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font: inherit; }
   .md input:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 1px; }
   .row.off { opacity: 0.55; }
+  .upd-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; justify-content: flex-end; }
+  .upd-actions .plain { margin-top: 0; }
+  .plain.strong { background: var(--accent); color: var(--accent-contrast); border-color: transparent; font-weight: 600; }
+  .plain:disabled { opacity: 0.55; cursor: default; }
   .plain.tight { margin: 0 0 var(--space-3); }
   .plain { margin-top: var(--space-4); background: none; border: 1px solid var(--border-strong); border-radius: var(--radius-pill); padding: var(--space-2) var(--space-4); cursor: pointer; color: var(--text); }
   .plain:hover { background: var(--surface-2); }
