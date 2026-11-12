@@ -1,0 +1,68 @@
+name: Bundle Windows
+# Membuat Cognify-Notch-Windows-Setup.exe (Cognify + Cognify Notch) dari dua Setup.exe yang sudah dirilis,
+# mengujinya di runner Windows, lalu mengunggahnya ke rilis Cognify. Lihat docs/rilis/paket-gabungan.md.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag rilis Cognify yang sudah berisi Cognify-win-Setup.exe dan tempat paket diunggah (mis. v0.3.0)"
+        required: true
+permissions:
+  contents: write
+jobs:
+  bundle:
+    runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unduh Setup Cognify (tag ini) dan Setup Notch (rilis terbaru)
+        shell: bash
+        run: |
+          mkdir -p parts
+          gh release download "${{ inputs.tag }}" --repo "${{ github.repository }}" --pattern "Cognify-win-Setup.exe" --dir parts
+          gh release download --repo reinharddev/cognify-notch-windows --pattern "CognifyNotch-win-Setup.exe" --dir parts
+          ls -l parts
+
+      - name: Pasang NSIS
+        shell: pwsh
+        run: choco install nsis -y --no-progress
+
+      - name: Bangun paket gabungan
+        shell: pwsh
+        run: |
+          $ws = $env:GITHUB_WORKSPACE
+          $ver = "${{ inputs.tag }}".TrimStart("v")
+          & "C:\Program Files (x86)\NSIS\makensis.exe" "/DVERSION=$ver" "/DCOGNIFY_SETUP=$ws\parts\Cognify-win-Setup.exe" "/DNOTCH_SETUP=$ws\parts\CognifyNotch-win-Setup.exe" "/DOUTFILE=$ws\Cognify-Notch-Windows-Setup.exe" "$ws\scripts\bundle-windows\Cognify-Notch.nsi"
+          if ($LASTEXITCODE -ne 0) { throw "makensis gagal ($LASTEXITCODE)" }
+          Get-Item "$ws\Cognify-Notch-Windows-Setup.exe" | Select-Object Name, Length
+
+      # Uji skenario pemilik: Notch dipasang LEBIH DULU, lalu paket gabungan. Tidak boleh error, Notch tidak boleh diganti.
+      - name: Uji, Notch terpasang lebih dulu
+        shell: pwsh
+        run: |
+          $ws = $env:GITHUB_WORKSPACE
+          $notch = "$env:LOCALAPPDATA\CognifyNotch"
+          $p = Start-Process "$ws\parts\CognifyNotch-win-Setup.exe" -ArgumentList "--silent" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Setup Notch gagal ($($p.ExitCode))" }
+          if (-not (Test-Path "$notch\current")) { throw "Notch tidak terpasang" }
+          $before = (Get-Item "$notch\current").LastWriteTimeUtc
+          Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$env:LOCALAPPDATA\Cognify*" } | Stop-Process -Force
+          $p = Start-Process "$ws\Cognify-Notch-Windows-Setup.exe" -ArgumentList "/S" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Paket gabungan error ($($p.ExitCode))" }
+          if (-not (Test-Path "$env:LOCALAPPDATA\Cognify\current")) { throw "Cognify tidak terpasang oleh paket" }
+          $after = (Get-Item "$notch\current").LastWriteTimeUtc
+          if ($before -ne $after) { throw "Notch diganti padahal sudah terpasang" }
+          Write-Host "OK: Notch dilewati, Cognify dipasang."
+
+      - name: Uji, dijalankan lagi (semua sudah terpasang)
+        shell: pwsh
+        run: |
+          Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$env:LOCALAPPDATA\Cognify*" } | Stop-Process -Force
+          $p = Start-Process "$env:GITHUB_WORKSPACE\Cognify-Notch-Windows-Setup.exe" -ArgumentList "/S" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Jalan kedua error ($($p.ExitCode))" }
+
+      - name: Unggah ke rilis
+        shell: bash
+        run: gh release upload "${{ inputs.tag }}" Cognify-Notch-Windows-Setup.exe --clobber --repo "${{ github.repository }}"
