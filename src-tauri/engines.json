@@ -39,6 +39,38 @@
       }
     },
     {
+      "id": "ffmpeg",
+      "label": "ffmpeg (video, audio, gambar)",
+      "approxMb": 90,
+      "targets": {
+        "windows-x86_64": {
+          "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n9.0-latest-win64-gpl-shared-9.0.zip",
+          "sumsUrl": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/checksums.sha256",
+          "asset": "ffmpeg-n9.0-latest-win64-gpl-shared-9.0.zip",
+          "file": "ffmpeg.exe",
+          "archive": "zip",
+          "folder": "ffmpeg",
+          "members": "bin"
+        },
+        "macos-aarch64": {
+          "url": "https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2/ffmpeg.zip",
+          "sha256": "c8ed4c4e6978a03c485edbfe4e0a5dc2380f8a30bba5150531b31b094492d924",
+          "file": "ffmpeg",
+          "archive": "zip",
+          "folder": "ffmpeg",
+          "also": [
+            {
+              "url": "https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2/ffprobe.zip",
+              "sha256": "fcbe839537485eaee7a7a8bc5cbc0f90d53617e80943e8a5b2e31cb851197ea6",
+              "file": "ffprobe",
+              "archive": "zip",
+              "folder": "ffmpeg"
+            }
+          ]
+        }
+      }
+    },
+    {
       "id": "libreoffice",
       "label": "LibreOffice (for Documents to PDF)",
       "approxMb": 300,

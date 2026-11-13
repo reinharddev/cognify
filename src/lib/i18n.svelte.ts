@@ -477,10 +477,15 @@ const dict = {
 		en: 'LibreOffice produced no PDF. The file may be password-protected or damaged.'
 	},
 	'office.err.failed': { id: 'Gagal.', en: 'Failed.' },
-	'engine.missing': { id: 'ffmpeg tidak ditemukan.', en: 'ffmpeg was not found.' },
-	'engine.install': {
-		id: 'Build resmi sudah membawa ffmpeg sendiri. Untuk development, jalankan "pnpm engines" atau "brew install ffmpeg".',
-		en: 'Release builds ship their own ffmpeg. For development, run "pnpm engines" or "brew install ffmpeg".'
+	'ffmpeg.missing': { id: 'ffmpeg belum terpasang.', en: 'ffmpeg is not installed.' },
+	'ffmpeg.explain': {
+		id: 'Alat video, audio, dan gambar membutuhkannya. Diunduh sekali setelah kamu menekan tombol, dari rilis resmi di GitHub (Windows) atau ffmpeg.martin-riedl.de (Mac), diperiksa checksum-nya, lalu disimpan di folder data Cognify.',
+		en: 'The video, audio and image tools need it. Downloaded once, only after you press the button, from the official build on GitHub (Windows) or ffmpeg.martin-riedl.de (Mac), checksum-verified, and kept in the Cognify data folder.'
+	},
+	'ffmpeg.install': { id: 'Pasang ffmpeg', en: 'Install ffmpeg' },
+	'ffmpeg.unsupported': {
+		id: 'ffmpeg belum bisa dipasang otomatis di sistem ini. Pasang sendiri (mis. brew install ffmpeg), lalu buka ulang Cognify.',
+		en: 'ffmpeg cannot be installed automatically on this system. Install it yourself (for example brew install ffmpeg), then reopen Cognify.'
 	},
 	'lang.label': { id: 'Bahasa', en: 'Language' }
 } satisfies Record<string, Localized>;

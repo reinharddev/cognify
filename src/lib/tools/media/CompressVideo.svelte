@@ -8,6 +8,7 @@
 	import DropZone from '$lib/components/DropZone.svelte';
 	import FolderPicker from '$lib/components/FolderPicker.svelte';
 	import { t } from '$lib/i18n.svelte';
+	import FfmpegNotice from '$lib/tools/FfmpegNotice.svelte';
 	import { extOf, fileName, formatBytes, formatDuration, listenFileDrop } from '../util';
 
 	type Status = 'queued' | 'running' | 'done' | 'nochange' | 'error' | 'cancelled';
@@ -161,15 +162,7 @@
 	});
 </script>
 
-{#if ffmpegMissing}
-	<div class="notice">
-		<TriangleAlert size={18} />
-		<div>
-			<strong>{t('engine.missing')}</strong>
-			<p>{t('engine.install')}</p>
-		</div>
-	</div>
-{/if}
+<FfmpegNotice onready={() => (ffmpegMissing = false)} />
 
 <DropZone {dragging} label={t('vid.drop')} buttonLabel={t('convert.choose')} onchoose={pick} />
 
@@ -282,19 +275,6 @@
 {/if}
 
 <style>
-	.notice {
-		display: flex;
-		gap: var(--space-3);
-		padding: var(--space-3) var(--space-3);
-		margin-bottom: var(--space-4);
-		border: 1px solid var(--danger);
-		border-radius: var(--radius);
-		color: var(--danger);
-	}
-
-	.notice p {
-		color: var(--text-dim);
-	}
 
 	.options {
 		display: flex;

@@ -23,7 +23,7 @@ use crate::toolbox::ffmpeg::{self, Jobs};
 
 const CATALOG: &str = include_str!("../../engines.json");
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Target {
     pub url: String,
@@ -40,6 +40,15 @@ pub struct Target {
     /// How to unpack the download. `dmg-app`: a macOS disk image holding one .app, which is
     /// copied into the engines folder; `file` then points at a file inside that app.
     pub archive: Option<String>,
+    /// Subfolder of the engines folder that holds this engine's files (default: the engines
+    /// folder itself). Whole folders are replaced on install and deleted on removal.
+    pub folder: Option<String>,
+    /// For `archive: "zip"`: the directory inside the zip whose files are taken (e.g. `bin`,
+    /// DLLs included). Without it only the entry named like `file` is taken.
+    pub members: Option<String>,
+    /// Further downloads installed into the same folder (ffprobe next to ffmpeg).
+    #[serde(default)]
+    pub also: Vec<Target>,
 }
 
 fn yes() -> bool {
@@ -274,6 +283,18 @@ fn make_runnable(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
+/// The SHA-256 a download must match: the pinned one, or the one in the release's own list.
+async fn expected_hash(client: &reqwest::Client, label: &str, target: &Target) -> Result<String, DlError> {
+    match (&target.sha256, &target.sums_url, &target.asset) {
+        (Some(h), _, _) => Ok(h.clone()),
+        (None, Some(sums), Some(asset)) => {
+            let text = fetch_text(client, sums).await?;
+            parse_sums(&text, asset).ok_or_else(|| DlError::Failed(format!("Tidak ada checksum untuk {asset} di daftar rilis")))
+        }
+        _ => Err(DlError::Failed(format!("{label}: tidak ada checksum untuk diverifikasi"))),
+    }
+}
+
 /// Downloads one engine for this platform into `dir`, verified. Returns its path.
 pub async fn install(
     client: &reqwest::Client,
@@ -286,14 +307,11 @@ pub async fn install(
         .target()
         .ok_or_else(|| DlError::Failed(format!("{} belum tersedia untuk {}", def.label, platform_key())))?;
 
-    let expected = match (&target.sha256, &target.sums_url, &target.asset) {
-        (Some(h), _, _) => h.clone(),
-        (None, Some(sums), Some(asset)) => {
-            let text = fetch_text(client, sums).await?;
-            parse_sums(&text, asset).ok_or_else(|| DlError::Failed(format!("Tidak ada checksum untuk {asset} di daftar rilis")))?
-        }
-        _ => return Err(DlError::Failed(format!("{}: tidak ada checksum untuk diverifikasi", def.label))),
-    };
+    if target.archive.as_deref() == Some("zip") {
+        return install_zip(client, def, target, dir, cancel, on_progress).await;
+    }
+
+    let expected = expected_hash(client, &def.label, target).await?;
 
     if target.archive.as_deref() == Some("dmg-app") {
         return install_dmg_app(client, target, &expected, dir, cancel, on_progress).await;
@@ -305,6 +323,96 @@ pub async fn install(
         make_runnable(&dest).map_err(DlError::Failed)?;
     }
     Ok(dest)
+}
+
+/// Largest zip we accept, and the most we unpack from it (a zip can claim more than it holds).
+const MAX_ZIP_BYTES: u64 = 700 * 1024 * 1024;
+const MAX_UNPACKED_BYTES: u64 = 1024 * 1024 * 1024;
+
+/// Downloads every zip of `target` (and its `also` entries), checks each hash, unpacks them
+/// into a staging folder and only then swaps that folder into place, so a failed or
+/// cancelled install never leaves half an engine behind.
+async fn install_zip(
+    client: &reqwest::Client,
+    def: &EngineDef,
+    target: &Target,
+    dir: &Path,
+    cancel: &mut oneshot::Receiver<()>,
+    mut on_progress: impl FnMut(f64),
+) -> Result<PathBuf, DlError> {
+    let folder = target.folder.as_deref().filter(|f| !f.is_empty() && !f.contains(['/', '\\']) && *f != "..")
+        .ok_or_else(|| DlError::Failed(format!("{}: engines.json: zip butuh folder", def.label)))?;
+    let staging = dir.join(format!("{folder}.part"));
+    let _ = tokio::fs::remove_dir_all(&staging).await;
+    tokio::fs::create_dir_all(&staging).await.map_err(failed)?;
+
+    let result = async {
+        let parts: Vec<&Target> = std::iter::once(target).chain(target.also.iter()).collect();
+        let n = parts.len() as f64;
+        for (i, part) in parts.iter().enumerate() {
+            let expected = expected_hash(client, &def.label, part).await?;
+            let zip_path = staging.join(format!(".download-{i}.zip"));
+            let base = i as f64 * 100.0;
+            download_to(client, &part.url, &zip_path, Expect::Sha256(&expected), MAX_ZIP_BYTES, cancel, |p| on_progress((base + p) / n)).await?;
+            let (z, d, m, f) = (zip_path.clone(), staging.clone(), part.members.clone(), part.file.clone());
+            let unpacked = tokio::task::spawn_blocking(move || extract_zip(&z, &d, m.as_deref(), &f)).await.map_err(failed)?;
+            let _ = tokio::fs::remove_file(&zip_path).await;
+            unpacked.map_err(DlError::Failed)?;
+        }
+        if target.executable {
+            for entry in std::fs::read_dir(&staging).map_err(failed)?.flatten() {
+                make_runnable(&entry.path()).map_err(DlError::Failed)?;
+            }
+        }
+        if !staging.join(&target.file).is_file() {
+            return Err(DlError::Failed(format!("{} tidak ditemukan di dalam unduhan", target.file)));
+        }
+        let final_dir = dir.join(folder);
+        let _ = tokio::fs::remove_dir_all(&final_dir).await;
+        tokio::fs::rename(&staging, &final_dir).await.map_err(failed)?;
+        Ok(final_dir.join(&target.file))
+    }
+    .await;
+
+    if result.is_err() {
+        let _ = tokio::fs::remove_dir_all(&staging).await;
+    }
+    result
+}
+
+/// Copies files out of a zip into `dest`, flat. With `members` (a directory name inside the
+/// zip) every file in that directory is taken; without it only the entry named `file`.
+/// Entries with unsafe paths (`..`, absolute) are skipped, as are directories.
+fn extract_zip(zip_path: &Path, dest: &Path, members: Option<&str>, file: &str) -> Result<usize, String> {
+    let reader = std::io::BufReader::new(std::fs::File::open(zip_path).map_err(|e| e.to_string())?);
+    let mut archive = zip::ZipArchive::new(reader).map_err(|e| format!("Unduhan bukan arsip zip yang sah: {e}"))?;
+    let (mut taken, mut total) = (0usize, 0u64);
+    for i in 0..archive.len() {
+        let mut entry = archive.by_index(i).map_err(|e| e.to_string())?;
+        if !entry.is_file() {
+            continue;
+        }
+        let Some(path) = entry.enclosed_name() else { continue };
+        let Some(name) = path.file_name().and_then(|n| n.to_str()).map(str::to_string) else { continue };
+        let wanted = match members {
+            Some(folder) => path.parent().and_then(|p| p.file_name()).and_then(|n| n.to_str()) == Some(folder),
+            None => name == file,
+        };
+        if !wanted {
+            continue;
+        }
+        total += entry.size();
+        if total > MAX_UNPACKED_BYTES {
+            return Err("Isi arsip terlalu besar".into());
+        }
+        let mut out = std::fs::File::create(dest.join(&name)).map_err(|e| e.to_string())?;
+        std::io::copy(&mut entry, &mut out).map_err(|e| e.to_string())?;
+        taken += 1;
+    }
+    if taken == 0 {
+        return Err(format!("Arsip tidak berisi {file}"));
+    }
+    Ok(taken)
 }
 
 /// The folder an `archive` engine unpacks into: the first part of `file` ("LibreOffice.app").
@@ -411,7 +519,7 @@ pub struct EngineStatus {
 }
 
 fn status_of(def: &EngineDef, dir: &Path) -> EngineStatus {
-    let path = def.target().map(|t| dir.join(&t.file)).filter(|p| p.is_file());
+    let path = def.target().map(|t| dir.join(t.folder.as_deref().unwrap_or("")).join(&t.file)).filter(|p| p.is_file());
     EngineStatus {
         id: def.id.clone(),
         label: def.label.clone(),
@@ -448,6 +556,13 @@ pub fn engine_remove(app: AppHandle, id: String) -> Result<EngineStatus, String>
     let def = catalog().into_iter().find(|d| d.id == id).ok_or_else(|| format!("Engine tidak dikenal: {id}"))?;
     let dir = engines_dir(&app)?;
     if let Some(target) = def.target() {
+        if let Some(folder) = target.folder.as_deref().filter(|f| !f.is_empty() && !f.contains(['/', '\\']) && *f != "..") {
+            let engine_dir = dir.join(folder);
+            if engine_dir.is_dir() {
+                std::fs::remove_dir_all(engine_dir).map_err(|e| e.to_string())?;
+            }
+            return Ok(status_of(&def, &dir));
+        }
         match app_folder(target).filter(|_| target.archive.is_some()) {
             Some(folder) => {
                 let app = dir.join(folder);
@@ -572,6 +687,9 @@ mod tests {
                 assert!(t.archive.is_some() || !t.file.contains('/'), "{} {platform}: only archives may use a path", e.id);
                 let verifiable = t.sha256.as_deref().is_some_and(|h| h.len() == 64) || (t.sums_url.as_deref().is_some_and(|u| u.starts_with("https://")) && t.asset.is_some());
                 assert!(verifiable, "{} {platform} has no way to verify its download", e.id);
+                for a in &t.also {
+                    assert!(a.url.starts_with("https://") && a.sha256.as_deref().is_some_and(|h| h.len() == 64), "{} {platform}: extra downloads must be pinned", e.id);
+                }
             }
         }
     }
@@ -698,6 +816,160 @@ mod tests {
         assert!(leftovers(&dir).is_empty());
     }
 
+
+    // ---- zip engines (ffmpeg)
+
+    fn fake_zip(entries: &[(&str, &[u8])]) -> Vec<u8> {
+        use std::io::Write;
+        let mut buf = std::io::Cursor::new(Vec::new());
+        {
+            let mut w = zip::ZipWriter::new(&mut buf);
+            let opts = zip::write::SimpleFileOptions::default();
+            for (name, body) in entries {
+                w.start_file(*name, opts).unwrap();
+                w.write_all(body).unwrap();
+            }
+            w.finish().unwrap();
+        }
+        buf.into_inner()
+    }
+
+    fn zip_def(base: &str, hash: &str, members: Option<&str>, also: Vec<Target>) -> EngineDef {
+        EngineDef {
+            id: "fakezip".into(),
+            label: "Fake zip".into(),
+            approx_mb: 1,
+            targets: HashMap::from([(
+                platform_key(),
+                Target {
+                    url: format!("{base}/main.zip"),
+                    sha256: Some(hash.into()),
+                    file: "ffmpeg".into(),
+                    archive: Some("zip".into()),
+                    folder: Some("ffmpeg".into()),
+                    members: members.map(str::to_string),
+                    also,
+                    executable: true,
+                    ..Default::default()
+                },
+            )]),
+        }
+    }
+
+    #[tokio::test]
+    async fn a_zip_engine_unpacks_its_bin_folder_flat_with_dlls_and_nothing_else() {
+        let zip = fake_zip(&[
+            ("pkg-1.0/bin/ffmpeg", b"main"),
+            ("pkg-1.0/bin/ffprobe", b"probe"),
+            ("pkg-1.0/bin/avcodec-62.dll", b"dll"),
+            ("pkg-1.0/doc/README.txt", b"docs"),
+            ("pkg-1.0/LICENSE.txt", b"lic"),
+        ]);
+        let base = serve(vec![("/main.zip", Route::Body(zip.clone()))]);
+        let dir = workdir("zip-install");
+        let def = zip_def(&base, &sha(&zip), Some("bin"), vec![]);
+        let (_keep, mut rx) = oneshot::channel::<()>();
+        let mut seen = Vec::new();
+        let path = install(&http_client().unwrap(), &def, &dir, &mut rx, |p| seen.push(p)).await.unwrap();
+
+        assert_eq!(path, dir.join("ffmpeg").join("ffmpeg"));
+        let mut names: Vec<String> = std::fs::read_dir(dir.join("ffmpeg")).unwrap().flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect();
+        names.sort();
+        assert_eq!(names, ["avcodec-62.dll", "ffmpeg", "ffprobe"], "only bin/ files, no zip and no docs left");
+        assert_eq!(std::fs::read(dir.join("ffmpeg").join("ffprobe")).unwrap(), b"probe");
+        assert!(status_of(&def, &dir).installed);
+        assert_eq!(leftovers(&dir), ["ffmpeg"], "no staging folder left behind");
+        assert!(seen.last().is_some_and(|p| *p >= 99.0));
+
+        // removal takes the whole folder
+        let target = def.target().unwrap();
+        std::fs::remove_dir_all(dir.join(target.folder.as_deref().unwrap())).unwrap();
+        assert!(!status_of(&def, &dir).installed);
+    }
+
+    #[tokio::test]
+    async fn zip_engines_can_combine_several_single_file_zips() {
+        let main = fake_zip(&[("ffmpeg", b"main")]);
+        let probe = fake_zip(&[("ffprobe", b"probe"), ("junk.txt", b"x")]);
+        let base = serve(vec![("/main.zip", Route::Body(main.clone())), ("/probe.zip", Route::Body(probe.clone()))]);
+        let dir = workdir("zip-also");
+        let also = Target { url: format!("{base}/probe.zip"), sha256: Some(sha(&probe)), file: "ffprobe".into(), archive: Some("zip".into()), folder: Some("ffmpeg".into()), executable: true, ..Default::default() };
+        let def = zip_def(&base, &sha(&main), None, vec![also]);
+        let (_keep, mut rx) = oneshot::channel::<()>();
+        install(&http_client().unwrap(), &def, &dir, &mut rx, |_| {}).await.unwrap();
+
+        let mut names: Vec<String> = std::fs::read_dir(dir.join("ffmpeg")).unwrap().flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect();
+        names.sort();
+        assert_eq!(names, ["ffmpeg", "ffprobe"]);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert_eq!(std::fs::metadata(dir.join("ffmpeg").join("ffprobe")).unwrap().permissions().mode() & 0o111, 0o111);
+        }
+    }
+
+    #[tokio::test]
+    async fn a_bad_zip_installs_nothing_and_keeps_the_old_install() {
+        let good = fake_zip(&[("p/bin/ffmpeg", b"old")]);
+        let wrong_layout = fake_zip(&[("p/other/readme", b"x")]);
+        let base = serve(vec![("/main.zip", Route::Body(good.clone())), ("/bad.zip", Route::Body(wrong_layout.clone())), ("/junk.zip", Route::Body(b"not a zip".to_vec()))]);
+        let dir = workdir("zip-bad");
+        let (_keep, mut rx) = oneshot::channel::<()>();
+        let def = zip_def(&base, &sha(&good), Some("bin"), vec![]);
+        install(&http_client().unwrap(), &def, &dir, &mut rx, |_| {}).await.unwrap();
+
+        // wrong hash
+        let wrong = zip_def(&base, &"0".repeat(64), Some("bin"), vec![]);
+        assert!(install(&http_client().unwrap(), &wrong, &dir, &mut rx, |_| {}).await.is_err());
+        // right hash, but the zip has no bin/ folder
+        let mut no_bin = zip_def(&base, &sha(&wrong_layout), Some("bin"), vec![]);
+        no_bin.targets.get_mut(&platform_key()).unwrap().url = format!("{base}/bad.zip");
+        assert!(install(&http_client().unwrap(), &no_bin, &dir, &mut rx, |_| {}).await.is_err());
+        // right hash, but not a zip at all
+        let mut junk = zip_def(&base, &sha(b"not a zip"), Some("bin"), vec![]);
+        junk.targets.get_mut(&platform_key()).unwrap().url = format!("{base}/junk.zip");
+        assert!(install(&http_client().unwrap(), &junk, &dir, &mut rx, |_| {}).await.is_err());
+
+        assert_eq!(leftovers(&dir), ["ffmpeg"], "failed installs leave no staging folder");
+        assert_eq!(std::fs::read(dir.join("ffmpeg").join("ffmpeg")).unwrap(), b"old", "the working install is untouched");
+    }
+
+    #[test]
+    fn unpacking_skips_unsafe_paths_and_missing_files_are_reported() {
+        let dir = workdir("zip-unsafe");
+        let zip_path = dir.join("a.zip");
+        std::fs::write(&zip_path, fake_zip(&[("../bin/evil", b"x"), ("/bin/abs", b"x"), ("p/bin/ok", b"fine")])).unwrap();
+        let out = dir.join("out");
+        std::fs::create_dir_all(&out).unwrap();
+        let taken = extract_zip(&zip_path, &out, Some("bin"), "ok").unwrap();
+        let names = leftovers(&out);
+        assert_eq!(taken, names.len());
+        assert!(names.contains(&"ok".to_string()) && !names.contains(&"evil".to_string()), "got {names:?}");
+        assert!(!dir.join("bin").exists() && !dir.parent().unwrap().join("bin").join("evil").exists());
+        assert!(extract_zip(&zip_path, &out, None, "nothing-here").is_err());
+    }
+
+    #[test]
+    fn the_catalog_offers_ffmpeg_with_a_verifiable_zip_on_windows_and_apple_silicon() {
+        let engines = catalog();
+        let ffmpeg = engines.iter().find(|e| e.id == "ffmpeg").expect("ffmpeg is offered");
+        for key in ["windows-x86_64", "macos-aarch64"] {
+            let t = ffmpeg.targets.get(key).unwrap_or_else(|| panic!("ffmpeg for {key}"));
+            assert_eq!(t.archive.as_deref(), Some("zip"));
+            assert_eq!(t.folder.as_deref(), Some("ffmpeg"));
+            assert!(t.executable);
+        }
+        let win = &ffmpeg.targets["windows-x86_64"];
+        assert_eq!(win.file, "ffmpeg.exe");
+        assert_eq!(win.members.as_deref(), Some("bin"), "the Windows zip carries ffprobe and the DLLs in bin/");
+        let mac = &ffmpeg.targets["macos-aarch64"];
+        assert_eq!(mac.also.len(), 1);
+        assert_eq!(mac.also[0].file, "ffprobe");
+        for t in mac.also.iter().chain([mac]) {
+            assert!(t.sha256.as_deref().is_some_and(|h| h.len() == 64), "Mac downloads are pinned");
+        }
+    }
+
     // ---- full install
 
     #[tokio::test]
@@ -712,7 +984,7 @@ mod tests {
             approx_mb: 1,
             targets: HashMap::from([(
                 platform_key(),
-                Target { url: format!("{base}/bin"), sha256: None, sums_url: Some(format!("{base}/SUMS")), asset: Some("fake_asset".into()), file: "fake".into(), executable: true, archive: None },
+                Target { url: format!("{base}/bin"), sha256: None, sums_url: Some(format!("{base}/SUMS")), asset: Some("fake_asset".into()), file: "fake".into(), executable: true, archive: None, ..Default::default() },
             )]),
         };
         let (_keep, mut rx) = oneshot::channel::<()>();
@@ -777,7 +1049,7 @@ mod tests {
             approx_mb: 1,
             targets: HashMap::from([(
                 platform_key(),
-                Target { url: format!("{base}/fake.dmg"), sha256: Some(hash.into()), sums_url: None, asset: None, file: "LibreOffice.app/Contents/MacOS/soffice".into(), executable: false, archive: Some("dmg-app".into()) },
+                Target { url: format!("{base}/fake.dmg"), sha256: Some(hash.into()), sums_url: None, asset: None, file: "LibreOffice.app/Contents/MacOS/soffice".into(), executable: false, archive: Some("dmg-app".into()), ..Default::default() },
             )]),
         }
     }
@@ -835,7 +1107,7 @@ mod tests {
 
     #[test]
     fn the_app_folder_comes_from_the_first_path_part() {
-        let t = |file: &str| Target { url: String::new(), sha256: None, sums_url: None, asset: None, file: file.into(), executable: false, archive: Some("dmg-app".into()) };
+        let t = |file: &str| Target { url: String::new(), sha256: None, sums_url: None, asset: None, file: file.into(), executable: false, archive: Some("dmg-app".into()), ..Default::default() };
         assert_eq!(app_folder(&t("LibreOffice.app/Contents/MacOS/soffice")), Some("LibreOffice.app"));
         assert_eq!(app_folder(&t("plain-file")), None);
         assert_eq!(app_folder(&t("/abs")), None);

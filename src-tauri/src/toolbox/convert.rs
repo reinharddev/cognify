@@ -85,7 +85,7 @@ fn unique_output(input: &Path, out_dir: Option<&str>, ext: &str) -> PathBuf {
 }
 
 pub(crate) const MISSING_FFMPEG: &str =
-    "ffmpeg tidak ditemukan. Jalankan \"pnpm engines\" (atau brew install ffmpeg) untuk development.";
+    "ffmpeg belum terpasang. Pasang dari Alat > Konversi (tombol Pasang ffmpeg), lalu coba lagi.";
 
 #[tauri::command]
 pub async fn convert_media(

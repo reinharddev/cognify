@@ -1,11 +1,14 @@
 <script lang="ts">
 	import { t } from '$lib/i18n.svelte';
+	import FfmpegNotice from '$lib/tools/FfmpegNotice.svelte';
 	import TabPane from '$lib/components/TabPane.svelte';
 	import TrimPanel from './TrimPanel.svelte';
 	import JoinPanel from './JoinPanel.svelte';
 
 	let tab = $state<'trim' | 'join'>('trim');
 </script>
+
+<FfmpegNotice />
 
 <div class="tabs" role="tablist">
 	<button role="tab" aria-selected={tab === 'trim'} class:on={tab === 'trim'} onclick={() => (tab = 'trim')}>

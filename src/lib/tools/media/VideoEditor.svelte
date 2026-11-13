@@ -4,6 +4,7 @@
 	import { listen } from '@tauri-apps/api/event';
 	import { open } from '@tauri-apps/plugin-dialog';
 	import { revealItemInDir } from '@tauri-apps/plugin-opener';
+	import FfmpegNotice from '$lib/tools/FfmpegNotice.svelte';
 	import { Check, Music, Pause, Play, Plus, Redo2, Scissors, Trash2, TriangleAlert, Undo2, X } from '@lucide/svelte';
 	import FolderPicker from '$lib/components/FolderPicker.svelte';
 	import Select from '$lib/ui/Select.svelte';
@@ -490,6 +491,8 @@
 		};
 	});
 </script>
+
+<FfmpegNotice />
 
 {#each failed as f, i (f)}
 	<div class="bad fail"><TriangleAlert size={14} /> <span>{f}</span> <button class="icon-btn" aria-label={tr('Tutup', 'Dismiss')} onclick={() => (failed = failed.filter((_, k) => k !== i))}><X size={14} /></button></div>

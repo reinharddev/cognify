@@ -8,6 +8,7 @@
 	import DropZone from '$lib/components/DropZone.svelte';
 	import FolderPicker from '$lib/components/FolderPicker.svelte';
 	import { t } from '$lib/i18n.svelte';
+	import FfmpegNotice from '$lib/tools/FfmpegNotice.svelte';
 	import { extOf, fileName, formatBytes, listenFileDrop } from '../util';
 
 	type Status = 'queued' | 'running' | 'done' | 'nochange' | 'error';
@@ -87,13 +88,19 @@
 	const remove = (id: string) => (items = items.filter((i) => i.id !== id));
 	const clearFinished = () => (items = items.filter((i) => i.status === 'queued' || i.status === 'running'));
 
-	onMount(() => {
+	function loadFormats() {
 		invoke<string[]>('available_formats')
 			.then((f) => (supported = f))
 			.catch(() => {});
+	}
+
+	onMount(() => {
+		loadFormats();
 		return listenFileDrop(addPaths, (h) => (dragging = h));
 	});
 </script>
+
+<FfmpegNotice onready={loadFormats} />
 
 <DropZone {dragging} label={t('img.drop')} buttonLabel={t('convert.choose')} onchoose={pick} />
 

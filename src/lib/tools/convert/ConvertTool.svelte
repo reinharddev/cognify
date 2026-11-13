@@ -7,6 +7,7 @@
 	import { revealItemInDir } from '@tauri-apps/plugin-opener';
 	import { FolderOpen, Upload, X, Check, TriangleAlert } from '@lucide/svelte';
 	import { t } from '$lib/i18n.svelte';
+	import FfmpegNotice from '$lib/tools/FfmpegNotice.svelte';
 
 	type Kind = 'video' | 'audio' | 'image';
 	type Status = 'queued' | 'running' | 'done' | 'error' | 'cancelled';
@@ -129,11 +130,15 @@
 		items = items.filter((i) => i.status === 'queued' || i.status === 'running');
 	}
 
-	onMount(() => {
+	function checkFfmpeg() {
 		invoke<string | null>('engine_status', { name: 'ffmpeg' }).then((p) => {
 			ffmpegPath = p;
 			if (p) invoke<string[]>('available_formats').then((f) => (supported = f));
 		});
+	}
+
+	onMount(() => {
+		checkFfmpeg();
 
 		const unlisteners: Promise<() => void>[] = [
 			listen<{ jobId: string; percent: number }>('job-progress', (e) => {
@@ -154,15 +159,7 @@
 	});
 </script>
 
-{#if ffmpegPath === null}
-	<div class="notice">
-		<TriangleAlert size={18} />
-		<div>
-			<strong>{t('engine.missing')}</strong>
-			<p>{t('engine.install')}</p>
-		</div>
-	</div>
-{/if}
+<FfmpegNotice onready={checkFfmpeg} />
 
 <div class="drop" class:dragging>
 	<Upload size={22} />
@@ -248,19 +245,6 @@
 {/if}
 
 <style>
-	.notice {
-		display: flex;
-		gap: var(--space-3);
-		padding: var(--space-3) var(--space-3);
-		margin-bottom: var(--space-4);
-		border: 1px solid var(--danger);
-		border-radius: var(--radius);
-		color: var(--danger);
-	}
-
-	.notice p {
-		color: var(--text-dim);
-	}
 
 	.drop {
 		display: flex;

@@ -1,13 +1,20 @@
 # Third-party notices
 
-Toolbox itself is MIT-licensed (see `LICENSE`). Release builds also ship the
-programs below. Each keeps its own license, and each runs as a **separate
+Toolbox itself is MIT-licensed (see `LICENSE`). The programs below are used
+alongside it. Each keeps its own license, and each runs as a **separate
 process** started by Toolbox; none is linked into the Toolbox executable.
 
 ## FFmpeg and FFprobe
 
-- Version: 9.0.2 (see `scripts/engines.json` for the exact files and SHA-256 hashes).
-- Built by Martin Riedl's FFmpeg build server: <https://ffmpeg.martin-riedl.de/>
+Not shipped in the installers. The app offers to download them (Install ffmpeg card in the
+tools that need them); the download is checksum-verified and kept in the app's data folder.
+Developer builds can also bundle them (`npm run tauri:build`).
+
+- Version: 9.0.2 on macOS (see `scripts/engines.json` for the exact files and SHA-256 hashes);
+  the 9.0 release branch on Windows (`src-tauri/engines.json`, hash from the build's own
+  checksum list).
+- macOS builds: Martin Riedl's FFmpeg build server: <https://ffmpeg.martin-riedl.de/>
+- Windows builds: BtbN's FFmpeg-Builds (GPL, shared): <https://github.com/BtbN/FFmpeg-Builds>
 - License: **GPL**. These builds enable GPL-licensed components (for example the
   x264 and x265 encoders), which makes the combined FFmpeg binaries GPL. The
   exact configuration and the licenses of every linked library are printed by

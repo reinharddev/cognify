@@ -14,8 +14,8 @@ fn exe_name(name: &str) -> String {
 ///
 /// 1. next to the app executable: where Tauri puts bundled sidecars
 ///    (`Contents/MacOS` in a macOS app, `target/debug` under `tauri dev`)
-/// 2. the app-managed folder, where engines downloaded later will live
-/// 3. well-known system locations; GUI apps on macOS do not inherit the shell
+/// 2. the app-managed folders (`engines`, and `engines/ffmpeg` for the ffmpeg download)
+/// 3. well-known system locations (Windows package-manager folders, then Unix folders); GUI apps on macOS do not inherit the shell
 ///    PATH, so the Homebrew folders are listed explicitly
 /// 4. PATH
 ///
@@ -28,12 +28,35 @@ fn search_dirs(app: &AppHandle) -> Vec<PathBuf> {
     }
     if let Ok(dir) = app.path().app_data_dir() {
         dirs.push(dir.join("engines"));
+        // ffmpeg and ffprobe installed from the app (with their DLLs) live in their own folder
+        dirs.push(dir.join("engines").join("ffmpeg"));
     }
+    dirs.extend(windows_tool_dirs());
     for dir in ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"] {
         dirs.push(PathBuf::from(dir));
     }
     if let Some(paths) = std::env::var_os("PATH") {
         dirs.extend(std::env::split_paths(&paths));
+    }
+    dirs
+}
+
+/// Where Windows package managers put command-line tools. A program installed with winget,
+/// Scoop or Chocolatey while Cognify was already running is not on the PATH Cognify inherited.
+fn windows_tool_dirs() -> Vec<PathBuf> {
+    if !cfg!(windows) {
+        return Vec::new();
+    }
+    let env = |k: &str| std::env::var_os(k).map(PathBuf::from);
+    let mut dirs = Vec::new();
+    if let Some(d) = env("LOCALAPPDATA") {
+        dirs.push(d.join("Microsoft").join("WinGet").join("Links"));
+    }
+    if let Some(d) = env("USERPROFILE") {
+        dirs.push(d.join("scoop").join("shims"));
+    }
+    if let Some(d) = env("ProgramData") {
+        dirs.push(d.join("chocolatey").join("bin"));
     }
     dirs
 }
