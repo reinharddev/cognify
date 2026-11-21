@@ -72,7 +72,7 @@ pub struct DownloadSpec {
 }
 
 const PROGRESS_PREFIX: &str = "toolbox-dl:";
-const FILE_PREFIX: &str = "toolbox-file:";
+pub const FILE_PREFIX: &str = "toolbox-file:";
 
 /// Everything after the binary name. The URL goes last, after `--`.
 pub fn download_args(spec: &DownloadSpec, url: &str, out_dir: &Path, ffmpeg_dir: Option<&Path>) -> Vec<String> {
@@ -262,7 +262,7 @@ pub enum RunError {
 /// Runs yt-dlp, handing each stdout line to `on_line`. Cancel and timeout kill
 /// the whole process tree (yt-dlp's launcher runs the real program, and ffmpeg,
 /// as children).
-async fn run_lines(
+pub async fn run_lines(
     bin: &Path,
     args: &[String],
     cancel: &mut oneshot::Receiver<()>,
@@ -332,7 +332,7 @@ async fn run_lines(
     Ok(())
 }
 
-fn error_message(e: RunError) -> String {
+pub fn error_message(e: RunError) -> String {
     match e {
         RunError::Cancelled => "cancelled".into(),
         RunError::TimedOut => "timeout|".into(),
@@ -342,7 +342,7 @@ fn error_message(e: RunError) -> String {
 
 // ---------------------------------------------------------------- commands ---
 
-fn ytdlp_bin(app: &AppHandle) -> Result<PathBuf, String> {
+pub fn ytdlp_bin(app: &AppHandle) -> Result<PathBuf, String> {
     engine::resolve(app, "yt-dlp").ok_or_else(|| "engineMissing|".to_string())
 }
 

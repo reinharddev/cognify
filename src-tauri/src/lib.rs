@@ -1,3 +1,6 @@
+// Di iOS/Android modul desktop (clipboard, bridge, notch, link) tetap dikompilasi tapi tidak dijalankan.
+#![cfg_attr(not(desktop), allow(dead_code, unused_variables))]
+
 mod bridge;
 mod clipboard;
 mod notch;
@@ -10,6 +13,12 @@ mod store;
 mod toolbox;
 mod sticky;
 mod updater;
+#[cfg(desktop)]
+mod whisper_child;
+#[cfg(desktop)]
+mod tray;
+#[cfg(not(desktop))]
+#[path = "tray_mobile.rs"]
 mod tray;
 
 use std::sync::atomic::Ordering;
@@ -34,6 +43,20 @@ fn reveal_extension_folder(app: tauri::AppHandle) -> Result<String, String> {
     Ok(dir.to_string_lossy().into_owned())
 }
 
+/// `cognify --transcribe ...`: proses anak untuk transkripsi (whisper.cpp), tanpa jendela.
+/// Hanya desktop; di perangkat lain fiturnya tidak tersedia.
+pub fn run_transcribe(args: &[String]) -> i32 {
+    #[cfg(desktop)]
+    {
+        whisper_child::run(args)
+    }
+    #[cfg(not(desktop))]
+    {
+        let _ = args;
+        1
+    }
+}
+
 /// `cognify --mcp`: server MCP lewat stdio tanpa membuka jendela. Mengembalikan kode keluar proses.
 pub fn run_mcp() -> i32 {
     mcp::run()
@@ -41,25 +64,27 @@ pub fn run_mcp() -> i32 {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    // Pintasan global catatan melayang: catatan baru dari aplikasi mana pun (hanya desktop).
+    #[cfg(desktop)]
+    let builder = builder.plugin(
+        tauri_plugin_global_shortcut::Builder::new()
+            .with_handler(|app, _shortcut, event| {
+                if event.state() == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                    if let Err(e) = sticky::new_note(app) {
+                        log::warn!("Catatan melayang baru gagal: {e}");
+                    }
+                }
+            })
+            .build(),
+    );
+    builder
         .manage(toolbox::ffmpeg::Jobs::default())
         .manage(toolbox::office::OfficeLock::default())
         .manage(updater::Updater::default())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(
-            // Pintasan global catatan melayang: catatan baru dari aplikasi mana pun.
-            tauri_plugin_global_shortcut::Builder::new()
-                .with_handler(|app, _shortcut, event| {
-                    if event.state() == tauri_plugin_global_shortcut::ShortcutState::Pressed {
-                        if let Err(e) = sticky::new_note(app) {
-                            log::warn!("Catatan melayang baru gagal: {e}");
-                        }
-                    }
-                })
-                .build(),
-        )
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(
             // Log Rust → stdout & file di folder log app.
@@ -77,12 +102,16 @@ pub fn run() {
             app.manage(ClipboardWatcher::new());
             app.manage(Notch::new());
             app.manage(bridge::Bridge::default());
-            tray::setup(app.handle())?;
-            sticky::restore(app.handle());
-            sticky::set_shortcut(app.handle(), sticky::shortcut_enabled_in_prefs(app.handle()));
-            link::start(app.handle().clone());
-            bridge::start(app.handle());
-            clipboard::start(app.handle().clone());
+            // Menu bar, catatan melayang, Notch, ekstensi browser, dan pantau clipboard hanya ada di desktop.
+            #[cfg(desktop)]
+            {
+                tray::setup(app.handle())?;
+                sticky::restore(app.handle());
+                sticky::set_shortcut(app.handle(), sticky::shortcut_enabled_in_prefs(app.handle()));
+                link::start(app.handle().clone());
+                bridge::start(app.handle());
+                clipboard::start(app.handle().clone());
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -184,6 +213,8 @@ pub fn run() {
             toolbox::pdf::pdf_info,
             toolbox::office::office_status,
             toolbox::office::office_to_pdf,
+            toolbox::transcribe::transcribe_status,
+            toolbox::transcribe::transcribe,
             toolbox::ytdlp::ytdlp_version,
             toolbox::ytdlp::media_info,
             toolbox::ytdlp::media_download,

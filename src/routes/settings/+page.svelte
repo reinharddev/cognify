@@ -3,6 +3,8 @@
   import ColorPicker from "$lib/ui/ColorPicker.svelte";
   import { isTauri } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
+  import { isMobile } from "$lib/platform";
+  import { openHref } from "$lib/openHref";
   import { FONTS, prefs, type FontChoice, type StyleChoice } from "$lib/stores/prefs.svelte";
   import { derive, PRESETS } from "$lib/theme/palette";
   import { hslToHex, hexToHsl } from "$lib/theme/color";
@@ -12,7 +14,6 @@
   import { embedConsent } from "$lib/moodle/embedConsent.svelte";
   import Select from "$lib/ui/Select.svelte";
   import { update, formatSize } from "$lib/stores/update.svelte";
-  import { openHref } from "$lib/openHref";
   import { testReminder } from "$lib/calendar/reminders";
   import type { BridgeStatus, McpInfo } from "$lib/workspace/types";
 
@@ -22,7 +23,7 @@
     { id: "appearance", label: tr("Tampilan", "Appearance") },
     { id: "preferences", label: tr("Preferensi", "Preferences") },
     { id: "moodle", label: "Moodle" },
-    { id: "mcp", label: "MCP (AI)" },
+    ...(isMobile ? [] : [{ id: "mcp" as Tab, label: "MCP (AI)" }]),
     { id: "data", label: "Data" },
     { id: "about", label: tr("Tentang", "About") },
   ]);
@@ -221,11 +222,13 @@
           <div><b>{tr("Periksa ejaan", "Spell check")}</b><small>{tr("Garis bawah pada kata yang diduga salah ketik.", "Underlines words that look misspelled.")}</small></div>
           <input type="checkbox" role="switch" checked={p.spellcheck} onchange={(e) => prefs.set({ spellcheck: e.currentTarget.checked })} />
         </label>
+        {#if !isMobile}
         <h2>{tr("Catatan melayang", "Floating notes")}</h2>
         <label class="row">
           <div><b>{tr("Pintasan global", "Global shortcut")}</b><small>{tr("Tekan Ctrl/⌘ + Alt + N dari aplikasi mana pun untuk membuat catatan melayang baru.", "Press Ctrl/⌘ + Alt + N from any app to create a new floating note.")}</small></div>
           <input type="checkbox" role="switch" checked={p.stickyShortcut} onchange={(e) => { prefs.set({ stickyShortcut: e.currentTarget.checked }); void workspace.sticky.shortcut(e.currentTarget.checked); }} />
         </label>
+        {/if}
         <h2>{tr("Kalender", "Calendar")}</h2>
         <label class="row">
           <div><b>{tr("Pengingat acara", "Event reminders")}</b><small>{tr("Notifikasi desktop sebelum acara mulai.", "Desktop notification before an event starts.")}</small></div>
@@ -236,10 +239,12 @@
           <input type="checkbox" role="switch" checked={p.lessonReminders} onchange={(e) => prefs.set({ lessonReminders: e.currentTarget.checked })} />
         </label>
         <h2>{tr("Notifikasi", "Notifications")}</h2>
+        {#if !isMobile}
         <label class="row">
           <div><b>{tr("Tetap berjalan saat jendela ditutup", "Keep running when the window is closed")}</b><small>{tr("Menutup jendela hanya menyembunyikannya ke menu bar atau tray, supaya pengingat tetap berbunyi. Keluar lewat menu tray atau Cmd/Ctrl+Q.", "Closing the window only hides it to the menu bar or tray, so reminders keep ringing. Quit from the tray menu or Cmd/Ctrl+Q.")}</small></div>
           <input type="checkbox" role="switch" checked={p.keepInTray} onchange={(e) => prefs.set({ keepInTray: e.currentTarget.checked })} />
         </label>
+        {/if}
         <p class="hint">{tr("Semua pengingat masuk ke lonceng di sidebar. Saat jendela Cognify sedang dilihat, yang muncul hanya toast kecil; notifikasi sistem hanya dikirim bila kamu sedang di aplikasi lain.", "All reminders land in the bell in the sidebar. While the Cognify window is in view you only get a small toast; system notifications are sent only when you are in another app.")}</p>
         <label class="row">
           <div><b>{tr("Notifikasi sistem", "System notifications")}</b><small>{tr("Kirim ke pusat notifikasi macOS atau Windows saat Cognify tidak sedang dilihat.", "Send to the macOS or Windows notification centre when Cognify is not in view.")}</small></div>
@@ -330,6 +335,7 @@
         <p class="hint">{tr("Semua halamanmu tersimpan di komputer ini. Tidak ada akun, dan tidak ada yang dikirim ke internet.", "All your pages are stored on this computer. There is no account, and nothing is sent to the internet.")}</p>
         <p class="hint"><a href="/trash">{tr("Buka Sampah", "Open Trash")}</a> {tr("untuk memulihkan halaman yang terhapus.", "to restore deleted pages.")}</p>
 
+        {#if !isMobile}
         <h2>{tr("Ekstensi browser", "Browser extension")}</h2>
         <p class="hint">{tr("Simpan tulisan, link, atau satu halaman website langsung ke Cognify. Ikuti 5 langkah ini dari atas; yang sudah beres diberi tanda ✓.", "Save text, links, or a whole web page straight into Cognify. Follow these 5 steps from the top; finished ones are marked ✓.")}</p>
         <ExtensionGuide
@@ -342,11 +348,12 @@
           onFolder={extFolder}
         />
         {#if extNote}<p class="hint warn" role="alert">{extNote}</p>{/if}
+        {/if}
       {:else}
         <h2>{tr("Tentang", "About")}</h2>
         <p class="hint">Cognify{version ? ` ${version}` : ""}. {tr("Ruang catatan untuk belajar dan semua kegiatanmu. Gratis, tanpa akun.", "A notes space for studying and everything you do. Free, no account.")}</p>
         <p class="hint">{tr("Sedang dikerjakan: fitur dan tampilannya masih bisa berubah.", "Work in progress: features and looks may still change.")}</p>
-        {#if isTauri()}
+        {#if isTauri() && !isMobile}
           <h2>{tr("Pembaruan", "Updates")}</h2>
           <div class="row">
             <div>

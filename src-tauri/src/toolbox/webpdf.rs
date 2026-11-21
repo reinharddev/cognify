@@ -25,9 +25,12 @@ pub fn parse_target(input: &str) -> Result<(Url, String), String> {
 
 /// Cetak isi webview: macOS memakai API Tauri; platform lain memakai `window.print()` di dalam halaman.
 fn print(window: &WebviewWindow) -> Result<(), String> {
-    if cfg!(target_os = "macos") {
+    #[cfg(target_os = "macos")]
+    {
         window.print().map_err(|e| format!("Jendela cetak tidak bisa dibuka: {e}"))
-    } else {
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
         window.eval("window.print()").map_err(|e| format!("Jendela cetak tidak bisa dibuka: {e}"))
     }
 }

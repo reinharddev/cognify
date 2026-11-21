@@ -16,9 +16,11 @@ import {
 	LayoutGrid,
 	CaseSensitive,
 	Globe,
-	Film
+	Film,
+	Captions
 } from '@lucide/svelte';
 import type { ToolManifest } from './types';
+import { isMobile } from '../platform';
 
 const convert = () => import('./convert/ConvertTool.svelte');
 
@@ -212,6 +214,19 @@ const all: ToolManifest[] = [
 		load: () => import('./media/MediaDownload.svelte')
 	},
 	{
+		id: 'transcribe',
+		category: 'audio',
+		icon: Captions,
+		name: { id: 'Transkrip Audio & Video', en: 'Transcribe Audio & Video' },
+		description: {
+			id: 'Ubah suara dari MP3, video, atau tautan YouTube jadi teks, langsung di komputermu.',
+			en: 'Turn speech from MP3s, videos or YouTube links into text, right on your computer.'
+		},
+		keywords: ['transkrip', 'transcribe', 'transcript', 'whisper', 'teks', 'text', 'subtitle', 'srt', 'vtt', 'caption', 'youtube', 'rekaman', 'kuliah', 'lecture', 'suara jadi teks', 'speech to text', 'mp3', 'catatan'],
+		status: 'ready',
+		load: () => import('./media/Transcribe.svelte')
+	},
+	{
 		id: 'json-format',
 		category: 'developer',
 		icon: Braces,
@@ -233,7 +248,24 @@ const all: ToolManifest[] = [
 	}
 ];
 
-export const tools: ToolManifest[] = all.filter((t) => !t.hidden);
+/**
+ * Alat yang jalan di iPad dan tablet Android: hanya yang murni dikerjakan inti Rust atau halaman
+ * (PDF lewat lopdf, teks, JSON, QR). Sisanya butuh ffmpeg, yt-dlp, LibreOffice, atau jendela
+ * tambahan, yang tidak bisa dijalankan di sana, jadi disembunyikan.
+ */
+const MOBILE_TOOLS = new Set([
+	'pdf-merge',
+	'pdf-split',
+	'pdf-compress',
+	'image-to-pdf',
+	'pdf-organize',
+	'text-tools',
+	'bulk-rename',
+	'json-format',
+	'qr'
+]);
+
+export const tools: ToolManifest[] = all.filter((t) => !t.hidden && (!isMobile || MOBILE_TOOLS.has(t.id)));
 
 export function getTool(id: string): ToolManifest | undefined {
 	return tools.find((t) => t.id === id);

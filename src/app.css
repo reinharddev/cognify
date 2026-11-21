@@ -674,3 +674,23 @@ textarea,
   main { overflow: visible !important; height: auto !important; padding: 0 !important; }
   * { box-shadow: none !important; }
 }
+
+
+/* ── Perangkat sentuh (iPad, tablet Android) ───────────────────────── */
+/* Poni, sudut layar, dan bilah rumah tidak boleh menutupi isi. */
+body {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
+/* Jari butuh sasaran sentuh sekitar 44 px; kursor tidak. */
+@media (pointer: coarse) {
+  nav a,
+  .btn,
+  .seg button,
+  select {
+    min-height: 44px;
+  }
+}

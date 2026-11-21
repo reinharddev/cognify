@@ -5,8 +5,14 @@
 //! jendela dan daftar yang sedang terbuka (`settings["stickies"]`, supaya terbuka lagi saat app dijalankan);
 //! warna, posisi, dan ukuran disimpan jendelanya sendiri di `settings["sticky.<id>"]`.
 
+// Di iOS dan Android tidak ada jendela melayang dan pintasan global; bagian jendela diganti stub.
+#![cfg_attr(not(desktop), allow(dead_code, unused_imports))]
+
 use serde::Deserialize;
-use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, Manager};
+#[cfg(desktop)]
+use tauri::{WebviewUrl, WebviewWindowBuilder};
+#[cfg(desktop)]
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
 use crate::store::pages::{self, NewPage};
@@ -94,7 +100,14 @@ pub fn folder_in(st: &Store) -> Res<String> {
     Ok(id)
 }
 
+/// Di perangkat mobile catatan melayang tidak ada; halamannya tetap bisa dibuka di jendela utama.
+#[cfg(not(desktop))]
+pub fn open(_app: &AppHandle, _id: &str) -> Res<()> {
+    Err("Catatan melayang hanya ada di desktop.".into())
+}
+
 /// Buka (atau munculkan) jendela catatan untuk halaman `id`.
+#[cfg(desktop)]
 pub fn open(app: &AppHandle, id: &str) -> Res<()> {
     if !valid_id(id) {
         return Err("Id halaman tidak sah.".into());
@@ -155,6 +168,9 @@ pub fn close(app: &AppHandle, id: &str) {
 
 /// Catatan baru: halaman dokumen kosong di bawah "Catatan melayang", langsung terbuka sebagai jendela.
 pub fn new_note(app: &AppHandle) -> Res<String> {
+    if cfg!(not(desktop)) {
+        return Err("Catatan melayang hanya ada di desktop.".into());
+    }
     let parent = folder_id(app)?;
     // Masih ada catatan kosong yang belum dipakai: munculkan itu, jangan menumpuk catatan kosong baru.
     let blank: Option<String> = store(app)
@@ -198,6 +214,11 @@ pub fn restore(app: &AppHandle) {
 }
 
 /// Pasang atau lepas pintasan global.
+#[cfg(not(desktop))]
+pub fn set_shortcut(_app: &AppHandle, _enabled: bool) {}
+
+/// Pasang atau lepas pintasan global.
+#[cfg(desktop)]
 pub fn set_shortcut(app: &AppHandle, enabled: bool) {
     let keys = app.global_shortcut();
     if enabled {
@@ -239,9 +260,12 @@ pub fn sticky_close(app: AppHandle, id: String) {
 
 #[tauri::command]
 pub fn sticky_pin(app: AppHandle, id: String, pinned: bool) {
+    #[cfg(desktop)]
     if let Some(window) = app.get_webview_window(&label(&id)) {
         let _ = window.set_always_on_top(pinned);
     }
+    #[cfg(not(desktop))]
+    let _ = (&app, pinned);
 }
 
 /// Buka halaman catatan di jendela utama.

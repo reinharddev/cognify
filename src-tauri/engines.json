@@ -71,6 +71,19 @@
       }
     },
     {
+      "id": "whisper-small",
+      "label": "Model transkripsi Whisper small",
+      "approxMb": 181,
+      "targets": {
+        "any": {
+          "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin",
+          "sha256": "ae85e4a935d7a567bd102fe55afc16bb595bdb618e11b2fc7591bc08120411bb",
+          "file": "ggml-small-q5_1.bin",
+          "executable": false
+        }
+      }
+    },
+    {
       "id": "libreoffice",
       "label": "LibreOffice (for Documents to PDF)",
       "approxMb": 300,

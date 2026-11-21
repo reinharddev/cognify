@@ -33,6 +33,7 @@
   import { motionOff, startClickFx } from "$lib/motion";
   import { calendar } from "$lib/stores/calendar.svelte";
   import { notchLink } from "$lib/stores/link.svelte";
+  import { isMobile } from "$lib/platform";
   import { ws } from "$lib/stores/workspace.svelte";
   import { getTool } from "$lib/tools/registry";
 
@@ -54,7 +55,7 @@
       void prefs.init();
       return stopTips;
     }
-    void notchLink.init();
+    if (!isMobile) void notchLink.init();
     void calendar.init();
     void moodle.init();
     void notifications.init();
@@ -72,7 +73,7 @@
         if (last && ws.nodes.some((n) => n.id === last)) await goto(`/p/${last}`, { replaceState: true });
       }
     })();
-    const stopUpdate = update.start();
+    const stopUpdate = isMobile ? () => {} : update.start();
     const stopReminders = startReminders(() => prefs.value.reminders);
     const stopProposals = proposals.start();
     const stopAgenda = startAgendaShare();
@@ -156,7 +157,7 @@
       { label: tr("Dokumen baru", "New document"), icon: FileText, onclick: () => newPage("doc") },
       { label: tr("Papan baru", "New board"), icon: Shapes, onclick: () => newPage("board") },
       { label: tr("Tabel baru", "New table"), icon: Table2, onclick: () => newPage("table") },
-      { label: tr("Catatan melayang baru", "New floating note"), icon: NotepadText, onclick: () => void workspace.sticky.create() },
+      ...(isMobile ? [] : [{ label: tr("Catatan melayang baru", "New floating note"), icon: NotepadText, onclick: () => void workspace.sticky.create() }]),
       { label: "Cari", icon: Search, separator: true, onclick: () => void (searching = true) },
       { label: tr("Beranda", "Home"), icon: Home, onclick: () => goto("/") },
     ]);
@@ -217,7 +218,7 @@
 <ContextMenu />
 <DialogHost />
 <NotificationToasts />
-{#if !isSticky}<UpdateCard />{/if}
+{#if !isSticky && !isMobile}<UpdateCard />{/if}
 
 <style>
   .shell {
@@ -247,6 +248,7 @@
       inset: 0 auto 0 0;
       z-index: 80;
       height: 100dvh;
+      padding-top: env(safe-area-inset-top, 0px);
       transform: translateX(-105%);
       transition: transform var(--dur-3) var(--ease-out);
     }

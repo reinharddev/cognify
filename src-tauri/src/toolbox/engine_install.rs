@@ -1123,4 +1123,15 @@ mod tests {
             assert_eq!(t.archive.as_deref(), Some("dmg-app"));
         }
     }
+
+    #[test]
+    fn the_whisper_model_is_one_pinned_data_file_for_every_platform() {
+        let model = catalog().into_iter().find(|d| d.id == "whisper-small").expect("whisper-small entry");
+        let t = model.targets.get("any").expect("platform independent");
+        assert!(t.url.starts_with("https://"));
+        assert_eq!(t.sha256.as_deref().map(str::len), Some(64), "the model must be hash-pinned");
+        assert!(!t.executable, "a model is data, not a program");
+        assert_eq!(t.file, crate::toolbox::transcribe::MODEL_FILE, "the transcriber looks for exactly this file");
+        assert!(t.archive.is_none() && t.folder.is_none(), "stored as one file at the top of the engines folder");
+    }
 }

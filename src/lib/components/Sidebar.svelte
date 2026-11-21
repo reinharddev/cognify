@@ -3,6 +3,7 @@
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
   import NotchIcon from "./NotchIcon.svelte";
+  import { isMobile } from "$lib/platform";
   import { CalendarDays, FileText, Folder, Award, GraduationCap, Hash, Home, Inbox, Plus, Search, Settings, Shapes, Star, Table2, Trash2, Wrench } from "@lucide/svelte";
   import { prefs } from "$lib/stores/prefs.svelte";
   import { moodle } from "$lib/stores/moodle.svelte";
@@ -54,7 +55,9 @@
       <a href="/moodle" class:on={is("/moodle")}><GraduationCap size={16} />{tr("Materi", "Materials")}</a>
     {/if}
     <a href="/nilai" class:on={is("/nilai")}><Award size={16} />{tr("Nilai", "Grades")}</a>
-    <a href="/notch" class="k-notch" class:on={is("/notch")}><NotchIcon size={16} />Notch</a>
+    {#if !isMobile}
+      <a href="/notch" class="k-notch" class:on={is("/notch")}><NotchIcon size={16} />Notch</a>
+    {/if}
     <a href="/tools" class:on={is("/tools")}><Wrench size={16} />{tr("Alat", "Tools")}</a>
     {#if prefs.value.mcp.propose || proposals.count > 0}
       <a href="/proposals" class:on={is("/proposals")}><Inbox size={16} />{tr("Usulan", "Proposals")}{#if proposals.count > 0}<span class="badge" aria-label="{proposals.count} {tr("usulan menunggu", "proposals pending")}">{proposals.count}</span>{/if}</a>

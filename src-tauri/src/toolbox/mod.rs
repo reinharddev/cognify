@@ -12,6 +12,7 @@ pub mod pdf;
 pub mod pdf_tools;
 pub mod proc;
 pub mod rename;
+pub mod transcribe;
 pub mod video_edit;
 pub mod video_editor;
 pub mod webpdf;
